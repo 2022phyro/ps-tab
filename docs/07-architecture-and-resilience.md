@@ -40,7 +40,7 @@ Multiple staff members working the same tournament simultaneously (common at lar
 
 ## Sudden token loss
 
-A competitor or judge loses their device, or their token link stops working mid-tournament (accidental revocation, expired TTL misconfigured too aggressively).
+A competitor or judge loses their device, or their token link stops working mid-tournament (accidental revocation is the only way this happens — tokens themselves don't expire, per docs/04 §1).
 
 **Strategy: fast, low-friction reissuance, not account recovery ceremony.**
 - Because the zero-auth token (§[04-identity-and-auth.md](04-identity-and-auth.md)) carries no password to "reset," recovery is simply: the person identifies themselves to tab staff at the check-in desk (or, for remote participation, via a lightweight verification like confirming the email on file), and staff reissues a fresh token for that roster entry — the old one is explicitly revoked in the same action so a lost/stolen device's old link can't be used afterward.

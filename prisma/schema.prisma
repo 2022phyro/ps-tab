@@ -28,23 +28,23 @@ model User {
   emailVerified DateTime?
   image         String?
 
-  /// docs/03 — Global Super Admin flag. Platform-level, not tournament-scoped.
-  isSuperAdmin Boolean @default(false)
-
   accounts Account[]
   sessions Session[]
 
-  ownedTournaments        Tournament[]             @relation("TournamentOwner")
-  collaboratorMemberships TournamentCollaborator[]
-  institutionCoordinators InstitutionCoordinator[]
-  ownedCircuits           Circuit[]                @relation("CircuitOwner")
-  circuitAdminMemberships CircuitAdmin[]
-  claims                  Claim[]
-  raisedDisputes          ClaimDispute[]           @relation("DisputeRaisedBy")
-  resolvedDisputes        ClaimDispute[]           @relation("DisputeResolvedBy")
-  guardianLinks           GuardianLink[]
-  crossTournamentRating   CrossTournamentRating?
-  auditLogEntries         AuditLogEntry[]
+  /// docs/03 — every role (Super Admin included) is now a Group membership,
+  /// not a bespoke flag/table — see "Roles & permissions (Grouped RBAC)"
+  /// below. Super Admin is membership in the one seeded Group scoped to
+  /// neither a tournament nor a circuit (global).
+  groupMemberships GroupMembership[]
+
+  ownedTournaments      Tournament[]           @relation("TournamentOwner")
+  ownedCircuits         Circuit[]              @relation("CircuitOwner")
+  claims                Claim[]
+  raisedDisputes        ClaimDispute[]         @relation("DisputeRaisedBy")
+  resolvedDisputes      ClaimDispute[]         @relation("DisputeResolvedBy")
+  guardianLinks         GuardianLink[]
+  crossTournamentRating CrossTournamentRating?
+  auditLogEntries       AuditLogEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -111,28 +111,16 @@ model Tournament {
   ownerId String
   owner   User   @relation("TournamentOwner", fields: [ownerId], references: [id])
 
-  collaborators           TournamentCollaborator[]
-  divisions               Division[]
-  institutions            Institution[]
-  auditLogEntries         AuditLogEntry[]
-  circuitMemberships      CircuitMembership[]
-  institutionCoordinators InstitutionCoordinator[]
+  divisions          Division[]
+  institutions       Institution[]
+  auditLogEntries    AuditLogEntry[]
+  circuitMemberships CircuitMembership[]
+  /// docs/03 — Tab Staff/Collaborator and Institution Coordinator are Groups
+  /// scoped to this tournament (see "Roles & permissions (Grouped RBAC)").
+  groups             Group[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-/// docs/03 — Tab Staff collaborator (distinct from the owner; same day-of powers).
-model TournamentCollaborator {
-  id           String   @id @default(cuid())
-  tournamentId String
-  userId       String
-  createdAt    DateTime @default(now())
-
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([tournamentId, userId])
 }
 
 /// docs/01 §9 — experience-based sub-field (Novice/Open/etc), own draw+tab+break.
@@ -242,10 +230,12 @@ model Institution {
   tournamentId String
   name         String
 
-  tournament   Tournament               @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  speakers     Speaker[]
-  judges       Judge[]
-  coordinators InstitutionCoordinator[]
+  tournament       Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  speakers         Speaker[]
+  judges           Judge[]
+  /// docs/03 — Institution Coordinator memberships narrowed to this institution
+  /// (see "Roles & permissions (Grouped RBAC)").
+  groupMemberships GroupMembership[]
 
   createdAt DateTime @default(now())
 
@@ -580,6 +570,10 @@ model AuditLogEntry {
 /// docs/04 §1 — zero-auth tournament-day access. Hashed at rest so a
 /// revocation is instant (unlike a signed JWT, which stays valid until its
 /// own expiry even after "revocation").
+///
+/// Permanent by default: `expiresAt` is null unless explicitly set, so a
+/// person can revisit their tournament token for life — the only thing that
+/// ever ends access is organizer revocation (`revokedAt`), never a clock.
 model AccessToken {
   id          String @id @default(cuid())
   hashedValue String @unique
@@ -588,7 +582,9 @@ model AccessToken {
   judgeId   String?
 
   scope     String
-  expiresAt DateTime
+  /// null = never expires (the default). Only set this if a future feature
+  /// genuinely needs a time-bounded token — nothing in the app sets it today.
+  expiresAt DateTime?
   revokedAt DateTime?
 
   speaker Speaker? @relation(fields: [speakerId], references: [id], onDelete: Cascade)
@@ -676,22 +672,13 @@ model Circuit {
   dropWorstCount  Int    @default(0)
 
   owner       User                @relation("CircuitOwner", fields: [ownerId], references: [id])
-  admins      CircuitAdmin[]
   memberships CircuitMembership[]
   pointsRules CircuitPointsRule[]
+  /// docs/03 — Circuit Administrator memberships are Groups scoped to this
+  /// circuit (see "Roles & permissions (Grouped RBAC)").
+  groups      Group[]
 
   createdAt DateTime @default(now())
-}
-
-model CircuitAdmin {
-  id        String @id @default(cuid())
-  circuitId String
-  userId    String
-
-  circuit Circuit @relation(fields: [circuitId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([circuitId, userId])
 }
 
 model CircuitMembership {
@@ -734,21 +721,93 @@ model CrossTournamentRating {
 }
 
 // ============================================================================
-// Extended roles — docs/03-roles-and-access.md "Extended roles"
+// Roles & permissions (Grouped RBAC) — docs/03-roles-and-access.md
 // ============================================================================
+//
+// Every role in docs/03 (Super Admin, Tab Staff/Collaborator, Institution
+// Coordinator, Circuit Administrator) is a `Group` with a set of
+// `Permission`s attached, rather than a bespoke boolean/join-table per role.
+// The system seeds a default Group per role (`isDefault: true`) with a
+// sensible permission set; organizers can also create custom groups and
+// assign whichever permissions they want (this is exactly what was asked
+// for — the schema doesn't hardcode which permissions a role has, only
+// which permissions *exist*).
+//
+// Scoping: a Group belongs to a tournament, a circuit, or neither (the
+// platform-global scope — today only "Super Admin" lives here). Adjudicator
+// and Competitor aren't Groups: those are inherent to being linked from a
+// Judge/Speaker roster row, not an assignable permission set, so they're
+// left exactly as modeled already (no group needed to "be" a judge).
 
-/// Institution Coordinator/Coach — scoped to one institution within one tournament.
-model InstitutionCoordinator {
-  id            String @id @default(cuid())
-  tournamentId  String
-  institutionId String
+/// Atomic capability catalog — seeded by the system from docs/03's
+/// permission matrix. Organizers choose which Groups get which permissions;
+/// they don't invent new permission keys themselves.
+model Permission {
+  id          String @id @default(cuid())
+  /// e.g. "draws.generate", "results.publish", "judges.hotswap", "audit.view"
+  key         String @unique
+  description String
+
+  groups GroupPermission[]
+}
+
+model Group {
+  id   String @id @default(cuid())
+  name String
+
+  /// seeded defaults (Super Admin, Tab Staff, Institution Coordinator,
+  /// Circuit Administrator) vs. an organizer-created custom group
+  isDefault Boolean @default(false)
+
+  /// null + null = platform-global (Super Admin only, today)
+  tournamentId String?
+  circuitId    String?
+
+  tournament Tournament? @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  circuit    Circuit?    @relation(fields: [circuitId], references: [id], onDelete: Cascade)
+
+  permissions GroupPermission[]
+  memberships GroupMembership[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tournamentId, name])
+  @@unique([circuitId, name])
+}
+
+model GroupPermission {
+  id           String @id @default(cuid())
+  groupId      String
+  permissionId String
+
+  group      Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, permissionId])
+}
+
+/// A user's membership in a Group. `institutionId` narrows membership
+/// further for a Group like Institution Coordinator, where the Group defines
+/// *what* the role can do and each member is additionally scoped to *one*
+/// institution within that tournament (docs/03 "Extended roles"). Most
+/// Groups (Tab Staff, Circuit Administrator, Super Admin) leave it null.
+///
+/// Note: Postgres treats NULL as distinct in unique constraints, so the
+/// `@@unique` below won't catch two plain (institutionId-null) memberships
+/// for the same user/group — de-duplicate at the application layer when
+/// creating a membership rather than relying on the DB for that one case.
+model GroupMembership {
+  id            String  @id @default(cuid())
+  groupId       String
   userId        String
+  institutionId String?
 
-  tournament  Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group       Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institution Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  @@unique([tournamentId, institutionId, userId])
+  @@unique([groupId, userId, institutionId])
 }

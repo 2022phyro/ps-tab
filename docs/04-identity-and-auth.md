@@ -12,9 +12,9 @@ Every roster entry (speaker or judge) gets a personal access token the moment th
 
 **Design of the token itself:**
 - High-entropy, unguessable, and unrelated to the person's email or name (no PII embedded in the URL/token string itself) — knowing someone's name or which tournament they're in gives no path to guessing their token.
-- Carries an explicit **scope** (which tournament, which person, read-only vs. check-in-capable) and a **TTL** — tokens expire automatically at a sensible boundary (e.g., some window after the tournament concludes), rather than staying valid forever by default.
-- **Organizer revocation**: staff can invalidate a specific token instantly (lost phone, token accidentally shared/screenshotted) and reissue a fresh one to the same roster entry — the old one stops working the moment revocation is confirmed, no propagation delay.
-- **Replay/reuse is fine, interception is the risk to design against** — since it's a bearer credential, the mitigations are TTL, scope narrowness, and revocability rather than one-time-use, since a person legitimately reopens their own link many times across a multi-day tournament.
+- Carries an explicit **scope** (which tournament, which person, read-only vs. check-in-capable). **Permanent by default — no expiry.** A speaker or judge can reopen the exact same link years later and it still works; nothing about tournament-day access should require someone to remember to "do something" before a clock runs out. The only thing that ever ends access is explicit organizer revocation, never time.
+- **Organizer revocation**: staff can invalidate a specific token instantly (lost phone, token accidentally shared/screenshotted) and reissue a fresh one to the same roster entry — the old one stops working the moment revocation is confirmed, no propagation delay. Revocation is the *only* mechanism that ends a token's life — there is no background expiry sweep to reason about.
+- **Replay/reuse is fine, interception is the risk to design against** — since it's a permanent bearer credential, the mitigations are scope narrowness and revocability rather than one-time-use or a short lifetime, since a person is expected to legitimately reopen their own link indefinitely, not just across one multi-day tournament.
 
 **Flow:**
 
@@ -28,13 +28,13 @@ sequenceDiagram
     System->>System: generate scoped token per roster entry
     System-->>Speaker: personal link / QR (email, printed tag)
     Speaker->>System: opens link
-    System->>System: validate token (scope, TTL, not revoked)
+    System->>System: validate token (scope, not revoked)
     System-->>Speaker: read-only view: own assignments, own results, own feedback
 ```
 
 ## 2. Authenticated profiles & cross-tournament aggregation
 
-For people who compete or judge repeatedly, a token-per-event model loses everything at the TTL boundary. An optional, persistent **account** layer sits above the token layer for exactly this case.
+A permanent token (§1) never expires, but it's still one link per tournament, with no view across events — and if it's ever lost (a deleted email, a wiped phone), getting back in means finding that specific tournament's organizer to reissue it. For people who compete or judge repeatedly, an optional, persistent **account** layer sits above the token layer to aggregate across events and provide a normal login-based recovery path that doesn't depend on any one organizer.
 
 **Roster-to-account matching:** the system links a roster entry to a persistent account one of two ways:
 - **Email match** — if the roster entry's email matches an existing account's verified email, the tournament's results attach to that account automatically once claimed (never silently — the person still confirms the link, see below).
@@ -55,7 +55,7 @@ Claiming is always **person-initiated and confirmable**, never automatic-and-inv
 |---|---|---|
 | Setup required | None — issued automatically on roster import | Signup + claim per tournament |
 | Scope | One tournament, one person | Every claimed tournament |
-| Lifetime | TTL-bound, organizer-revocable | Persistent, user-owned |
+| Lifetime | Permanent (organizer-revocable), no expiry | Persistent, user-owned |
 | Typical use | Tournament-day access on someone's phone | Season-long / career tracking |
 
 A tournament never *requires* an account to function — every capability described in [01-tournament-mechanics.md](01-tournament-mechanics.md) through [03-roles-and-access.md](03-roles-and-access.md) works entirely on tokens. Accounts are additive, not a gate.

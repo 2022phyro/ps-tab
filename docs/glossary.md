@@ -23,7 +23,9 @@ Shared vocabulary used across every document in this folder. If a term is used t
 | **Clash** | A conflict of interest between a judge and a speaker/institution in the same section (shared institution, personal relationship, prior coaching relationship) that should prevent that judge from being on that panel. |
 | **Draw** | The generated pairing of speakers to sections and judges to panels for a round. |
 | **Tab** (verb/noun) | The act of computing standings from ballots, or the standings themselves ("check the tab"). Also used for the staff role, "tab staff." |
-| **Token** | A scoped, time-limited credential (usually delivered as a URL or QR code) granting passwordless access to exactly one person's data. See [04-identity-and-auth.md](04-identity-and-auth.md). |
+| **Token** | A scoped, permanent (organizer-revocable, never time-expiring) credential — usually delivered as a URL or QR code — granting passwordless access to exactly one person's data. See [04-identity-and-auth.md](04-identity-and-auth.md). |
+| **Group** | A named, scoped bundle of Permissions (Tab Staff, Institution Coordinator, Circuit Administrator, Super Admin, or an organizer-created custom group) that a user is a member of — the mechanism behind every role in [03-roles-and-access.md](03-roles-and-access.md). See `prisma/schema.prisma` "Roles & permissions (Grouped RBAC)". |
+| **Permission** | An atomic capability (e.g. "generate a draw", "publish results") from a fixed, system-seeded catalog. Organizers choose which Groups get which Permissions; they don't invent new Permission keys. |
 | **Claim** | The act of an authenticated user linking a persistent account to a roster entry in a specific tournament (via email match or claim code). |
 | **Claim dispute** | Two accounts attempting to claim the same roster entry — resolved by tab staff, never by claim order. See [08-cross-tournament-ecosystem.md](08-cross-tournament-ecosystem.md) §4. |
 | **Division** | An experience-based sub-field within a tournament (e.g., Novice vs. Open) that runs its own independent draw, tab, and break. See [01-tournament-mechanics.md](01-tournament-mechanics.md) §9. |
