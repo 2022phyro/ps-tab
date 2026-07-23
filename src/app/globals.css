@@ -1,0 +1,192 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Brand colors below are a hand-mirror of `branding.config.ts` (project root).
+ * Tailwind v4's CSS-first config can't import a .ts module directly, so this
+ * file and branding.config.ts must be edited together — branding.config.ts
+ * stays the source of truth for *what* the values mean; this is just where
+ * they're expressed as CSS custom properties Tailwind can consume.
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono-brand);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  /* Brand accent (coral) — deliberately separate from shadcn's `accent` slot,
+     which stays a subtle neutral hover tone. Use `bg-brand-accent` etc. only
+     for sparing, celebratory moments (badges, break-line highlight). */
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
+  /* Semantic status colors — always pair with an icon/label too, never
+     color alone (docs/06-ux-and-views.md §6). */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+
+  /* brand.colors.primary.600 / white */
+  --primary: #5b4fe9;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f8f8fc;
+  --secondary-foreground: #2b2574;
+
+  --muted: #f8f8fc;
+  --muted-foreground: #6b6b7a;
+
+  /* subtle neutral hover tone — NOT the brand accent color, see note above */
+  --accent: #e4e2fb;
+  --accent-foreground: #2b2574;
+
+  /* brand.colors.accent (coral) */
+  --brand-accent: #ff6b4a;
+  --brand-accent-foreground: #ffffff;
+
+  /* brand.colors.semantic */
+  --success: #1fa97a;
+  --warning: #e8a317;
+  --info: #3b82f6;
+  --destructive: #e5484d;
+
+  --border: #e5e4f1;
+  --input: #e5e4f1;
+  --ring: #8b81ea;
+
+  --chart-1: #6d5fe3;
+  --chart-2: #ff6b4a;
+  --chart-3: #1fa97a;
+  --chart-4: #e8a317;
+  --chart-5: #3b82f6;
+
+  /* brand.shape.radius.md */
+  --radius: 0.625rem;
+
+  --sidebar: #f8f8fc;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #5b4fe9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e4e2fb;
+  --sidebar-accent-foreground: #2b2574;
+  --sidebar-border: #e5e4f1;
+  --sidebar-ring: #8b81ea;
+}
+
+.dark {
+  /* brand.colors.surface.dark */
+  --background: #121016;
+  --foreground: #f2f1fd;
+  --card: #1a1822;
+  --card-foreground: #f2f1fd;
+  --popover: #1a1822;
+  --popover-foreground: #f2f1fd;
+
+  /* lighter primary tint reads better on dark surfaces than the 600 shade */
+  --primary: #8b81ea;
+  --primary-foreground: #121016;
+
+  --secondary: #2b2836;
+  --secondary-foreground: #f2f1fd;
+
+  --muted: #2b2836;
+  --muted-foreground: #a9a2f1;
+
+  --accent: #3a319c;
+  --accent-foreground: #f2f1fd;
+
+  --brand-accent: #ff8a65;
+  --brand-accent-foreground: #121016;
+
+  --success: #35c495;
+  --warning: #f0b429;
+  --info: #60a5fa;
+  --destructive: #f0757a;
+
+  --border: #2b2836;
+  --input: #2b2836;
+  --ring: #6d5fe3;
+
+  --chart-1: #8b81ea;
+  --chart-2: #ff8a65;
+  --chart-3: #35c495;
+  --chart-4: #f0b429;
+  --chart-5: #60a5fa;
+
+  --sidebar: #1a1822;
+  --sidebar-foreground: #f2f1fd;
+  --sidebar-primary: #8b81ea;
+  --sidebar-primary-foreground: #121016;
+  --sidebar-accent: #3a319c;
+  --sidebar-accent-foreground: #f2f1fd;
+  --sidebar-border: #2b2836;
+  --sidebar-ring: #6d5fe3;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
+}
