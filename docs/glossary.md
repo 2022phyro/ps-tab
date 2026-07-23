@@ -18,6 +18,8 @@ Shared vocabulary used across every document in this folder. If a term is used t
 | **Low-point win** | When a speaker earns a better rank than another speaker with a numerically lower Round Score than them — legal, but tab flags it for review in some configurations. |
 | **Speaker Points** | Cumulative Round Score total across all rounds — the tie-breaker beneath ranks in standings. |
 | **Break** | The threshold cut that advances a subset of the field into elimination/final rounds. |
+| **Partial break** | A break where only the top few finishers *in each room* advance automatically; the rest of each room's eligible finishers compete in a **bubble round** to fill the remaining slots. See [01-tournament-mechanics.md](01-tournament-mechanics.md) §8. |
+| **Bubble round** | A supplemental round, scored like any other, played only by the pool of speakers who didn't auto-advance in a partial break — its results decide who fills the outstanding slots in the next stage. |
 | **Iron man / in-and-out** | Not applicable in the same sense as team debate; used loosely here only if a tournament runs multiple concurrent events and a speaker double-enters — see edge cases in [01-tournament-mechanics.md](01-tournament-mechanics.md). |
 | **Swing / reserve judge** | A judge not pre-assigned to a panel, held available to cover a gap (no-show, conflict, panel expansion). |
 | **Clash** | A conflict of interest between a judge and a speaker/institution in the same section (shared institution, personal relationship, prior coaching relationship) that should prevent that judge from being on that panel. |
