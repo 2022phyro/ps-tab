@@ -46,6 +46,15 @@ model User {
   crossTournamentRating CrossTournamentRating?
   auditLogEntries       AuditLogEntry[]
 
+  /// docs/08 §4 — account merge, reversible for a grace period. `mergeSnapshot`
+  /// records exactly which record IDs moved to `mergedIntoUserId`, so undo
+  /// only reverts those specific records rather than guessing.
+  mergedIntoUserId String?
+  mergedInto       User?     @relation("AccountMerge", fields: [mergedIntoUserId], references: [id])
+  mergedFrom       User[]    @relation("AccountMerge")
+  mergedAt         DateTime?
+  mergeSnapshot    Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -257,7 +266,10 @@ model Speaker {
   guardianEmail String?
 
   /// set once an authenticated account claims this roster entry (docs/04 §2)
-  userId String?
+  userId    String?
+  /// short organizer-issued code for manual claiming when email doesn't
+  /// match (docs/04 §2) — cleared once used, regenerable on request
+  claimCode String? @unique
 
   waitlisted    Boolean   @default(false)
   waitlistOrder Int?
@@ -292,7 +304,10 @@ model Judge {
   isMinor Boolean @default(false)
 
   /// set once an authenticated account claims this roster entry (docs/04 §2)
-  userId String?
+  userId    String?
+  /// short organizer-issued code for manual claiming when email doesn't
+  /// match (docs/04 §2) — cleared once used, regenerable on request
+  claimCode String? @unique
 
   chairEligible   Boolean @default(false)
   /// docs/02 §1 — floater vs committed-panel judge for this round-plan; the
