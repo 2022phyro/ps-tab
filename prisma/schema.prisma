@@ -1,0 +1,754 @@
+// PS Tab — Prisma schema
+//
+// Organized to mirror docs/0X-*.md. Each model block is commented with the
+// doc section it implements — when behavior changes, update both together.
+//
+// Prisma 7 note: no `url` in the datasource block — connection details live
+// in prisma.config.ts. A driver adapter (@prisma/adapter-pg) is required at
+// runtime; see src/lib/prisma.ts.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// Auth.js (NextAuth v5) — standard adapter shape, extended with our own
+// role/identity fields. See docs/03-roles-and-access.md, docs/04-identity-and-auth.md.
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  /// docs/03 — Global Super Admin flag. Platform-level, not tournament-scoped.
+  isSuperAdmin Boolean @default(false)
+
+  accounts Account[]
+  sessions Session[]
+
+  ownedTournaments        Tournament[]             @relation("TournamentOwner")
+  collaboratorMemberships TournamentCollaborator[]
+  institutionCoordinators InstitutionCoordinator[]
+  ownedCircuits           Circuit[]                @relation("CircuitOwner")
+  circuitAdminMemberships CircuitAdmin[]
+  claims                  Claim[]
+  raisedDisputes          ClaimDispute[]           @relation("DisputeRaisedBy")
+  resolvedDisputes        ClaimDispute[]           @relation("DisputeResolvedBy")
+  guardianLinks           GuardianLink[]
+  crossTournamentRating   CrossTournamentRating?
+  auditLogEntries         AuditLogEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================================================
+// Tournament lifecycle — docs/01-tournament-mechanics.md §1, docs/05-publishing-and-state.md §1
+// ============================================================================
+
+enum TournamentState {
+  DRAFT
+  ACTIVE
+  CONCLUDED
+  ARCHIVED
+}
+
+model Tournament {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  state TournamentState @default(DRAFT)
+
+  /// docs/05 §1 — tournament-global feedback submission window.
+  feedbackWindowOpensAt  DateTime?
+  feedbackWindowClosesAt DateTime?
+
+  ownerId String
+  owner   User   @relation("TournamentOwner", fields: [ownerId], references: [id])
+
+  collaborators           TournamentCollaborator[]
+  divisions               Division[]
+  institutions            Institution[]
+  auditLogEntries         AuditLogEntry[]
+  circuitMemberships      CircuitMembership[]
+  institutionCoordinators InstitutionCoordinator[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// docs/03 — Tab Staff collaborator (distinct from the owner; same day-of powers).
+model TournamentCollaborator {
+  id           String   @id @default(cuid())
+  tournamentId String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, userId])
+}
+
+/// docs/01 §9 — experience-based sub-field (Novice/Open/etc), own draw+tab+break.
+model Division {
+  id           String @id @default(cuid())
+  tournamentId String
+  name         String
+
+  roomSizeMin Int @default(4)
+  roomSizeMax Int @default(8)
+
+  breakType          BreakType @default(FIXED_COUNT)
+  breakCount         Int?
+  breakPercentage    Float?
+  /// docs/01 §7 — Adjusted Ranks drops each speaker's single worst round by default;
+  /// this generalizes to "drop worst N" for circuit-level reuse (docs/08 §1).
+  dropWorstCount     Int       @default(1)
+  includeTiesAtBreak Boolean   @default(true)
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  rounds     Round[]
+  speakers   Speaker[]
+  rubrics    Rubric[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tournamentId, name])
+}
+
+enum BreakType {
+  FIXED_COUNT
+  PERCENTAGE
+  RANK_FLOOR
+}
+
+enum RoundKind {
+  PRELIM
+  ELIMINATION
+}
+
+/// docs/05 §2 — three independent publish gates per round.
+enum DrawsState {
+  HIDDEN
+  RELEASED
+}
+
+enum ResultsState {
+  HELD
+  RELEASED
+}
+
+enum StandingsState {
+  HELD
+  RELEASED
+}
+
+model Round {
+  id         String @id @default(cuid())
+  divisionId String
+
+  roundNumber Int
+  kind        RoundKind @default(PRELIM)
+  /// e.g. "Quarterfinals", "Semifinals", "Finals" — docs/01 §11 multi-stage elimination
+  stageName   String?
+
+  /// docs/01 §11 — traceability: which round's break list seeded this one.
+  advancesFromRoundId String?
+  advancesFromRound   Round?  @relation("RoundAdvancement", fields: [advancesFromRoundId], references: [id])
+  advancesToRounds    Round[] @relation("RoundAdvancement")
+
+  rubricId String?
+  rubric   Rubric? @relation(fields: [rubricId], references: [id])
+
+  checkInOpensAt   DateTime?
+  checkInClosesAt  DateTime?
+  scheduledStartAt DateTime?
+
+  drawsState     DrawsState     @default(HIDDEN)
+  resultsState   ResultsState   @default(HELD)
+  standingsState StandingsState @default(HELD)
+
+  /// docs/05 §4 — set once locked; immutable to normal edits past this point.
+  lockedAt DateTime?
+
+  division        Division         @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  sections        Section[]
+  speakerCheckIns SpeakerCheckIn[]
+  judgeCheckIns   JudgeCheckIn[]
+  results         RoundResult[]
+  embargoes       Embargo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([divisionId, roundNumber])
+}
+
+// ============================================================================
+// Roster — docs/01-tournament-mechanics.md §2, §9
+// ============================================================================
+
+/// docs/01 §2 — grows organically; no pre-seeded list. Trigram-indexed for the
+/// search-existing-first combobox (see migration SQL for the pg_trgm index).
+model Institution {
+  id           String @id @default(cuid())
+  tournamentId String
+  name         String
+
+  tournament   Tournament               @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  speakers     Speaker[]
+  judges       Judge[]
+  coordinators InstitutionCoordinator[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([tournamentId, name])
+  /// backs the fuzzy institution-name lookup; requires pg_trgm (see migration.sql)
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, name: "Institution_name_trgm_idx")
+}
+
+model Speaker {
+  id            String  @id @default(cuid())
+  tournamentId  String
+  divisionId    String
+  institutionId String?
+
+  name  String
+  email String
+
+  isMinor       Boolean @default(false)
+  guardianEmail String?
+
+  /// set once an authenticated account claims this roster entry (docs/04 §2)
+  userId String?
+
+  waitlisted    Boolean   @default(false)
+  waitlistOrder Int?
+  scratchedAt   DateTime?
+
+  division    Division     @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  institution Institution? @relation(fields: [institutionId], references: [id])
+
+  checkIns           SpeakerCheckIn[]
+  sectionAssignments SectionAssignment[]
+  ballots            Ballot[]
+  roundResults       RoundResult[]
+  accessTokens       AccessToken[]
+  claims             Claim[]
+  guardianLinks      GuardianLink[]
+  embargoes          Embargo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tournamentId, email])
+}
+
+model Judge {
+  id            String  @id @default(cuid())
+  tournamentId  String
+  institutionId String?
+
+  name  String
+  email String
+
+  isMinor Boolean @default(false)
+
+  /// set once an authenticated account claims this roster entry (docs/04 §2)
+  userId String?
+
+  chairEligible   Boolean @default(false)
+  /// docs/02 §1 — floater vs committed-panel judge for this round-plan; the
+  /// per-round Assigned/Deployed state itself lives on Panel/JudgeCheckIn.
+  isReserve       Boolean @default(false)
+  /// docs/02 §5 — fatigue cap; null means no configured limit.
+  maxRoundsPerDay Int?
+
+  institution Institution? @relation(fields: [institutionId], references: [id])
+
+  checkIns     JudgeCheckIn[]
+  panels       Panel[]
+  ballots      Ballot[]
+  accessTokens AccessToken[]
+  claims       Claim[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tournamentId, email])
+}
+
+// ============================================================================
+// Check-in — docs/01 §3, docs/02 §2
+// ============================================================================
+
+model SpeakerCheckIn {
+  id          String   @id @default(cuid())
+  roundId     String
+  speakerId   String
+  checkedInAt DateTime @default(now())
+
+  round   Round   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  speaker Speaker @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, speakerId])
+}
+
+enum JudgeCheckInStatus {
+  CHECKED_IN
+  NO_SHOW
+  UNRESPONSIVE
+}
+
+model JudgeCheckIn {
+  id          String             @id @default(cuid())
+  roundId     String
+  judgeId     String
+  status      JudgeCheckInStatus @default(CHECKED_IN)
+  checkedInAt DateTime?
+  flaggedAt   DateTime?
+
+  round Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  judge Judge @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, judgeId])
+}
+
+// ============================================================================
+// Sections & panels — docs/01 §5, §6; docs/02 §3, §4
+// ============================================================================
+
+model Section {
+  id        String @id @default(cuid())
+  roundId   String
+  roomLabel String
+
+  round       Round               @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  assignments SectionAssignment[]
+  panels      Panel[]
+  ballots     Ballot[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([roundId, roomLabel])
+}
+
+model SectionAssignment {
+  id        String @id @default(cuid())
+  sectionId String
+  speakerId String
+
+  /// docs/01 §6 — speaking order slot within this section for this round.
+  position Int
+
+  /// docs/01 §5 — this speaker shares an institution with another speaker
+  /// already placed in this room and no clash-free placement was possible.
+  clashFlag Boolean @default(false)
+
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  speaker Speaker @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, speakerId])
+  @@unique([sectionId, position])
+}
+
+enum PanelStatus {
+  ASSIGNED
+  CHECKED_IN
+  NO_SHOW
+  REMOVED_FOR_CONFLICT
+  DEPLOYED_RESERVE
+}
+
+model Panel {
+  id        String @id @default(cuid())
+  sectionId String
+  judgeId   String
+
+  isChair Boolean     @default(false)
+  status  PanelStatus @default(ASSIGNED)
+
+  /// docs/02 §3 — set when this panel slot was filled by a hot-swapped reserve.
+  swappedFromJudgeId String?
+  swappedAt          DateTime?
+
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  judge   Judge   @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, judgeId])
+}
+
+// ============================================================================
+// Rubrics & scoring pipeline — docs/01 §4
+// ============================================================================
+
+model Rubric {
+  id           String @id @default(cuid())
+  tournamentId String
+  divisionId   String
+  name         String
+
+  division          Division           @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  criteria          RubricCriterion[]
+  timePenaltyPolicy TimePenaltyPolicy?
+  rounds            Round[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([divisionId, name])
+}
+
+model RubricCriterion {
+  id        String @id @default(cuid())
+  rubricId  String
+  name      String
+  maxPoints Float
+  order     Int
+
+  rubric Rubric        @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  scores BallotScore[]
+
+  @@unique([rubricId, order])
+}
+
+model TimePenaltyPolicy {
+  id                 String @id @default(cuid())
+  rubricId           String @unique
+  allowedSeconds     Int
+  graceSeconds       Int    @default(10)
+  penaltyPerInterval Float
+  intervalSeconds    Int    @default(5)
+  maxPenalty         Float?
+
+  rubric Rubric @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+}
+
+model Ballot {
+  id        String @id @default(cuid())
+  sectionId String
+  judgeId   String
+  speakerId String
+
+  /// docs/02 §4 — a judge who left mid-round leaves partial ballots for the
+  /// speakers they didn't reach; those speakers simply exclude this judge
+  /// from their panel average rather than this flag blocking anything.
+  isPartial   Boolean   @default(false)
+  submittedAt DateTime?
+  timePenalty Float     @default(0)
+  /// cached sum(criteria) - timePenalty, see docs/01 §4
+  judgeTotal  Float?
+  comments    String?   @db.Text
+
+  /// docs/02 §5 — live outlier/calibration flag, staff review only, never auto-corrected.
+  calibrationFlag Boolean @default(false)
+
+  section Section       @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  judge   Judge         @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  speaker Speaker       @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+  scores  BallotScore[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sectionId, judgeId, speakerId])
+}
+
+model BallotScore {
+  id          String @id @default(cuid())
+  ballotId    String
+  criterionId String
+  score       Float
+
+  ballot    Ballot          @relation(fields: [ballotId], references: [id], onDelete: Cascade)
+  criterion RubricCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+  @@unique([ballotId, criterionId])
+}
+
+/// docs/01 §4, §7 — cached panel-averaged Round Score + Rank per speaker per
+/// round; standings/tie-break hierarchy (§7) reads this instead of
+/// recomputing from raw ballots on every view.
+model RoundResult {
+  id        String @id @default(cuid())
+  roundId   String
+  speakerId String
+
+  roundScore Float
+  rank       Int
+
+  round   Round   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  speaker Speaker @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, speakerId])
+}
+
+// ============================================================================
+// Publishing, locking, audit — docs/05-publishing-and-state.md
+// ============================================================================
+
+/// docs/05 §3 — targeted hold on one speaker's result within an otherwise-released round.
+model Embargo {
+  id        String  @id @default(cuid())
+  roundId   String
+  speakerId String
+  reason    String?
+
+  round   Round   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  speaker Speaker @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  liftedAt  DateTime?
+
+  @@unique([roundId, speakerId])
+}
+
+/// docs/05 §5 — append-only. No update/delete path is exposed anywhere in the app.
+model AuditLogEntry {
+  id           String  @id @default(cuid())
+  /// null for platform-level Super Admin actions not tied to one tournament
+  tournamentId String?
+  actorUserId  String
+
+  /// e.g. "judge_swap", "score_edit", "manual_repair", "publish_toggle",
+  /// "round_unlock", "claim_merge" — free-form and indexed rather than an
+  /// enum, since this list keeps growing across every future section.
+  actionType String
+  summary    String
+  reason     String?
+  beforeData Json?
+  afterData  Json?
+
+  tournament Tournament? @relation(fields: [tournamentId], references: [id])
+  actor      User        @relation(fields: [actorUserId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tournamentId, actionType])
+}
+
+// ============================================================================
+// Identity — docs/04-identity-and-auth.md
+// ============================================================================
+
+/// docs/04 §1 — zero-auth tournament-day access. Hashed at rest so a
+/// revocation is instant (unlike a signed JWT, which stays valid until its
+/// own expiry even after "revocation").
+model AccessToken {
+  id          String @id @default(cuid())
+  hashedValue String @unique
+
+  speakerId String?
+  judgeId   String?
+
+  scope     String
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  speaker Speaker? @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+  judge   Judge?   @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+enum ClaimMethod {
+  EMAIL_MATCH
+  CLAIM_CODE
+}
+
+enum ClaimStatus {
+  CONFIRMED
+  CONTESTED
+  REVOKED
+}
+
+/// docs/04 §2, docs/08 §4 — always email/claim-code anchored, never name-based.
+model Claim {
+  id     String @id @default(cuid())
+  userId String
+
+  speakerId String?
+  judgeId   String?
+
+  method ClaimMethod
+  status ClaimStatus @default(CONFIRMED)
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  speaker Speaker? @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+  judge   Judge?   @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+
+  disputes ClaimDispute[]
+
+  claimedAt DateTime  @default(now())
+  revokedAt DateTime?
+}
+
+/// docs/08 §4 — two accounts claiming the same roster entry; resolved by tab
+/// staff, never by claim order.
+model ClaimDispute {
+  id      String @id @default(cuid())
+  claimId String
+
+  competingUserId  String
+  raisedAt         DateTime  @default(now())
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  resolutionNote   String?
+
+  claim          Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  competingUser  User  @relation("DisputeRaisedBy", fields: [competingUserId], references: [id])
+  resolvedByUser User? @relation("DisputeResolvedBy", fields: [resolvedByUserId], references: [id])
+}
+
+/// docs/08 §5 — explicit, confirmable guardian↔minor link (never automatic).
+model GuardianLink {
+  id             String    @id @default(cuid())
+  speakerId      String
+  guardianUserId String
+  confirmedAt    DateTime?
+
+  speaker      Speaker @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+  guardianUser User    @relation(fields: [guardianUserId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([speakerId, guardianUserId])
+}
+
+// ============================================================================
+// Cross-tournament ecosystem — docs/08-cross-tournament-ecosystem.md
+// ============================================================================
+
+model Circuit {
+  id      String @id @default(cuid())
+  name    String
+  ownerId String
+
+  /// season-level break/qualification config, mirrors Division's shape (§1)
+  breakCount      Int?
+  breakPercentage Float?
+  dropWorstCount  Int    @default(0)
+
+  owner       User                @relation("CircuitOwner", fields: [ownerId], references: [id])
+  admins      CircuitAdmin[]
+  memberships CircuitMembership[]
+  pointsRules CircuitPointsRule[]
+
+  createdAt DateTime @default(now())
+}
+
+model CircuitAdmin {
+  id        String @id @default(cuid())
+  circuitId String
+  userId    String
+
+  circuit Circuit @relation(fields: [circuitId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([circuitId, userId])
+}
+
+model CircuitMembership {
+  id           String @id @default(cuid())
+  circuitId    String
+  tournamentId String
+
+  circuit    Circuit    @relation(fields: [circuitId], references: [id], onDelete: Cascade)
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([circuitId, tournamentId])
+}
+
+/// docs/08 §1 — organizer-defined, human-auditable placement→points table.
+/// Kept as JSON since the conversion shape is deliberately flexible
+/// (flat table vs a curve) and is meant to be displayed back to organizers
+/// as-authored, not decomposed into rows.
+model CircuitPointsRule {
+  id              String @id @default(cuid())
+  circuitId       String
+  name            String
+  conversionTable Json
+
+  circuit Circuit @relation(fields: [circuitId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+/// docs/08 §2 — opt-in, separate from circuit points; a seeding aid, never an
+/// official standing.
+model CrossTournamentRating {
+  id      String  @id @default(cuid())
+  userId  String  @unique
+  rating  Float   @default(1500)
+  optedIn Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================================
+// Extended roles — docs/03-roles-and-access.md "Extended roles"
+// ============================================================================
+
+/// Institution Coordinator/Coach — scoped to one institution within one tournament.
+model InstitutionCoordinator {
+  id            String @id @default(cuid())
+  tournamentId  String
+  institutionId String
+  userId        String
+
+  tournament  Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([tournamentId, institutionId, userId])
+}

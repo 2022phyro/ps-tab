@@ -119,30 +119,44 @@ Env vars these will produce (fill in `.env.example` as each is created): `DATABA
 
 *Implements: docs/01, docs/03, docs/04, docs/05, docs/08*
 
-- [ ] Local Postgres role/db created (see "Local Postgres setup" above); `DATABASE_URL` set in `.env`
-- [ ] `pnpm add prisma @prisma/client`, `pnpm prisma init`
-- [ ] Model: **Auth.js tables** (`User`, `Account`, `Session`, `VerificationToken`) — use the standard Prisma adapter schema, extend `User` with a `superAdmin: Boolean` flag (docs/03) and `isMinor` / `guardianEmail` fields (docs/08 §5)
-- [ ] Model: **Tournament** (state: Draft/Active/Concluded/Archived per docs/05 §1), owner + collaborator relation to `User` (docs/03)
-- [ ] Model: **Division** (docs/01 §9) — belongs to Tournament, own break config
-- [ ] Model: **Round** (belongs to Division), with independent `drawsState` / `resultsState` / `standingsState` enums (docs/05 §2) and `lockedAt` (docs/05 §4)
-- [ ] Model: **Institution** — no pre-seeded list; grows organically as roster entries reference it (docs/01 §2). Add a case-insensitive/trigram index (`pg_trgm`) to support the fuzzy-match lookup the registration UI and CSV-import flagging both depend on
-- [ ] Model: **RosterEntry** (speaker or judge, independent-or-institution-affiliated via nullable Institution FK, `isMinor`, division FK) (docs/01 §2, §9) — minimum fields for a self-service-registered row are `email`, `name`, `institutionId` (nullable)
-- [ ] Server Action: institution search (`searchInstitutions(query)`) backing the registration combobox — returns existing matches first; "create new" is a separate explicit action, never implicit on submit (docs/01 §2)
-- [ ] Model: **Section/Room** + join table to RosterEntry (speakers) and to judges (**Panel**) (docs/01 §5)
-- [ ] Model: **Rubric**, **RubricCriterion** (point caps), **TimePenaltyPolicy** (docs/01 §4)
-- [ ] Model: **Ballot** (one per judge per section per round) + **Score** (per criterion) + computed `judgeTotal` (docs/01 §4)
-- [ ] Model: **PositionHistory** (per speaker per round, for bias balancing — docs/01 §6)
-- [ ] Model: **Token** (zero-auth) — `hashedValue`, `scope`, `expiresAt`, `revokedAt`, FK to RosterEntry (docs/04 §1)
-- [ ] Model: **Claim** / **ClaimDispute** (docs/04 §2, docs/08 §4)
-- [ ] Model: **Circuit**, **CircuitMembership**, **CircuitPointsRule** (docs/08 §1)
-- [ ] Model: **AuditLogEntry** — append-only, action/actor/timestamp/before/after/reason (docs/05 §5)
-- [ ] Model: **Embargo** (per-entity hold, docs/05 §3)
-- [ ] Model: role-scoping join tables for **InstitutionCoordinator** and **CircuitAdministrator** (docs/03 "Extended roles")
-- [ ] First migration: `pnpm prisma migrate dev --name init`
-- [ ] Write `prisma/seed.ts` — one sample tournament, 2 divisions, ~20 roster entries across 3 institutions, 1 completed round with ballots
-- [ ] `pnpm prisma db seed` runs clean; spot-check via Prisma Studio
+- [x] Local Postgres role/db created (see "Local Postgres setup" above); `DATABASE_URL` set in `.env`
+- [x] `pnpm add prisma @prisma/client`, `pnpm prisma init --datasource-provider postgresql`
+- [x] Model: **Auth.js tables** (`User`, `Account`, `Session`, `VerificationToken`) — standard adapter shape, `User` extended with `isSuperAdmin` (docs/03) — `isMinor`/`guardianEmail` ended up living on `Speaker` instead (see deviations below), not `User`
+- [x] Model: **Tournament** (`TournamentState`: Draft/Active/Concluded/Archived per docs/05 §1), `ownerId → User` + `TournamentCollaborator` join (docs/03)
+- [x] Model: **Division** (docs/01 §9) — belongs to Tournament, own break config (`BreakType`, `breakCount`/`breakPercentage`, `dropWorstCount`, `includeTiesAtBreak`), plus its own `roomSizeMin`/`roomSizeMax`
+- [x] Model: **Round** (belongs to Division), independent `DrawsState`/`ResultsState`/`StandingsState` enums (docs/05 §2), `lockedAt` (docs/05 §4), plus `kind`/`stageName`/`advancesFromRoundId` self-relation for multi-stage elimination (docs/01 §11)
+- [x] Model: **Institution** — no pre-seeded list, scoped per-tournament, grows organically (docs/01 §2). Trigram search done as a **schema-native** GIN index (`@@index([name(ops: raw("gin_trgm_ops"))], type: Gin)`) rather than only a hand-written migration — this way `prisma migrate dev` doesn't see phantom drift on every future run (see "Prisma 7 gotchas" below for why that matters)
+- [ ] Server Action: institution search (`searchInstitutions(query)`) backing the registration combobox — **deferred to whichever section first builds the registration form** (Section 9 or 11); the index it needs is in place now
+- [x] Models: **Speaker** and **Judge** as two distinct models rather than one polymorphic `RosterEntry` — their relations diverge enough (reserve-pool/fatigue/chair-eligibility for judges vs. position/waitlist/guardian for speakers) that a shared table would mean nullable-everything. Both carry their own `institutionId` (nullable), `email`, `name`; `Speaker` additionally carries `isMinor`/`guardianEmail`/`waitlisted`/`waitlistOrder`/`scratchedAt`; `Judge` carries `chairEligible`/`isReserve`/`maxRoundsPerDay`. Both carry a denormalized `userId?` (the currently-confirmed claim, cache only — `Claim` stays the source of truth)
+- [x] Model: **Section** (room) + **SectionAssignment** (speaker↔section, `position`, `clashFlag`) + **Panel** (judge↔section, `isChair`, `status` enum incl. `DEPLOYED_RESERVE`/`REMOVED_FOR_CONFLICT`) (docs/01 §5, docs/02 §3–4)
+- [x] Model: **Rubric**, **RubricCriterion** (`maxPoints`, `order`), **TimePenaltyPolicy** (1:1 with Rubric) (docs/01 §4)
+- [x] Model: **Ballot** (unique per section+judge+speaker) + **BallotScore** (per criterion) + cached `judgeTotal`; `isPartial`/`calibrationFlag` for docs/02 §4–5
+- [x] **Dropped `PositionHistory` as its own table** — a speaker's position history (docs/01 §6) is just `SectionAssignment.position` joined across a division's rounds; storing it separately would be duplicated state with a sync-drift risk for no benefit. The rules engine (Section 3) queries it directly.
+- [x] Model: **RoundResult** (cached panel-averaged Round Score + Rank per speaker per round, docs/01 §4/§7) — added beyond the original plan; standings/tie-break queries need this cached rather than recomputed from raw ballots on every view
+- [x] Model: **AccessToken** (zero-auth token; docs/04 §1) — `hashedValue` unique, nullable `speakerId`/`judgeId` (exactly one set, enforced at the application level, not the DB), `scope`, `expiresAt`, `revokedAt`
+- [x] Model: **Claim** / **ClaimDispute** (docs/04 §2, docs/08 §4) — `Claim` has nullable `speakerId`/`judgeId` (same one-of-two pattern as `AccessToken`)
+- [x] Model: **GuardianLink** (docs/08 §5) — added beyond the original plan; explicit confirmable speaker↔guardian-account link, not automatic
+- [x] Model: **Circuit** (with season-level break config), **CircuitAdmin** (multi-admin join, docs/03's "Circuit Administrator" role), **CircuitMembership**, **CircuitPointsRule** (`conversionTable` kept as `Json` — deliberately flexible/organizer-authored rather than decomposed into rigid rows) (docs/08 §1)
+- [x] Model: **CrossTournamentRating** (docs/08 §2) — added beyond the original plan; one row per `User`, `optedIn` flag, kept structurally separate from `CircuitPointsRule`
+- [x] Model: **AuditLogEntry** — append-only (no update/delete path exposed anywhere), `actionType` is a free-form indexed `String` rather than an enum since this list will keep growing across every future section (docs/05 §5)
+- [x] Model: **Embargo** (per-speaker-per-round hold, docs/05 §3)
+- [x] Model: **InstitutionCoordinator** (tournament+institution+user, docs/03 "Extended roles") — Circuit Administrator ended up modeled as `CircuitAdmin` above rather than a separate table
+- [x] First migration: `pnpm prisma migrate dev --name init --create-only`, then hand-edited the generated SQL to add `CREATE EXTENSION IF NOT EXISTS pg_trgm;` before applying (see "Prisma 7 gotchas")
+- [x] `src/lib/prisma.ts` — singleton client using the required `@prisma/adapter-pg` driver adapter (see gotchas)
+- [x] Write `prisma/seed.ts` — one sample tournament, **1 division** (not 2 — kept the seed minimal for this pass; a second division is cheap to add whenever Section 3's division-eligibility logic needs a second one to test against), 20 speakers across 3 institutions + independents, 1 judge, 1 completed round/section with 6 ballots + cached `RoundResult` rows
+- [x] `pnpm prisma db seed` runs clean; spot-checked via a throwaway query script (Prisma Studio itself needs a browser this session doesn't have — checked the relational shape directly instead, same effective verification)
 
-**Definition of done:** `pnpm prisma migrate dev` and the seed script run clean against the local Postgres database; Prisma Studio shows a coherent seeded tournament matching the shape described in docs/01.
+**Definition of done:** `pnpm prisma migrate dev` and the seed script run clean against the local Postgres database (confirmed); the seeded tournament's relations were verified coherent (institutions → speakers → division → round → section → assignments/panel/ballots → cached RoundResult, correctly ordered by rank).
+
+### Prisma 7 gotchas hit this session (read before touching the schema again)
+
+Prisma 7 turned out to be a bigger jump than the plan assumed (written assuming Prisma 6-era conventions) — this project's `prisma init` scaffolded actual Prisma 7 defaults, so these apply going forward:
+
+- **Driver adapters are mandatory for SQL providers now** — there's no more "just give Prisma a connection string and it works." Every `PrismaClient` instantiation needs `@prisma/adapter-pg` (`pg` under the hood) wired explicitly. See `src/lib/prisma.ts` and `prisma/seed.ts` for the pattern; any future script/route that touches the DB directly needs the same adapter wiring, not a bare `new PrismaClient()`.
+- **The generator is `prisma-client`, not `prisma-client-js`**, and `output` is mandatory — ours generates to `src/generated/prisma` (gitignored automatically by `prisma init`). Import from `@/generated/prisma/client`, not `@prisma/client`, everywhere in app code.
+- **Connection config lives in `prisma.config.ts`, not `schema.prisma`** — the `datasource` block in the schema only declares the `provider`; the actual `url` (and seed command) are in `prisma.config.ts`, which does `import "dotenv/config"` to read `.env` manually (env loading is no longer automatic in v7).
+- **Hand-written raw SQL in a migration that isn't representable in `schema.prisma` causes phantom drift** on every subsequent `migrate dev` (it'll applied fine once, then prompt to "name a new migration" forever after, trying to reconcile the untracked SQL). Fixed by using Prisma's native extended-index syntax (`@@index([name(ops: raw("gin_trgm_ops"))], type: Gin)`) instead of leaving the trigram index as pure hand-written SQL — do this for any future Postgres-extension-backed index rather than only patching the migration file.
+- **Windows note**: `prisma migrate dev` can sit at 0% CPU indefinitely on this machine right after "migration(s) have been applied" — it's not hung, it's waiting at an interactive "Enter a name for the new migration" prompt that a non-interactive shell can't answer (see the phantom-drift point above; fixing the drift is what makes the prompt stop appearing). If a `migrate dev` run seems stuck, check for that prompt before assuming it crashed.
 
 ---
 
@@ -342,5 +356,6 @@ Build under `src/lib/rules-engine/`, framework-agnostic (plain TS functions/clas
 
 *Update this every time a session stops. Newest entry on top.*
 
+- **[2026-07-23]** — Section 2 (Database & Prisma schema) complete and committed. Full schema written (`prisma/schema.prisma`), migrated against the local Postgres DB, seeded, and spot-checked. **Prisma 7 landed bigger changes than the plan assumed** — read the new "Prisma 7 gotchas" callout under Section 2 before touching the schema again (driver adapters are now mandatory, generator/output/config-file conventions all changed, and hand-written migration SQL needs a schema-native equivalent or `migrate dev` will loop on phantom drift). A few entities came out shaped differently than originally planned (`Speaker`/`Judge` instead of one `RosterEntry`; `PositionHistory` dropped as derived-not-stored; `RoundResult`, `GuardianLink`, `CrossTournamentRating` added) — the Section 2 checklist above now describes what was actually built, not the original guess. One deferred item: the `searchInstitutions` Server Action itself waits for whichever section first builds a registration form (Section 9 or 11) — the trigram index it needs is already in place. Next action: Section 3 (core rules engine) — pure-logic algorithms in `src/lib/rules-engine/`, unit-testable against docs/01's worked examples with no DB involved.
 - **[2026-07-23]** — Section 1 (Project bootstrap) essentially complete: Next.js 16 app scaffolded and merged into the existing repo, TS strict, Prettier/ESLint, shadcn/ui initialized and themed from `branding.config.ts`, Vitest + Playwright both installed with a passing placeholder test each, Sentry wired manually (wizard needs a TTY this environment doesn't have). Two items need the user directly and are left unchecked: (1) `vercel login` + `vercel link` — interactive browser auth; (2) a real Sentry DSN — needs a Sentry project created. Everything else in Section 1 is checked off. **Not yet committed** — do that next (git add the new app files + PLAN.md/docs changes, commit "Project bootstrap"), then move on to Section 2 (Database & Prisma schema); local Postgres role/db already exist (see Section 2's first checklist item) so that part is a head start.
 - **[unstarted]** — Plan created and approved. No sections started yet. Next action: begin Section 1 (project bootstrap).
