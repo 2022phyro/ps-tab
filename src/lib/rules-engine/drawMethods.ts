@@ -47,3 +47,27 @@ export function seedSpeakers(
 export function roomTieBreakFor(method: SeedMethod): "fill-first" | "least-filled" {
   return method === "high-high" ? "fill-first" : "least-filled";
 }
+
+/** Matches prisma/schema.prisma's DrawMethod enum — the tournament-level
+ *  random-vs-power-matched toggle, distinct from the high-high/high-low
+ *  *style* choice once power-matched is on (see toSeedMethod below). */
+export type DrawMethod = "RANDOM" | "POWER_MATCHED";
+
+/** Same point-in-time override pattern as resolveBreakConfig/resolvePartialBreakConfig
+ *  (breaksAndFinals.ts) — a Division default that one Round can override. */
+export function resolveDrawMethod(defaultMethod: DrawMethod, override?: DrawMethod): DrawMethod {
+  return override ?? defaultMethod;
+}
+
+/** Bridges the schema-level RANDOM/POWER_MATCHED setting onto the SeedMethod
+ *  this module's functions expect. `powerStyle` picks high-high vs high-low
+ *  when power-matched is on — defaults to high-low (spreads strength evenly,
+ *  the more common circuit default) since room *sizing* stays standardized
+ *  (roomSizing.ts) either way, per docs/01 §11 — the draw method never
+ *  changes room count/size, only seeding order and room preference. */
+export function toSeedMethod(
+  drawMethod: DrawMethod,
+  powerStyle: "high-high" | "high-low" = "high-low",
+): SeedMethod {
+  return drawMethod === "RANDOM" ? "random" : powerStyle;
+}

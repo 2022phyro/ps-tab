@@ -365,6 +365,20 @@ async function main() {
     });
   }
 
+  // Judge feedback (docs/02 §7) — a few speakers rate the room's judge.
+  await Promise.all(
+    roomSpeakers.slice(0, 3).map((speaker, i) =>
+      prisma.judgeFeedback.create({
+        data: {
+          sectionId: section.id,
+          ratedJudgeId: judge.id,
+          raterSpeakerId: speaker.id,
+          score: [9, 8, 10][i]!,
+        },
+      }),
+    ),
+  );
+
   console.log(`Seeded tournament "${tournament.name}" (${tournament.slug})`);
 }
 

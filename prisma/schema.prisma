@@ -149,6 +149,18 @@ model Division {
   dropWorstCount     Int       @default(1)
   includeTiesAtBreak Boolean   @default(true)
 
+  /// docs/01 §11 — tournament-wide default; a specific Round can override via
+  /// Round.drawMethodOverride (docs/01 §8's point-in-time override pattern).
+  drawMethod         DrawMethod @default(RANDOM)
+  /// docs/01 §4 — Democracy (panel averages independent ballots, the
+  /// long-standing default) vs. Strict (the panel deliberates and submits
+  /// one single ballot). Overridable per-Round the same way.
+  ballotMode         BallotMode @default(DEMOCRACY)
+  /// docs/01 §7 — prelims may allow tied Round Scores (fractional shared
+  /// rank); outrounds never do, regardless of this setting — every outround
+  /// rank must be sequential (docs/01 §7).
+  allowTiesInPrelims Boolean    @default(true)
+
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   rounds     Round[]
   speakers   Speaker[]
@@ -169,6 +181,18 @@ enum BreakType {
 enum RoundKind {
   PRELIM
   ELIMINATION
+}
+
+/// docs/01 §11
+enum DrawMethod {
+  RANDOM
+  POWER_MATCHED
+}
+
+/// docs/01 §4
+enum BallotMode {
+  DEMOCRACY
+  STRICT
 }
 
 /// docs/05 §2 — three independent publish gates per round.
@@ -203,6 +227,11 @@ model Round {
 
   rubricId String?
   rubric   Rubric? @relation(fields: [rubricId], references: [id])
+
+  /// null = use the Division default; set to override for just this round
+  /// (docs/01 §8's point-in-time override pattern, applied here too).
+  drawMethodOverride DrawMethod?
+  ballotModeOverride BallotMode?
 
   checkInOpensAt   DateTime?
   checkInClosesAt  DateTime?
@@ -286,6 +315,8 @@ model Speaker {
   claims             Claim[]
   guardianLinks      GuardianLink[]
   embargoes          Embargo[]
+  /// docs/02 §6 — feedback this speaker gave about a judge (not feedback about them)
+  judgeFeedbackGiven JudgeFeedback[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -318,11 +349,15 @@ model Judge {
 
   institution Institution? @relation(fields: [institutionId], references: [id])
 
-  checkIns     JudgeCheckIn[]
-  panels       Panel[]
-  ballots      Ballot[]
-  accessTokens AccessToken[]
-  claims       Claim[]
+  checkIns         JudgeCheckIn[]
+  panels           Panel[]
+  ballots          Ballot[]
+  accessTokens     AccessToken[]
+  claims           Claim[]
+  /// docs/02 §6 — feedback received from speakers/panelists about this judge
+  feedbackReceived JudgeFeedback[] @relation("JudgeFeedbackReceived")
+  /// docs/02 §6 — feedback this judge gave about a fellow panelist
+  feedbackGiven    JudgeFeedback[] @relation("JudgeFeedbackGiven")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -375,10 +410,11 @@ model Section {
   roundId   String
   roomLabel String
 
-  round       Round               @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  assignments SectionAssignment[]
-  panels      Panel[]
-  ballots     Ballot[]
+  round         Round               @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  assignments   SectionAssignment[]
+  panels        Panel[]
+  ballots       Ballot[]
+  judgeFeedback JudgeFeedback[]
 
   createdAt DateTime @default(now())
 
@@ -439,6 +475,11 @@ model Rubric {
   tournamentId String
   divisionId   String
   name         String
+
+  /// docs/01 §4 — every speaker starts from this score; criteria scores are
+  /// the *remaining* points allocated on top, not the whole total. Judge
+  /// Total = baseScore + sum(criteria) - timePenalty.
+  baseScore Float @default(0)
 
   division          Division           @relation(fields: [divisionId], references: [id], onDelete: Cascade)
   criteria          RubricCriterion[]
@@ -532,6 +573,38 @@ model RoundResult {
   speaker Speaker @relation(fields: [speakerId], references: [id], onDelete: Cascade)
 
   @@unique([roundId, speakerId])
+}
+
+// ============================================================================
+// Judge feedback — docs/02-judging-contingencies.md §7
+// ============================================================================
+
+/// docs/02 §7 — speakers rate their judge, panelists rate each other; the
+/// cumulative average across rounds decides which judges break to outrounds.
+/// Exactly one of raterSpeakerId/raterJudgeId is set — same "one-of" pattern
+/// as AccessToken/Claim. Note: Postgres treats NULL as distinct in unique
+/// constraints (same caveat as GroupMembership), so duplicate-submission
+/// prevention for a given rater+ratedJudge+section is an application-layer
+/// concern, not a DB one — there's no @@unique here for that reason.
+model JudgeFeedback {
+  id           String @id @default(cuid())
+  sectionId    String
+  ratedJudgeId String
+
+  raterSpeakerId String?
+  raterJudgeId   String?
+
+  score    Float
+  comments String? @db.Text
+
+  section      Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  ratedJudge   Judge    @relation("JudgeFeedbackReceived", fields: [ratedJudgeId], references: [id], onDelete: Cascade)
+  raterSpeaker Speaker? @relation(fields: [raterSpeakerId], references: [id], onDelete: Cascade)
+  raterJudge   Judge?   @relation("JudgeFeedbackGiven", fields: [raterJudgeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([ratedJudgeId])
 }
 
 // ============================================================================

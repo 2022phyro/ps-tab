@@ -92,14 +92,16 @@ function computeRoomPlan(N, R_min, R_max):
 
 ### Rubric configuration
 
-Organizers define one or more **rubric presets** per event type (e.g., a Prepared Speech rubric vs. an Impromptu rubric). Each preset is a list of criteria, each with a point cap:
+Organizers define one or more **rubric presets** per event type (e.g., a Prepared Speech rubric vs. an Impromptu rubric). Each preset is a list of criteria, each with a point cap, plus an optional **base score**: every speaker starts from the base, and the criteria are the *remaining* points allocated on top rather than the whole total. A rubric that doesn't use this convention just leaves the base at 0.
 
 ```
 Rubric "Standard Prepared Speech":
-  - Content     (0-30)
-  - Delivery    (0-30)
-  - Structure   (0-20)
-  - Language Use (0-20)
+  Base score: 70
+  - Content      (0-10)
+  - Delivery     (0-10)
+  - Structure    (0-5)
+  - Language Use (0-5)
+  (max total: 70 + 30 = 100)
 ```
 
 A rubric also carries the **time-penalty policy** for that event: allowed speech length, a grace period (e.g., ±10 seconds with no penalty), and a penalty schedule beyond grace (e.g., 1 point per 5 seconds over, capped at some maximum deduction).
@@ -109,8 +111,8 @@ A rubric also carries the **time-penalty policy** for that event: allowed speech
 For a single speaker in a single round:
 
 ```
-Judge Total (per judge) = Σ Score(criterion_i)  -  TimePenalty
-                            over all criteria in the rubric
+Judge Total (per judge) = BaseScore + Σ Score(criterion_i)  -  TimePenalty
+                                        over all criteria in the rubric
 
 Round Score = (1 / J) * Σ Judge Total_j         over all J judges on the panel
 
@@ -120,7 +122,15 @@ Rank = position of this speaker's Round Score when all Round Scores
 
 - **Time penalty** is computed once per judge (each judge times independently, or the system uses a single authoritative stopwatch reading shared across the panel — a tournament-level configuration choice) and subtracted before the judge's criteria are summed, so a harsh timer and a generous scorer don't need separate treatment downstream.
 - **Rank conversion happens per section, per round** — ranks are never compared across sections directly (a 1st in a 6-person room and a 1st in an 8-person room are the same "1" for standings purposes; see §6).
-- **Ties in Round Score within a section**: resolved by (a) average rank shared across tied speakers if the tournament uses fractional ranks, or (b) a configured tie-break criterion (commonly: highest Content sub-score, or judge-chair decision) if the tournament requires whole-number ranks. This is an organizer-level setting because speech tab conventions differ by circuit.
+- **Ties in Round Score within a section**: whether ties are even possible at all is a per-round-stage setting, not left to chance — see §7's "Tie permissiveness" for the full rule (short version: prelims can allow them, outrounds never do).
+
+### Ballot mode: Democracy vs. Strict
+
+The formula above assumes each panelist scores independently and the panel's scores get averaged — that's **Democracy** mode, and it's the default. Some tournaments instead run **Strict** mode: the whole panel (chair and panelists together) deliberates in the room and submits **one single ballot** for the section, not one per judge.
+
+- In Strict mode, the "Round Score" *is* that one submitted Judge Total — there's no averaging step, because there's only ever one ballot to average. This is the same degenerate case the pipeline already handles for a genuinely single-judge panel (see §14); Strict mode is just a deliberate, chosen version of that rather than an accident of judge availability.
+- The single ballot is conventionally submitted by the **chair**, on behalf of the panel's deliberation — this is exactly what a chair's tie-break/deliberation authority (see [glossary.md](glossary.md)) is *for*.
+- This is an organizer setting (**Democracy** or **Strict**), defaulted at the division level, with the same point-in-time override capability as break configuration (§8) — a specific round can run Strict even if the division default is Democracy, or vice versa, decided at the moment that round is set up rather than locked in from the start of the tournament.
 
 ## 5. Section allocation & institutional spreading
 
@@ -205,6 +215,13 @@ Cumulative standings are the aggregate across all completed rounds, ranked using
 
 This hierarchy is configurable in principle (some circuits weight speaker points above ranks), but the above is the recommended default and the one described throughout this docset.
 
+### Tie permissiveness: prelims vs. outrounds
+
+A tied Round Score within a section (§4) is handled differently depending on the stage:
+
+- **Preliminary rounds** may allow ties — an organizer setting (default: allowed). When allowed, tied speakers share a fractional average rank (e.g., two speakers tied for 1st both receive rank 1.5, per the standard "competition ranking" convention). When disabled, prelim ranks are forced sequential the same way outrounds always are (below), using a configured tie-break criterion (commonly: highest Content sub-score, or chair decision) to separate them.
+- **Outrounds never allow ties, full stop** — this is not an organizer setting. Every outround rank must be sequential, because an outround rank directly determines who advances; an unresolved tie there is a live problem needing an immediate tie-break decision (typically the chair), not a shared rank.
+
 ## 8. Break & finals generation
 
 **Threshold configuration:** organizers set a break rule before the final preliminary round, typically one of:
@@ -245,7 +262,8 @@ Tournaments commonly run several events concurrently (e.g., Extemporaneous, Orat
 
 Section allocation (§5) as described is a **random draw** with clash-avoidance — appropriate for preliminary rounds where no performance data yet exists to pair on. Two additional configurable draw methods extend the same engine for later stages:
 
-- **Power-matched pairing:** after one or more preliminary rounds, rooms can instead be seeded by current cumulative standings (§7) rather than randomly — e.g., "high-high" (top-ranked speakers grouped together, testing the strongest field against itself) or "high-low" (spreading strength evenly across rooms). This changes only the *seeding order* fed into the allocation heuristic in §5 — clash-avoidance and the greedy-plus-local-repair algorithm run identically; only the order in which speakers are placed into rooms changes from "sorted by institution risk" to "sorted by current standing, then institution risk as the tie-break within same-standing bands."
+- **Power-matched pairing:** after one or more preliminary rounds, rooms can instead be seeded by current cumulative standings (§7) rather than randomly — e.g., "high-high" (top-ranked speakers grouped together, testing the strongest field against itself) or "high-low" (spreading strength evenly across rooms). This changes only the *seeding order* fed into the allocation heuristic in §5 — clash-avoidance and the greedy-plus-local-repair algorithm run identically; only the order in which speakers are placed into rooms changes from "sorted by institution risk" to "sorted by current standing, then institution risk as the tie-break within same-standing bands." Room *sizing* (§3) never changes based on draw method — power-matching only reorders who goes into the already-standardized rooms, it never resizes or recounts them.
+  - This is a **Division-level default** (random vs. power-matched) with the same point-in-time override capability described in §8 for break configuration — an individual Round can flip a specific stage to the other method without changing the Division default for every other round. If a tournament's organizer setting is power-matched, that standing-based seeding order becomes one of the weights the room-allocation heuristic uses when generating rooms for that round; if random, allocation falls back to the plain clash-avoiding random draw described in §5. "high-low" is the conventional default *style* once power-matched is chosen, since it spreads strength evenly rather than stacking the field's best entrants into a single early-elimination room.
 - **Multi-stage elimination:** rather than a single break-to-finals (§8), a tournament can configure a bracket of successive elimination stages (e.g., Break to Octofinals → Quarterfinals → Semifinals → Finals), each stage re-applying the break threshold to just the previous stage's results and re-running the same allocation + position-bias engines (§5–6) on the surviving field. No new algorithm is needed per stage — each stage is simply another instance of §8's pipeline, chained: this round's "break list" is the next stage's roster. Any individual stage in that chain can independently be a normal aggregate break *or* a partial break (§8) — a tournament might, for example, run Octofinals as a partial break (top 2 per room plus a bubble round) but Quarterfinals and Semifinals as ordinary breaks.
 - Both are organizer-configured per tournament (or per division, §9) before rounds begin; a tournament can mix them — random prelims, power-matched final prelim round, single-elimination bracket to finals — without any of the three engines needing to know about the others' configuration.
 
