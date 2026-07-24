@@ -5,6 +5,7 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { ClaimMethod } from "@/generated/prisma/enums";
+import { writeAuditLog } from "@/lib/audit/log";
 
 export interface ClaimTarget {
   speakerId?: string;
@@ -50,6 +51,11 @@ async function attemptClaim(
       const dispute = await tx.claimDispute.create({
         data: { claimId: existingClaim.id, competingUserId: userId },
       });
+      await writeAuditLog(tx, {
+        actorUserId: userId,
+        actionType: "claim_dispute_raised",
+        summary: `${userId} disputed an existing claim on ${target.speakerId ? "speaker" : "judge"} ${target.speakerId ?? target.judgeId}`,
+      });
       return { outcome: "disputed", disputeId: dispute.id, existingClaimId: existingClaim.id };
     }
 
@@ -84,6 +90,12 @@ async function attemptClaim(
     } else {
       await tx.judge.update({ where: { id: target.judgeId! }, data: { userId, claimCode: null } });
     }
+
+    await writeAuditLog(tx, {
+      actorUserId: userId,
+      actionType: "claim_confirmed",
+      summary: `${userId} claimed ${target.speakerId ? "speaker" : "judge"} ${target.speakerId ?? target.judgeId} via ${method}`,
+    });
 
     return { outcome: "confirmed", claimId: claim.id };
   });
@@ -155,7 +167,10 @@ function randomClaimCode(): string {
 }
 
 /** Organizer/tab-staff action: issue (or reissue) a fresh code for a roster entry. */
-export async function generateClaimCode(target: ClaimTarget): Promise<string> {
+export async function generateClaimCode(
+  target: ClaimTarget,
+  performedByUserId?: string,
+): Promise<string> {
   assertExactlyOneTarget(target);
 
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -165,6 +180,13 @@ export async function generateClaimCode(target: ClaimTarget): Promise<string> {
         await prisma.speaker.update({ where: { id: target.speakerId }, data: { claimCode: code } });
       } else {
         await prisma.judge.update({ where: { id: target.judgeId! }, data: { claimCode: code } });
+      }
+      if (performedByUserId) {
+        await writeAuditLog(prisma, {
+          actorUserId: performedByUserId,
+          actionType: "claim_code_generated",
+          summary: `Issued a new claim code for ${target.speakerId ? "speaker" : "judge"} ${target.speakerId ?? target.judgeId}`,
+        });
       }
       return code;
     } catch {
@@ -204,6 +226,12 @@ export async function resolveClaimDispute(
     });
 
     if (winningUserId === dispute.claim.userId) {
+      await writeAuditLog(tx, {
+        actorUserId: resolvedByUserId,
+        actionType: "claim_dispute_resolved",
+        summary: `Resolved claim dispute ${disputeId} in favor of the original claimant`,
+        reason: resolutionNote,
+      });
       return; // original claimant keeps it — nothing else to change
     }
 
@@ -235,5 +263,12 @@ export async function resolveClaimDispute(
         data: { userId: winningUserId },
       });
     }
+
+    await writeAuditLog(tx, {
+      actorUserId: resolvedByUserId,
+      actionType: "claim_dispute_resolved",
+      summary: `Resolved claim dispute ${disputeId} in favor of the disputer, reassigning the roster entry`,
+      reason: resolutionNote,
+    });
   });
 }

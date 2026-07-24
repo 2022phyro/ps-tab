@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { generateRawToken, hashToken } from "./crypto";
+import { writeAuditLog } from "@/lib/audit/log";
 
 export interface IssueTokenInput {
   speakerId?: string;
@@ -70,9 +71,20 @@ export async function validateToken(rawToken: string): Promise<ValidationResult>
   };
 }
 
-/** Instant — the moment revokedAt is set, validateToken stops accepting it (docs/04 §1). */
-export async function revokeToken(tokenId: string): Promise<void> {
+/** Instant — the moment revokedAt is set, validateToken stops accepting it
+ *  (docs/04 §1). `performedByUserId` is optional since plenty of revocations
+ *  happen with no authenticated actor yet (e.g. a self-service "sign out this
+ *  device" flow before any account exists) — logged only when one is given,
+ *  rather than forcing every zero-auth code path to invent an actor. */
+export async function revokeToken(tokenId: string, performedByUserId?: string): Promise<void> {
   await prisma.accessToken.update({ where: { id: tokenId }, data: { revokedAt: new Date() } });
+  if (performedByUserId) {
+    await writeAuditLog(prisma, {
+      actorUserId: performedByUserId,
+      actionType: "token_revoked",
+      summary: `Revoked access token ${tokenId}`,
+    });
+  }
 }
 
 /** docs/04 §1 — lost phone, accidental share: revoke the old token and issue
@@ -80,8 +92,9 @@ export async function revokeToken(tokenId: string): Promise<void> {
 export async function reissueToken(
   oldTokenId: string,
   input: IssueTokenInput,
+  performedByUserId?: string,
 ): Promise<IssuedToken> {
   const issued = await issueToken(input);
-  await revokeToken(oldTokenId);
+  await revokeToken(oldTokenId, performedByUserId);
   return issued;
 }

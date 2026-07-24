@@ -37,7 +37,10 @@ function shuffle<T>(items: T[], random: () => number): T[] {
   return copy;
 }
 
-function hasClash(judge: JudgeForAllocation, section: SectionForJudgeAllocation): boolean {
+/** exported for reuse by docs/02 §3's hot-swap re-check ("automatically
+ *  re-runs the institutional-conflict check") — same clash logic, not a
+ *  reimplementation. */
+export function hasClash(judge: JudgeForAllocation, section: SectionForJudgeAllocation): boolean {
   return (
     judge.institutionId !== null && section.speakerInstitutionIds.includes(judge.institutionId)
   );

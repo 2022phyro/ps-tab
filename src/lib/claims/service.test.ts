@@ -36,6 +36,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await prisma.tournament.delete({ where: { id: tournamentId } }); // cascades divisions/speakers/claims/disputes
+  // audit log entries reference these test users with no cascade (Prisma
+  // default Restrict) — clear them before the user rows, same fix as merge.test.ts.
+  await prisma.auditLogEntry.deleteMany({ where: { actorUserId: { in: userIdsToClean } } });
   await prisma.user.deleteMany({ where: { id: { in: userIdsToClean } } });
 });
 

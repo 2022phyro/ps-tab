@@ -7,6 +7,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import { writeAuditLog } from "@/lib/audit/log";
 
 interface MergeSnapshot {
   claimIds: string[];
@@ -135,12 +136,10 @@ export async function mergeAccounts(
       },
     });
 
-    await tx.auditLogEntry.create({
-      data: {
-        actorUserId: performedByUserId,
-        actionType: "account_merge",
-        summary: `Merged account ${secondaryUserId} into ${primaryUserId}`,
-      },
+    await writeAuditLog(tx, {
+      actorUserId: performedByUserId,
+      actionType: "account_merge",
+      summary: `Merged account ${secondaryUserId} into ${primaryUserId}`,
     });
 
     return {
@@ -218,12 +217,10 @@ export async function undoMergeAccounts(
       data: { mergedIntoUserId: null, mergedAt: null, mergeSnapshot: Prisma.JsonNull },
     });
 
-    await tx.auditLogEntry.create({
-      data: {
-        actorUserId: performedByUserId,
-        actionType: "account_merge_undo",
-        summary: `Undid merge of account ${secondaryUserId} out of ${primaryUserId}`,
-      },
+    await writeAuditLog(tx, {
+      actorUserId: performedByUserId,
+      actionType: "account_merge_undo",
+      summary: `Undid merge of account ${secondaryUserId} out of ${primaryUserId}`,
     });
   });
 }

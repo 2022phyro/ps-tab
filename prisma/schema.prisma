@@ -161,6 +161,17 @@ model Division {
   /// rank must be sequential (docs/01 §7).
   allowTiesInPrelims Boolean    @default(true)
 
+  /// docs/02 §4 — target judges per section; a section may run with fewer
+  /// (never below minimumPanelSize) when reserves run out, flagged rather
+  /// than silently accepted.
+  panelSize        Int @default(3)
+  /// docs/02 §4 — absolute floor; a section can't run below this many
+  /// judges — blocks that room's round rather than degrading further.
+  minimumPanelSize Int @default(1)
+
+  /// docs/05 §4 — what triggers a round's ballots to become immutable.
+  lockTrigger LockTrigger @default(ON_RESULTS_RELEASE)
+
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   rounds     Round[]
   speakers   Speaker[]
@@ -193,6 +204,19 @@ enum DrawMethod {
 enum BallotMode {
   DEMOCRACY
   STRICT
+}
+
+/// docs/05 §4
+enum LockTrigger {
+  ON_RESULTS_RELEASE
+  ON_ALL_BALLOTS_SUBMITTED
+}
+
+/// docs/05 §2 — which of a round's three independent gates a ScheduledRelease targets.
+enum PublishGate {
+  DRAWS
+  RESULTS
+  STANDINGS
 }
 
 /// docs/05 §2 — three independent publish gates per round.
@@ -236,6 +260,9 @@ model Round {
   checkInOpensAt   DateTime?
   checkInClosesAt  DateTime?
   scheduledStartAt DateTime?
+  /// docs/02 §3 — the round's expected end time; the unresponsive-judge sweep
+  /// measures its grace period from this, never an assumed/derived duration.
+  scheduledEndAt   DateTime?
 
   drawsState     DrawsState     @default(HIDDEN)
   resultsState   ResultsState   @default(HELD)
@@ -250,6 +277,7 @@ model Round {
   judgeCheckIns   JudgeCheckIn[]
   results         RoundResult[]
   embargoes       Embargo[]
+  scheduledReleases ScheduledRelease[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -385,6 +413,10 @@ enum JudgeCheckInStatus {
   CHECKED_IN
   NO_SHOW
   UNRESPONSIVE
+  /// docs/02 §5 — judge self-flagged a conflict before assignment; pulled
+  /// from the assignment pool for this round the same as any other
+  /// unavailable-for-this-round state.
+  RECUSED
 }
 
 model JudgeCheckIn {
@@ -446,6 +478,9 @@ enum PanelStatus {
   NO_SHOW
   REMOVED_FOR_CONFLICT
   DEPLOYED_RESERVE
+  /// docs/02 §4 — started judging, had to leave before finishing the room;
+  /// distinct from NO_SHOW (never showed) and REMOVED_FOR_CONFLICT.
+  LEFT_MID_ROUND
 }
 
 model Panel {
@@ -627,12 +662,42 @@ model Embargo {
   @@unique([roundId, speakerId])
 }
 
+/// docs/05 §2 — an organizer-scheduled future gate release. The actual
+/// polling/firing job is a real Inngest cron in Section 8; this model only
+/// tracks the schedule/cancel/executed state so that wiring has something
+/// concrete to poll once it exists (`executeDueScheduledReleases` already
+/// does the firing logic — see src/lib/publishing/scheduledRelease.ts).
+/// No `@@unique([roundId, gate])` — an executed or cancelled entry shouldn't
+/// block scheduling a fresh one for the same round+gate; "at most one active
+/// schedule per round+gate" is an application-layer invariant instead, the
+/// same kind of documented-not-DB-enforced case as GroupMembership.
+model ScheduledRelease {
+  id          String      @id @default(cuid())
+  roundId     String
+  gate        PublishGate
+  releaseAt   DateTime
+  cancelledAt DateTime?
+  executedAt  DateTime?
+
+  createdByUserId String
+
+  round Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([roundId, gate])
+}
+
 /// docs/05 §5 — append-only. No update/delete path is exposed anywhere in the app.
 model AuditLogEntry {
   id           String  @id @default(cuid())
   /// null for platform-level Super Admin actions not tied to one tournament
   tournamentId String?
-  actorUserId  String
+  /// null for system-originated actions with no human actor (e.g. an
+  /// automated no-show sweep, a scheduled gate release firing, a retention
+  /// purge) — distinct from omitting the entry entirely, since these still
+  /// need an audited record of what happened and when (docs/05 §5).
+  actorUserId String?
 
   /// e.g. "judge_swap", "score_edit", "manual_repair", "publish_toggle",
   /// "round_unlock", "claim_merge" — free-form and indexed rather than an
@@ -644,7 +709,7 @@ model AuditLogEntry {
   afterData  Json?
 
   tournament Tournament? @relation(fields: [tournamentId], references: [id])
-  actor      User        @relation(fields: [actorUserId], references: [id])
+  actor      User?       @relation(fields: [actorUserId], references: [id])
 
   createdAt DateTime @default(now())
 
