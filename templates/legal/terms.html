@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Terms of Service — Kwuo Tabulation Platform{% endblock %}
+
+{% block content %}
+<div class="relative overflow-hidden bg-theme-canvas transition-colors duration-200">
+    <div class="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
+        <div class="border-b border-theme-border-subtle pb-6 mb-8">
+            <span class="text-xs font-mono font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                Platform Rules &amp; Responsibilities
+            </span>
+            <h1 class="text-3xl font-heading font-black text-theme-heading mt-2 sm:text-4xl">
+                Terms of Service
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-kwuo-sage mt-1">
+                Last updated: October 2026 &bull; Applicable to all Kwuo organizers, adjudicators, and competitors
+            </p>
+        </div>
+
+        <div class="space-y-8 text-sm text-theme-body leading-relaxed">
+            <section class="space-y-3">
+                <h2 class="text-lg font-heading font-bold text-theme-heading">
+                    1. Acceptance of Terms
+                </h2>
+                <p>
+                    By accessing or hosting tournaments through Kwuo, you agree to these Terms of Service. Kwuo is an open-source tabulation platform designed to support competitive speech tournaments, educational forensic leagues, and collegiate debate associations.
+                </p>
+            </section>
+
+            <section class="space-y-3">
+                <h2 class="text-lg font-heading font-bold text-theme-heading">
+                    2. Organizer Responsibilities
+                </h2>
+                <p>
+                    Tournament directors and organizing committees are responsible for:
+                </p>
+                <ul class="list-disc pl-5 space-y-1.5 text-xs text-slate-600 dark:text-kwuo-sage">
+                    <li>Accurately declaring institutional conflicts, judge credentials, and competitor division eligibility.</li>
+                    <li>Maintaining reasonable confidentiality of unpublished round results and ballot comments prior to official release.</li>
+                    <li>Adhering to tournament equity policies, accessibility standards, and code of conduct guidelines.</li>
+                </ul>
+            </section>
+
+            <section class="space-y-3">
+                <h2 class="text-lg font-heading font-bold text-theme-heading">
+                    3. Ballot Integrity &amp; Mathematical Reproducibility
+                </h2>
+                <p>
+                    Kwuo guarantees mathematical reproducibility of the Section Allocation and Tie-Breaking Ladder based on the recorded ballot data and configured tournament parameters. Adjudicators agree to submit honest, unbiased scores aligned with the published tournament rubric.
+                </p>
+            </section>
+
+            <section class="space-y-3">
+                <h2 class="text-lg font-heading font-bold text-theme-heading">
+                    4. Open Source Licensing
+                </h2>
+                <p>
+                    The Kwuo codebase is distributed under the MIT Open Source License. You are free to inspect, modify, host your own instance, or contribute back to the project repository.
+                </p>
+            </section>
+
+            <section class="space-y-3">
+                <h2 class="text-lg font-heading font-bold text-theme-heading">
+                    5. Disclaimer of Warranty
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-kwuo-sage">
+                    Kwuo is provided "as is", without warranty of any kind, express or implied. In no event shall the authors or copyright holders be liable for any tournament scheduling disputes or indirect damages resulting from software use.
+                </p>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

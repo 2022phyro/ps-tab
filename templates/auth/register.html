@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account — Kwuo{% endblock %}
+
+{% block content %}
+<div class="flex min-h-[80vh] items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+    <div class="w-full max-w-md space-y-8 rounded-2xl border border-theme-border bg-theme-surface p-8 shadow-sm transition-colors">
+        <div>
+            <div class="flex justify-center">
+                <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-mahogany text-kwuo-sand font-bold text-2xl shadow-sm border border-kwuo-sage/30">
+                    K
+                </span>
+            </div>
+            <h2 class="mt-4 text-center text-2xl font-heading font-extrabold tracking-tight text-theme-heading">
+                Create an organizer account
+            </h2>
+            <p class="mt-2 text-center text-sm text-slate-500 dark:text-kwuo-sage">
+                Setup your profile to manage tournaments and tab rooms
+            </p>
+        </div>
+
+        <div id="register-error">
+            {% if error %}
+            <div class="rounded-lg bg-rose-50 dark:bg-rose-950/40 p-3 text-sm text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 flex items-center gap-2">
+                <i class="ph-bold ph-warning-circle text-base shrink-0"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <form class="mt-8 space-y-4" action="/auth/register" method="POST" hx-post="/auth/register" hx-target="#register-error" hx-swap="innerHTML">
+            <div>
+                <label for="full_name" class="block text-sm font-medium text-slate-700 dark:text-kwuo-gold">Full Name</label>
+                <div class="mt-1">
+                    <input id="full_name" name="full_name" type="text" required
+                        class="block w-full rounded-lg border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-kwuo-bronze sm:text-sm p-2.5 border"
+                        placeholder="Alex Morgan">
+                </div>
+            </div>
+
+            <div>
+                <label for="email" class="block text-sm font-medium text-slate-700 dark:text-kwuo-gold">Email address</label>
+                <div class="mt-1">
+                    <input id="email" name="email" type="email" autocomplete="email" required
+                        class="block w-full rounded-lg border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-kwuo-bronze sm:text-sm p-2.5 border"
+                        placeholder="alex@university.edu">
+                </div>
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-slate-700 dark:text-kwuo-gold">Password</label>
+                <div class="mt-1">
+                    <input id="password" name="password" type="password" required minlength="8"
+                        class="block w-full rounded-lg border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-kwuo-bronze sm:text-sm p-2.5 border"
+                        placeholder="At least 8 characters">
+                </div>
+            </div>
+
+            <div>
+                <button type="submit"
+                    class="flex w-full justify-center items-center gap-1.5 rounded-lg bg-kwuo-bronze px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-kwuo-mahogany focus:outline-none focus:ring-2 focus:ring-kwuo-bronze focus:ring-offset-2 transition">
+                    <span>Create account</span>
+                    <i class="ph-bold ph-arrow-right"></i>
+                </button>
+            </div>
+        </form>
+
+        <div class="text-center text-sm text-slate-500 dark:text-kwuo-sage">
+            Already have an account?
+            <a href="/auth/login" class="font-medium text-kwuo-bronze dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white">
+                Sign in
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

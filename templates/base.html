@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full antialiased" x-data="{ darkMode: false, mobileMenuOpen: false }" x-init="
+    darkMode = document.documentElement.classList.contains('dark');
+    $watch('darkMode', val => {
+        if (val) {
+            document.documentElement.classList.add('dark');
+            localStorage.theme = 'dark';
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.theme = 'light';
+        }
+    });
+">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Kwuo — Public Speaking Tabulation{% endblock %}</title>
+
+    <!-- Instant Dark Mode Detection Script to Prevent FOIT (Flash of Unthemed Content) -->
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <!-- Google Fonts: Bricolage Grotesque (Headings/Display) & Onest (UI/Body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Onest:wght@300..800&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons: Regular, Bold, Fill & Duotone -->
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css" />
+
+    <!-- Tailwind CSS CDN with Custom Tokens, Dark Mode & Font Theming -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Onest', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        display: ['"Bricolage Grotesque"', 'sans-serif'],
+                        heading: ['"Bricolage Grotesque"', 'sans-serif'],
+                    },
+                    colors: {
+                        // Named Brand Swatches
+                        kwuo: {
+                            mahogany: '#622B14',  // Primary accent / brand display
+                            bronze:   '#995F2F',  // Interactive brand / buttons / links
+                            sage:     '#978F66',  // Secondary / muted text / subtle borders
+                            sand:     '#E4D6A9',  // Parchment / light accents / borders
+                            gold:     '#D3C18E',  // Dark mode text highlight / warm gold
+                            canvas:   '#FAF7F0',  // Light page background
+                            dark: {
+                                canvas:  '#16110F', // Dark page background
+                                surface: '#231A15', // Dark card surface
+                                subtle:  '#1E1612', // Dark header/footer/subtle
+                                accent:  '#2B1F19', // Dark badges/pills
+                                border:  '#3D2D23', // Dark primary border
+                                input:   '#4D392D', // Dark input border
+                            }
+                        },
+                        // Semantic Theme Tokens (Mapped to CSS variables for automatic light/dark mode)
+                        theme: {
+                            canvas: 'var(--color-canvas)',
+                            surface: 'var(--color-surface)',
+                            'surface-subtle': 'var(--color-surface-subtle)',
+                            border: 'var(--color-border)',
+                            'border-subtle': 'var(--color-border-subtle)',
+                            heading: 'var(--color-text-heading)',
+                            body: 'var(--color-text-body)',
+                            muted: 'var(--color-text-muted)',
+                            interactive: {
+                                DEFAULT: 'var(--color-interactive)',
+                                hover: 'var(--color-interactive-hover)',
+                                text: 'var(--color-interactive-text)',
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+    <style>
+        :root {
+            --color-canvas: #FAF7F0;
+            --color-surface: #FFFFFF;
+            --color-surface-subtle: #FAF7F0;
+            --color-border: #E4D6A9;
+            --color-border-subtle: rgba(228, 214, 169, 0.4);
+            --color-text-heading: #622B14;
+            --color-text-body: #1e293b;
+            --color-text-muted: #978F66;
+            --color-interactive: #995F2F;
+            --color-interactive-hover: #622B14;
+            --color-interactive-text: #FFFFFF;
+        }
+        .dark {
+            --color-canvas: #16110F;
+            --color-surface: #231A15;
+            --color-surface-subtle: #1E1612;
+            --color-border: #3D2D23;
+            --color-border-subtle: rgba(61, 45, 35, 0.6);
+            --color-text-heading: #E4D6A9;
+            --color-text-body: #D3C18E;
+            --color-text-muted: #978F66;
+            --color-interactive: #995F2F;
+            --color-interactive-hover: #622B14;
+            --color-interactive-text: #E4D6A9;
+        }
+
+        [x-cloak] { display: none !important; }
+        .htmx-indicator { display: none; }
+        .htmx-request .htmx-indicator { display: inline-block; }
+        .htmx-request.htmx-indicator { display: inline-block; }
+
+        /* Smooth Phosphor Icon Transitions */
+        i.ph, i.ph-bold, i.ph-fill, i.ph-duotone {
+            vertical-align: -0.125em;
+            display: inline-block;
+            line-height: 1;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="flex min-h-full flex-col font-sans bg-theme-canvas text-theme-body transition-colors duration-200">
+
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-40 border-b border-theme-border-subtle bg-theme-surface/95 backdrop-blur">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3">
+                <a href="/" class="flex items-center gap-2 group">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-kwuo-mahogany text-kwuo-sand font-bold shadow-sm group-hover:bg-kwuo-bronze transition border border-kwuo-sage/30">
+                        K
+                    </span>
+                    <span class="text-xl font-heading font-extrabold tracking-tight text-theme-heading">Kwuo</span>
+                </a>
+            </div>
+
+            <!-- Desktop Nav Links -->
+            <nav class="hidden md:flex items-center gap-6 text-sm font-medium">
+                <a href="/" class="text-slate-700 dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white transition">Home</a>
+                <a href="/about" class="text-slate-700 dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white transition">About</a>
+                <a href="/documentation" class="text-slate-700 dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white transition">Documentation</a>
+                {% if user %}
+                    <a href="/dashboard" class="text-slate-700 dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white transition">Dashboard</a>
+                    {% if user.is_super_admin %}
+                        <a href="/admin" class="text-kwuo-bronze dark:text-kwuo-sand hover:text-kwuo-mahogany transition flex items-center gap-1.5 font-semibold">
+                            <span class="h-2 w-2 rounded-full bg-kwuo-bronze dark:bg-kwuo-sand animate-pulse"></span>
+                            Admin Panel
+                        </a>
+                    {% endif %}
+                {% endif %}
+            </nav>
+
+            <!-- User / Auth / Theme Section (Desktop) -->
+            <div class="hidden md:flex items-center gap-3">
+                <!-- Theme Toggle Button -->
+                <button @click="darkMode = !darkMode" type="button" class="rounded-lg p-2 text-slate-600 dark:text-kwuo-gold hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent transition focus:outline-none" title="Toggle theme">
+                    <i x-show="darkMode" x-cloak class="ph-bold ph-sun text-lg"></i>
+                    <i x-show="!darkMode" class="ph-bold ph-moon text-lg"></i>
+                </button>
+
+                {% if user %}
+                    <div class="flex items-center gap-2.5 border-r border-theme-border pr-3">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-kwuo-sand dark:bg-kwuo-dark-border text-kwuo-mahogany dark:text-kwuo-sand font-bold text-xs uppercase border border-kwuo-sage/40">
+                            {{ user.full_name[:2] }}
+                        </div>
+                        <div class="text-xs">
+                            <div class="font-semibold text-slate-800 dark:text-kwuo-sand">{{ user.full_name }}</div>
+                            <div class="text-slate-500 dark:text-kwuo-sage truncate max-w-[140px]">{{ user.email }}</div>
+                        </div>
+                    </div>
+                    <form action="/auth/logout" method="post" class="inline">
+                        <button type="submit" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
+                            Log out
+                        </button>
+                    </form>
+                {% else %}
+                    <a href="/auth/login" class="rounded-lg px-3.5 py-1.5 text-sm font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent transition">
+                        Log in
+                    </a>
+                    <a href="/auth/register" class="rounded-lg bg-kwuo-bronze px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-kwuo-mahogany transition">
+                        Sign up
+                    </a>
+                {% endif %}
+            </div>
+
+            <!-- Mobile Buttons (Theme + Hamburger) -->
+            <div class="flex items-center gap-1 md:hidden">
+                <button @click="darkMode = !darkMode" type="button" class="rounded-md p-2 text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent focus:outline-none">
+                    <i x-show="darkMode" x-cloak class="ph-bold ph-sun text-lg"></i>
+                    <i x-show="!darkMode" class="ph-bold ph-moon text-lg"></i>
+                </button>
+                <button @click="mobileMenuOpen = !mobileMenuOpen" type="button" class="inline-flex items-center justify-center rounded-md p-2 text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent focus:outline-none">
+                    <i x-show="!mobileMenuOpen" class="ph-bold ph-list text-xl"></i>
+                    <i x-show="mobileMenuOpen" x-cloak class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Drawer Menu -->
+        <div x-show="mobileMenuOpen" x-cloak @click.away="mobileMenuOpen = false" class="md:hidden border-b border-theme-border bg-theme-surface px-4 pt-2 pb-4 space-y-2">
+            <a href="/" class="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-canvas dark:hover:bg-kwuo-dark-accent">Home</a>
+            <a href="/about" class="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-canvas dark:hover:bg-kwuo-dark-accent">About</a>
+            <a href="/documentation" class="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-canvas dark:hover:bg-kwuo-dark-accent">Documentation</a>
+            {% if user %}
+                <a href="/dashboard" class="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-canvas dark:hover:bg-kwuo-dark-accent">Dashboard</a>
+                {% if user.is_super_admin %}
+                    <a href="/admin" class="block rounded-lg px-3 py-2 text-base font-medium text-kwuo-bronze dark:text-kwuo-sand bg-kwuo-sand/20 dark:bg-kwuo-dark-accent">Admin Panel</a>
+                {% endif %}
+                <div class="border-t border-theme-border-subtle pt-3 mt-2 flex items-center justify-between">
+                    <div class="text-sm font-semibold text-slate-700 dark:text-kwuo-sand">{{ user.full_name }}</div>
+                    <form action="/auth/logout" method="post" class="inline">
+                        <button type="submit" class="text-sm font-semibold text-rose-700 dark:text-rose-400">Log out</button>
+                    </form>
+                </div>
+            {% else %}
+                <div class="border-t border-theme-border-subtle pt-3 mt-2 flex flex-col gap-2">
+                    <a href="/auth/login" class="text-center rounded-lg border border-slate-300 dark:border-kwuo-dark-border py-2 text-sm font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-canvas dark:hover:bg-kwuo-dark-accent">Log in</a>
+                    <a href="/auth/register" class="text-center rounded-lg bg-kwuo-bronze py-2 text-sm font-semibold text-white hover:bg-kwuo-mahogany">Sign up</a>
+                </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Wavy Border Divider Below Navigation -->
+    <div class="w-full overflow-hidden leading-none -mt-px pointer-events-none select-none text-kwuo-sand/80 dark:text-kwuo-dark-border">
+        <svg class="w-full h-3 sm:h-3.5 block" viewBox="0 0 1200 12" preserveAspectRatio="none">
+            <path d="M0,0 C150,12 350,0 500,8 C650,16 850,2 1000,10 C1120,16 1180,4 1200,8 L1200,0 L0,0 Z" fill="currentColor"></path>
+        </svg>
+    </div>
+
+    <!-- Main Content Slot -->
+    <main class="flex-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Comprehensive Multi-Column Footer -->
+    <footer class="border-t border-theme-border-subtle bg-theme-surface text-slate-600 dark:text-kwuo-sage transition-colors">
+        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-10">
+                <!-- Col 1: Brand & Mission (Spans 2 columns on lg) -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="flex items-center gap-2.5">
+                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-mahogany text-kwuo-sand font-bold text-sm shadow-sm border border-kwuo-sage/30">
+                            K
+                        </span>
+                        <span class="text-xl font-heading font-extrabold tracking-tight text-theme-heading">Kwuo</span>
+                    </div>
+                    <p class="text-xs leading-relaxed max-w-sm text-slate-600 dark:text-kwuo-sage">
+                        The dedicated tabulation engine for individual speech tournaments and tertiary forensics. Engineered for multi-speaker heats, zero-auth digital ballots, and mathematical position-bias balancing.
+                    </p>
+
+                    <!-- Buy Me a Coffee & Sponsor Pill -->
+                    <div class="pt-2 flex flex-wrap items-center gap-3">
+                        <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-lg bg-kwuo-mahogany hover:bg-kwuo-bronze px-3.5 py-1.5 text-xs font-bold text-kwuo-sand shadow-sm transition border border-kwuo-sage/40">
+                            <i class="ph-duotone ph-coffee text-base text-kwuo-sand"></i>
+                            <span>Buy Me a Coffee</span>
+                        </a>
+
+                        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface-subtle px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-kwuo-sand hover:bg-kwuo-sand/30 transition">
+                            <i class="ph-bold ph-github-logo text-base"></i>
+                            <span>Open Source</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Col 2: Platform Links -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold font-mono uppercase tracking-wider text-theme-heading">
+                        Platform
+                    </h4>
+                    <ul class="space-y-2 text-xs">
+                        <li><a href="/" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Home</a></li>
+                        <li><a href="/about" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">About Kwuo</a></li>
+                        <li><a href="/documentation" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Documentation &amp; Guides</a></li>
+                        <li><a href="/dashboard" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Tabroom Dashboard</a></li>
+                        {% if user and user.is_super_admin %}
+                        <li><a href="/admin" class="text-kwuo-bronze dark:text-kwuo-sand font-semibold hover:underline">Admin Panel</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <!-- Col 3: Governance & Legal -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold font-mono uppercase tracking-wider text-theme-heading">
+                        Governance
+                    </h4>
+                    <ul class="space-y-2 text-xs">
+                        <li><a href="/privacy" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Privacy Policy</a></li>
+                        <li><a href="/terms" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Terms of Service</a></li>
+                        <li><a href="/documentation/03-adjudication-and-rubrics/ballot-modes.md" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Ballot Integrity</a></li>
+                        <li><a href="/documentation/02-tournament-mechanics/position-bias.md" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Position Bias Policy</a></li>
+                    </ul>
+                </div>
+
+                <!-- Col 4: Community & Support -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold font-mono uppercase tracking-wider text-theme-heading">
+                        Connect
+                    </h4>
+                    <ul class="space-y-2 text-xs">
+                        <li><a href="/contact" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition font-semibold text-kwuo-bronze dark:text-kwuo-gold">Talk to Us / Support</a></li>
+                        <li><a href="mailto:tab@kwuo.org" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">tab@kwuo.org</a></li>
+                        <li><a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Sponsor the Project</a></li>
+                        <li><a href="/health" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition font-mono text-[11px]">System Status: OK</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Bottom Bar -->
+            <div class="border-t border-theme-border-subtle pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500 dark:text-kwuo-sage">
+                <div>
+                    &copy; 2026 Kwuo Tabulation Platform. <em>Kwuo</em> is Igbo for <em>"to speak or declare"</em>. MIT Open Source.
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="rounded bg-kwuo-sand/50 dark:bg-kwuo-dark-accent text-kwuo-mahogany dark:text-kwuo-sand px-2 py-0.5 font-mono text-[10px] font-semibold border border-kwuo-sage/30">
+                        v0.1.0-alpha
+                    </span>
+                    <span>Designed for tertiary speech tournaments</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

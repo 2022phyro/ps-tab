@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Kwuo — Modern Public Speaking Tabulation{% endblock %}
+
+{% block content %}
+<div class="relative overflow-hidden bg-theme-canvas transition-colors duration-200">
+    <!-- Hero Section -->
+    <div class="mx-auto max-w-7xl px-4 pt-16 pb-12 sm:px-6 lg:px-8 lg:pt-24 lg:pb-16 text-center">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-kwuo-sand/60 dark:bg-kwuo-dark-accent px-3.5 py-1 text-xs font-semibold text-kwuo-mahogany dark:text-kwuo-sand ring-1 ring-inset ring-kwuo-sage/40 mb-6">
+            <i class="ph-fill ph-sparkle text-kwuo-bronze"></i>
+            <span>The Dedicated Tabulation Engine for Speech &amp; Forensics</span>
+        </span>
+        <h1 class="text-4xl font-heading font-black tracking-tight text-theme-heading sm:text-5xl lg:text-6xl">
+            Flawless tabulation for <br class="hidden sm:inline" />
+            <span class="text-kwuo-bronze dark:text-kwuo-gold">tertiary public speaking</span>
+        </h1>
+        <p class="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-theme-body">
+            Purpose-built for individual speech sections, rubric-based adjudication, speaking position rotation, and zero-friction mobile scoring.
+        </p>
+
+        <div class="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+            {% if user %}
+                <a href="/dashboard" class="rounded-xl bg-kwuo-bronze px-6 py-3.5 text-base font-semibold text-white shadow-md hover:bg-kwuo-mahogany transition flex items-center justify-center gap-2">
+                    <span>Open Organizer Dashboard</span>
+                    <i class="ph-bold ph-arrow-right"></i>
+                </a>
+            {% else %}
+                <a href="/auth/register" class="rounded-xl bg-kwuo-bronze px-6 py-3.5 text-base font-semibold text-white shadow-md hover:bg-kwuo-mahogany transition flex items-center justify-center gap-2">
+                    <span>Create Organizer Account</span>
+                    <i class="ph-bold ph-arrow-right"></i>
+                </a>
+                <a href="/auth/login" class="rounded-xl border border-theme-border bg-theme-surface px-6 py-3.5 text-base font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
+                    Sign In
+                </a>
+            {% endif %}
+            <a href="/about" class="rounded-xl border border-theme-border bg-theme-surface-subtle px-6 py-3.5 text-base font-semibold text-theme-body hover:bg-kwuo-sand/30 transition flex items-center justify-center gap-2">
+                <span>Learn About Kwuo</span>
+                <i class="ph-bold ph-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Core Features Showcase Section -->
+    <div id="features" class="border-t border-theme-border-subtle bg-theme-surface-subtle/50 py-20">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <span class="text-xs font-bold font-mono tracking-wider text-kwuo-bronze dark:text-kwuo-gold uppercase">
+                    Architectural Advantages
+                </span>
+                <h2 class="mt-2 text-3xl font-heading font-extrabold text-theme-heading sm:text-4xl">
+                    Why Kwuo Outperforms Legacy Debate Software
+                </h2>
+                <p class="mt-4 text-sm sm:text-base text-slate-600 dark:text-kwuo-sage">
+                    Built specifically for the mathematical and operational demands of individual speech tournaments, forensic showcases, and multi-speaker heats.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1: Section Allocation (Duotone Icon) -->
+                <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm hover:shadow-md transition space-y-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent">
+                        <i class="ph-duotone ph-scales text-3xl text-kwuo-bronze"></i>
+                    </div>
+                    <h3 class="text-base font-heading font-bold text-theme-heading">
+                        Dynamic Section Allocation
+                    </h3>
+                    <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        Partitions competitors into balanced heats between $[R_{\min}, R_{\max}]$ (e.g. 5 vs 6 speakers) without dummy entries or lopsided rooms. Strictly respects institutional clash separation.
+                    </p>
+                    <div class="pt-2 text-[11px] font-mono text-kwuo-bronze dark:text-kwuo-gold flex items-center gap-1 font-semibold">
+                        <span>Bounded Knapsack Room Balancing</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Feature 2: Position Bias Balancing (Duotone Icon) -->
+                <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm hover:shadow-md transition space-y-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent">
+                        <i class="ph-duotone ph-arrows-clockwise text-3xl text-kwuo-bronze"></i>
+                    </div>
+                    <h3 class="text-base font-heading font-bold text-theme-heading">
+                        Position-Bias Neutralization
+                    </h3>
+                    <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        Speaking first vs. last carries proven cognitive bias. Kwuo rotates speaker orders across preliminary rounds using Latin squares and cyclic shifts to equalize position variance.
+                    </p>
+                    <div class="pt-2 text-[11px] font-mono text-kwuo-bronze dark:text-kwuo-gold flex items-center gap-1 font-semibold">
+                        <span>Latin-Square Order Distribution</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Feature 3: Multi-Judge Consensus (Duotone Icon) -->
+                <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm hover:shadow-md transition space-y-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent">
+                        <i class="ph-duotone ph-chart-bar text-3xl text-kwuo-bronze"></i>
+                    </div>
+                    <h3 class="text-base font-heading font-bold text-theme-heading">
+                        Flexible Ballot Pipelines
+                    </h3>
+                    <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        Supports Raw Sums, Weighted Panel Ranks, Trimmed Medians (dropping high/low outlier adjudications), and Z-score normalized ordinals for robust consensus.
+                    </p>
+                    <div class="pt-2 text-[11px] font-mono text-kwuo-bronze dark:text-kwuo-gold flex items-center gap-1 font-semibold">
+                        <span>Multi-Rubric Scoring Pipelines</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Feature 4: Zero-Auth Magic Ballots (Duotone Icon) -->
+                <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm hover:shadow-md transition space-y-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent">
+                        <i class="ph-duotone ph-device-mobile text-3xl text-kwuo-bronze"></i>
+                    </div>
+                    <h3 class="text-base font-heading font-bold text-theme-heading">
+                        Zero-Auth Mobile Ballots
+                    </h3>
+                    <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        Judges access scorecards by scanning a round QR code or opening a magic link. No accounts to register, zero passwords to recover in the tabroom hallway, and zero apps to install.
+                    </p>
+                    <div class="pt-2 text-[11px] font-mono text-kwuo-bronze dark:text-kwuo-gold flex items-center gap-1 font-semibold">
+                        <span>Instant Mobile Scorecard</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Feature 5: State-Gated Publishing (Duotone Icon) -->
+                <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm hover:shadow-md transition space-y-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent">
+                        <i class="ph-duotone ph-lock-key text-3xl text-kwuo-bronze"></i>
+                    </div>
+                    <h3 class="text-base font-heading font-bold text-theme-heading">
+                        State-Gated Visibility Controls
+                    </h3>
+                    <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        Draws, Scores, and Break Standings remain strictly decoupled. Tab directors can lock round draws, embargo specific rooms, and preview breaks before opening public visibility.
+                    </p>
+                    <div class="pt-2 text-[11px] font-mono text-kwuo-bronze dark:text-kwuo-gold flex items-center gap-1 font-semibold">
+                        <span>Audit Trails &amp; Safe Release</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Feature 6: High-Concurrency Async Architecture (Duotone Icon) -->
+                <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm hover:shadow-md transition space-y-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent">
+                        <i class="ph-duotone ph-lightning text-3xl text-kwuo-bronze"></i>
+                    </div>
+                    <h3 class="text-base font-heading font-bold text-theme-heading">
+                        Sub-10ms Async Performance
+                    </h3>
+                    <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        Built on Python 3.13, FastAPI ASGI, Redis caching, and binary MessagePack serialization. Scales gracefully to national championships with hundreds of live concurrent judges.
+                    </p>
+                    <div class="pt-2 text-[11px] font-mono text-kwuo-bronze dark:text-kwuo-gold flex items-center gap-1 font-semibold">
+                        <span>Redis + MsgPack + asyncpg</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Talk to Us / Contact Section -->
+    <div id="contact" class="border-t border-theme-border-subtle py-20 bg-theme-canvas">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="max-w-4xl mx-auto rounded-3xl border border-theme-border bg-theme-surface p-8 sm:p-12 shadow-sm">
+                <div class="text-center max-w-2xl mx-auto mb-8">
+                    <span class="text-xs font-bold font-mono tracking-wider text-kwuo-bronze dark:text-kwuo-gold uppercase">
+                        Get In Touch
+                    </span>
+                    <h2 class="mt-2 text-3xl font-heading font-extrabold text-theme-heading">
+                        Talk to the Tabulation Team
+                    </h2>
+                    <p class="mt-2 text-xs sm:text-sm text-slate-600 dark:text-kwuo-sage">
+                        Have questions about hosting your speech tournament with Kwuo? Want a custom rubric configuration or need technical guidance? Send us a message.
+                    </p>
+                </div>
+
+                <!-- HTMX Response Slot -->
+                <div id="home-contact-response" class="mb-6"></div>
+
+                <form method="POST" action="/contact" hx-post="/contact" hx-target="#home-contact-response" hx-swap="innerHTML" class="space-y-4 max-w-2xl mx-auto">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                                Full Name <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text" name="name" required placeholder="e.g. Coach Emeka" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                                Email Address <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="email" name="email" required placeholder="emeka@university.edu" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                                Institution / League
+                            </label>
+                            <input type="text" name="organization" placeholder="e.g. National Speech League" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                                Inquiry Topic
+                            </label>
+                            <select name="subject" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                                <option value="Tournament Onboarding">Hosting a Tournament with Kwuo</option>
+                                <option value="Custom Rubric Request">Custom Adjudication Rubric Request</option>
+                                <option value="Technical Question">Technical / Systems Question</option>
+                                <option value="General Inquiry">General Feedback or Hello</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                            Message <span class="text-rose-500">*</span>
+                        </label>
+                        <textarea name="message" rows="4" required placeholder="Tell us about your tournament size, timeline, specific rubric requirements, or question..." class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze"></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2">
+                        <span class="text-[11px] text-slate-500 dark:text-kwuo-sage">
+                            Direct response from tab maintainers within 24–48 hours.
+                        </span>
+                        <button type="submit" class="rounded-xl bg-kwuo-bronze px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-kwuo-mahogany transition flex items-center gap-1.5">
+                            <span>Submit Inquiry</span>
+                            <i class="ph-bold ph-paper-plane-right"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

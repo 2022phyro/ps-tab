@@ -1,0 +1,259 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Select {{ model_admin.verbose_name.lower() }} to change — Kwuo Admin{% endblock %}
+
+{% block breadcrumbs %}
+<a href="/admin" class="hover:underline">Home</a>
+<i class="ph-bold ph-caret-right text-xs text-kwuo-sage"></i>
+<a href="/admin" class="hover:underline">{{ model_admin.category }}</a>
+<i class="ph-bold ph-caret-right text-xs text-kwuo-sage"></i>
+<span class="text-slate-800 dark:text-kwuo-sand font-semibold">{{ model_admin.verbose_name_plural }}</span>
+{% endblock %}
+
+{% block admin_content %}
+<div class="pb-12" x-data="{
+    selected: [],
+    allChecked: false,
+    toggleAll(totalCount) {
+        if (this.allChecked) {
+            this.selected = [];
+            this.allChecked = false;
+        } else {
+            const boxes = document.querySelectorAll('.action-select');
+            this.selected = Array.from(boxes).map(b => b.value);
+            this.allChecked = true;
+        }
+    }
+}">
+    <!-- Header with Model Title & "+ Add" Action -->
+    <div class="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-theme-border-subtle pb-4">
+        <div>
+            <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
+                Select {{ model_admin.verbose_name.lower() }} to change
+            </h1>
+            <p class="mt-1 text-xs text-slate-600 dark:text-kwuo-sage">
+                {% if model_admin.slug == 'users' %}
+                Platform Account & RBAC Administration: manage users, administrative status, and scoped memberships.
+                {% else %}
+                View, filter, edit, or execute batch actions on {{ model_admin.verbose_name_plural.lower() }}.
+                {% endif %}
+            </p>
+        </div>
+        <div class="mt-3 sm:mt-0">
+            <a href="/admin/{{ model_admin.slug }}/add" class="inline-flex items-center gap-1.5 rounded-lg bg-kwuo-bronze px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-kwuo-mahogany transition">
+                <i class="ph-bold ph-plus text-xs"></i>
+                <span>Add {{ model_admin.verbose_name }}</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Top Toolbar: Search + Action Selector -->
+    <div class="mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <!-- Search Bar (Django-style) -->
+        {% if model_admin.search_fields %}
+        <form method="GET" action="/admin/{{ model_admin.slug }}" class="flex items-center gap-2 max-w-md w-full">
+            <div class="relative flex-1">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <i class="ph-bold ph-magnifying-glass text-slate-400 dark:text-kwuo-sage text-sm"></i>
+                </div>
+                <input type="text" name="q" value="{{ q }}" placeholder="Search {{ model_admin.verbose_name_plural.lower() }}..." class="block w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-border bg-theme-surface pl-9 pr-8 py-1.5 text-xs text-slate-900 dark:text-kwuo-sand placeholder-slate-400 focus:border-kwuo-bronze focus:outline-none focus:ring-1 focus:ring-kwuo-bronze">
+                {% if q %}
+                <a href="/admin/{{ model_admin.slug }}" class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-white" title="Clear search">
+                    &times;
+                </a>
+                {% endif %}
+            </div>
+            {% for fk, fv in filters.items() %}
+            <input type="hidden" name="{{ fk }}" value="{{ fv }}">
+            {% endfor %}
+            <button type="submit" class="rounded-lg bg-theme-surface-subtle border border-theme-border px-3 py-1.5 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
+                Search
+            </button>
+        </form>
+        {% endif %}
+
+        <!-- Batch Actions Form (Django-style) -->
+        <form id="changelist-action-form" method="POST" action="/admin/{{ model_admin.slug }}/action" class="flex items-center gap-2">
+            <div class="flex items-center gap-2 text-xs">
+                <span class="font-semibold text-slate-700 dark:text-kwuo-gold">Action:</span>
+                <select name="action" required class="rounded-lg border border-slate-300 dark:border-kwuo-dark-border bg-theme-surface py-1.5 pl-2.5 pr-8 text-xs text-slate-800 dark:text-kwuo-sand focus:border-kwuo-bronze focus:ring-kwuo-bronze">
+                    <option value="">--------- Choose action ---------</option>
+                    {% for act in actions %}
+                    <option value="{{ act.name }}">{{ act.description }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" :disabled="selected.length === 0" class="rounded-lg bg-kwuo-mahogany px-3 py-1.5 text-xs font-semibold text-kwuo-sand hover:bg-kwuo-bronze disabled:opacity-40 transition">
+                    Go
+                </button>
+                <span class="text-xs text-slate-500 dark:text-kwuo-sage" x-text="selected.length + ' of {{ total_count }} selected'"></span>
+            </div>
+
+            <!-- Hidden input container for selected ids -->
+            <template x-for="id in selected" :key="id">
+                <input type="hidden" name="_selected_action" :value="id">
+            </template>
+        </form>
+    </div>
+
+    <!-- 2-Column Layout: Table on Left + Filter Sidebar on Right -->
+    <div class="grid grid-cols-1 gap-6 {% if model_admin.list_filter %}lg:grid-cols-4{% endif %}">
+        <!-- Table Column -->
+        <div class="{% if model_admin.list_filter %}lg:col-span-3{% endif %}">
+            <div class="rounded-xl border border-theme-border bg-theme-surface shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-theme-border-subtle text-sm">
+                        <!-- Table Headers with Sorting -->
+                        <thead class="bg-theme-surface-subtle text-left text-xs font-semibold text-theme-heading uppercase tracking-wider select-none">
+                            <tr>
+                                <th class="w-10 px-4 py-3 text-center">
+                                    <input type="checkbox" @change="toggleAll({{ total_count }})" :checked="allChecked" class="rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze">
+                                </th>
+                                {% for col in list_display %}
+                                <th class="px-4 py-3">
+                                    <a href="?ordering={% if ordering == col %}-{{ col }}{% else %}{{ col }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="inline-flex items-center gap-1 hover:text-kwuo-bronze transition">
+                                        <span>{{ col.replace('_', ' ') }}</span>
+                                        {% if ordering == col %}
+                                        <i class="ph-bold ph-caret-up text-kwuo-bronze"></i>
+                                        {% elif ordering == '-' + col %}
+                                        <i class="ph-bold ph-caret-down text-kwuo-bronze"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
+                                {% endfor %}
+                                <th class="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+
+                        <!-- Table Body -->
+                        <tbody class="divide-y divide-theme-border-subtle bg-theme-surface">
+                            {% if rows %}
+                            {% for r in rows %}
+                            <tr class="hover:bg-kwuo-sand/20 dark:hover:bg-kwuo-dark-accent transition">
+                                <!-- Checkbox Column -->
+                                <td class="px-4 py-3 text-center">
+                                    <input type="checkbox" value="{{ r.id }}" x-model="selected" class="action-select rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze">
+                                </td>
+
+                                <!-- Data Cells -->
+                                {% for cell in r.cells %}
+                                <td class="px-4 py-3 text-xs whitespace-nowrap">
+                                    {% if loop.first or cell.column == 'id' %}
+                                        <a href="/admin/{{ model_admin.slug }}/{{ r.id }}" class="font-mono text-kwuo-bronze dark:text-kwuo-gold font-bold hover:underline">
+                                            {{ cell.value }}
+                                        </a>
+                                    {% elif cell.value is sameas true %}
+                                        <!-- Phosphor Check Icon -->
+                                        <span class="inline-flex items-center text-emerald-600 dark:text-emerald-400 font-bold" title="True">
+                                            <i class="ph-bold ph-check text-base"></i>
+                                        </span>
+                                    {% elif cell.value is sameas false %}
+                                        <!-- Phosphor Cross Icon -->
+                                        <span class="inline-flex items-center text-rose-500 dark:text-rose-400 font-bold" title="False">
+                                            <i class="ph-bold ph-x text-base"></i>
+                                        </span>
+                                    {% else %}
+                                        <span class="text-slate-800 dark:text-kwuo-sand">{{ cell.value }}</span>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+
+                                <!-- Row Action Shortcuts -->
+                                <td class="px-4 py-3 text-right whitespace-nowrap text-xs space-x-1.5">
+                                    <a href="/admin/{{ model_admin.slug }}/{{ r.id }}" class="rounded px-2 py-1 font-semibold border border-theme-border text-slate-700 dark:text-kwuo-sand hover:bg-kwuo-sand/20 dark:hover:bg-kwuo-dark-accent transition">
+                                        Edit
+                                    </a>
+
+                                    {% if model_admin.slug == 'users' %}
+                                    <form action="/admin/users/{{ r.id }}/toggle-admin" method="POST" class="inline">
+                                        <button type="submit" class="rounded px-2 py-1 font-semibold border border-kwuo-sage/40 text-theme-heading hover:bg-kwuo-sand/30 transition" title="Toggle Super Admin status">
+                                            Admin
+                                        </button>
+                                    </form>
+                                    <form action="/admin/users/{{ r.id }}/toggle-status" method="POST" class="inline">
+                                        <button type="submit" class="rounded px-2 py-1 font-semibold border border-rose-300 dark:border-rose-900/60 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition" title="Toggle active status">
+                                            Status
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="{{ list_display|length + 2 }}" class="px-6 py-10 text-center text-sm text-slate-500 dark:text-kwuo-sage italic">
+                                    No {{ model_admin.verbose_name_plural.lower() }} found matching your criteria.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Footer -->
+                <div class="border-t border-theme-border-subtle px-6 py-3 bg-theme-surface-subtle flex items-center justify-between text-xs">
+                    <div class="text-slate-600 dark:text-kwuo-sage">
+                        {{ total_count }} {{ model_admin.verbose_name_plural.lower() }} total
+                    </div>
+
+                    {% if total_pages > 1 %}
+                    <div class="flex items-center gap-1">
+                        {% if page > 1 %}
+                        <a href="?page={{ page - 1 }}{% if q %}&q={{ q }}{% endif %}{% if ordering %}&ordering={{ ordering }}{% endif %}" class="rounded px-2 py-1 border border-slate-300 dark:border-kwuo-dark-border hover:bg-white dark:hover:bg-kwuo-dark-surface">
+                            &laquo; Previous
+                        </a>
+                        {% endif %}
+
+                        <span class="px-2 font-semibold text-slate-800 dark:text-kwuo-sand">Page {{ page }} of {{ total_pages }}</span>
+
+                        {% if page < total_pages %}
+                        <a href="?page={{ page + 1 }}{% if q %}&q={{ q }}{% endif %}{% if ordering %}&ordering={{ ordering }}{% endif %}" class="rounded px-2 py-1 border border-slate-300 dark:border-kwuo-dark-border hover:bg-white dark:hover:bg-kwuo-dark-surface">
+                            Next &raquo;
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Django-style Filter Sidebar (Right Column) -->
+        {% if model_admin.list_filter %}
+        <div class="space-y-4">
+            <div class="rounded-xl border border-theme-border bg-theme-surface shadow-sm p-4">
+                <h3 class="text-xs font-heading font-bold uppercase tracking-wider text-theme-heading border-b border-theme-border-subtle pb-2 mb-3">
+                    Filter
+                </h3>
+
+                {% for filter_field in model_admin.list_filter %}
+                <div class="mb-4">
+                    <h4 class="text-[11px] font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1.5">
+                        By {{ filter_field.replace('_', ' ') }}
+                    </h4>
+                    <ul class="space-y-1 text-xs">
+                        <!-- 'All' Option -->
+                        <li>
+                            <a href="/admin/{{ model_admin.slug }}{% if q %}?q={{ q }}{% endif %}" class="block px-2 py-1 rounded transition {% if filter_field not in filters %}font-bold text-theme-heading bg-kwuo-sand/40 dark:bg-kwuo-dark-accent{% else %}text-slate-600 dark:text-kwuo-sage hover:text-slate-900 dark:hover:text-white{% endif %}">
+                                All
+                            </a>
+                        </li>
+                        <!-- 'Yes' / 'True' Option -->
+                        <li>
+                            <a href="/admin/{{ model_admin.slug }}?{{ filter_field }}=true{% if q %}&q={{ q }}{% endif %}" class="block px-2 py-1 rounded transition {% if filters.get(filter_field) == 'true' %}font-bold text-theme-heading bg-kwuo-sand/40 dark:bg-kwuo-dark-accent{% else %}text-slate-600 dark:text-kwuo-sage hover:text-slate-900 dark:hover:text-white{% endif %}">
+                                Yes
+                            </a>
+                        </li>
+                        <!-- 'No' / 'False' Option -->
+                        <li>
+                            <a href="/admin/{{ model_admin.slug }}?{{ filter_field }}=false{% if q %}&q={{ q }}{% endif %}" class="block px-2 py-1 rounded transition {% if filters.get(filter_field) == 'false' %}font-bold text-theme-heading bg-kwuo-sand/40 dark:bg-kwuo-dark-accent{% else %}text-slate-600 dark:text-kwuo-sage hover:text-slate-900 dark:hover:text-white{% endif %}">
+                                No
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

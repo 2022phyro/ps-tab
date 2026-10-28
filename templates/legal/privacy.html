@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy — Kwuo Tabulation Platform{% endblock %}
+
+{% block content %}
+<div class="relative overflow-hidden bg-theme-canvas transition-colors duration-200">
+    <div class="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
+        <div class="border-b border-theme-border-subtle pb-6 mb-8">
+            <span class="text-xs font-mono font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                Legal &amp; Data Governance
+            </span>
+            <h1 class="text-3xl font-heading font-black text-theme-heading mt-2 sm:text-4xl">
+                Privacy Policy
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-kwuo-sage mt-1">
+                Last updated: October 2026 &bull; Effective for all Kwuo tournament instances
+            </p>
+        </div>
+
+        <div class="space-y-8 text-sm text-theme-body leading-relaxed">
+            <section class="space-y-3">
+                <h2 class="text-lg font-heading font-bold text-theme-heading">
+                    1. Fundamental Commitment to Participant Privacy
+                </h2>
+                <p>
+                    Kwuo operates under a strict data minimization philosophy. Competitive forensics should never become a vector for commercial tracking, advertising profiling, or invasive surveillance. We collect and process only the minimal data strictly required to run speech rounds, compute consensus scores, and produce certified tournament records.
+                </p>
+            </section>
+
+            <section class="space-y-3">
+                <h2 class="text-lg font-heading font-bold text-theme-heading">
+                    2. Data Processed During Tournaments
+                </h2>
+                <p>When participating in a Kwuo-hosted tournament, the following data points may be processed:</p>
+                <ul class="list-disc pl-5 space-y-1.5 text-xs text-slate-600 dark:text-kwuo-sage">
+                    <li><strong>Competitor Records:</strong> Competitor names, institutional affiliations (e.g. university/college), and division enrollment.</li>
+                    <li><strong>Adjudicator Records:</strong> Adjudicator names, institutional conflicts, and judge accreditation rankings.</li>
+                    <li><strong>Ballots &amp; Scores:</strong> Numeric scores across rubric criteria, speaker ranks, qualitative feedback comments, and ballot submission timestamps.</li>
+                    <li><strong>Authentication Sessions:</strong> Hashed account passwords (Argon2id) and signed session cookies for tournament organizers and administrators.</li>
+                </ul>
+            </section>
+
+            <section class="space-y-3">
+                <h2 class="text-lg font-heading font-bold text-theme-heading">
+                    3. Zero-Auth Magic Links &amp; Ephemeral Access
+                </h2>
+                <p>
+                    Judges and speakers access ballots and personal schedules via cryptographic tokenized URLs (magic links). These tokens are ephemeral, tied directly to specific round heats, and do not track users across tournaments or store persistent third-party tracking cookies on mobile devices.
+                </p>
+            </section>
+
+            <section class="space-y-3">
+                <h2 class="text-lg font-heading font-bold text-theme-heading">
+                    4. State-Gated Results Publishing
+                </h2>
+                <p>
+                    Ballot details, judge comments, and round results remain strictly confidential within the tournament adjudication core until the tab director explicitly executes a publishing gate. Results may be released publicly or held under embargo according to tournament rules.
+                </p>
+            </section>
+
+            <section class="space-y-3">
+                <h2 class="text-lg font-heading font-bold text-theme-heading">
+                    5. Contact
+                </h2>
+                <p>
+                    For data protection inquiries, export requests, or erasure requests, contact our governance team at <a href="mailto:privacy@kwuo.org" class="text-kwuo-bronze dark:text-kwuo-gold font-semibold hover:underline">privacy@kwuo.org</a>.
+                </p>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}
