@@ -1,0 +1,96 @@
+{# =========================================================================
+   Kwuo Production Button Component Macro
+   Standard, yet uniquely tactile button design system
+   Usage:
+     {% import "macros/button.html" as ui %}
+     {{ ui.button("Open Dashboard", variant="primary", href="/dashboard", icon="ph-bold ph-arrow-right", icon_pos="right") }}
+     {{ ui.button("Submit Ballot", variant="outline", type="submit") }}
+     {{ ui.button("Alternate Action", variant="alternate") }}
+     {{ ui.button("View Archive", variant="ghost") }}
+   ========================================================================= #}
+
+{% macro icon_cadence(class="w-4 h-4 shrink-0") %}
+<svg class="kwuo-btn-icon {{ class }}" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M3.5 3.5 L5.5 9 L3.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M14.5 3.5 L12.5 9 L14.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="7.25" y1="6" x2="7.25" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="9" y1="4" x2="9" y2="14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+    <line x1="10.75" y1="6" x2="10.75" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
+{% endmacro %}
+
+{% macro button(
+    label,
+    variant="primary",
+    size="md",
+    href=None,
+    type="button",
+    icon=None,
+    icon_pos="left",
+    custom_icon=None,
+    pill=false,
+    disabled=false,
+    loading=false,
+    attrs="",
+    class=""
+) %}
+{% set size_class = "kwuo-btn-" ~ size %}
+{% set variant_class = "kwuo-btn-" ~ variant %}
+{% set pill_class = " kwuo-btn-pill" if pill else "" %}
+{% set state_class = (" is-loading" if loading else "") ~ (" is-disabled" if disabled else "") %}
+{% set full_classes = "kwuo-btn " ~ variant_class ~ " " ~ size_class ~ pill_class ~ state_class ~ (" " ~ class if class else "") %}
+
+{% if href and not disabled %}
+<a href="{{ href }}" class="{{ full_classes }}" role="button" {% if attrs %}{{ attrs|safe }}{% endif %}>
+    {% if loading %}
+        <span class="kwuo-btn-spinner" aria-hidden="true"></span>
+    {% elif icon_pos == "left" %}
+        {% if custom_icon %}
+            {{ custom_icon|safe }}
+        {% elif icon and icon is string %}
+            <i class="{{ icon }} text-base leading-none"></i>
+        {% elif icon == true %}
+            {{ icon_cadence() }}
+        {% endif %}
+    {% endif %}
+
+    {% if label %}
+        <span>{{ label }}</span>
+    {% endif %}
+
+    {% if not loading and icon_pos == "right" %}
+        {% if custom_icon %}
+            {{ custom_icon|safe }}
+        {% elif icon and icon is string %}
+            <i class="{{ icon }} text-base leading-none"></i>
+        {% endif %}
+    {% endif %}
+</a>
+{% else %}
+<button type="{{ type }}" class="{{ full_classes }}" {% if disabled %}disabled{% endif %} {% if loading %}aria-busy="true"{% endif %} {% if attrs %}{{ attrs|safe }}{% endif %}>
+    {% if loading %}
+        <span class="kwuo-btn-spinner" aria-hidden="true"></span>
+    {% elif icon_pos == "left" %}
+        {% if custom_icon %}
+            {{ custom_icon|safe }}
+        {% elif icon and icon is string %}
+            <i class="{{ icon }} text-base leading-none"></i>
+        {% elif icon == true %}
+            {{ icon_cadence() }}
+        {% endif %}
+    {% endif %}
+
+    {% if label %}
+        <span>{{ label }}</span>
+    {% endif %}
+
+    {% if not loading and icon_pos == "right" %}
+        {% if custom_icon %}
+            {{ custom_icon|safe }}
+        {% elif icon and icon is string %}
+            <i class="{{ icon }} text-base leading-none"></i>
+        {% endif %}
+    {% endif %}
+</button>
+{% endif %}
+{% endmacro %}

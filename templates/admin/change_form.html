@@ -1,7 +1,8 @@
 {% extends "admin/base_admin.html" %}
 
 {% block title %}
-{% if is_add %}Add {{ model_admin.verbose_name.lower() }}{% else %}Change {{ model_admin.verbose_name.lower() }}{% endif %} — Kwuo Admin
+{% if is_add %}Add {{ model_admin.verbose_name.lower() }}{% else %}Change {{ model_admin.verbose_name.lower() }}{% endif
+%} — Kwuo Admin
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -19,13 +20,15 @@
 {% block admin_content %}
 <div class="pb-16" x-data="{ resetPasswordModalOpen: false }">
     <!-- Header with Title & Object Tools -->
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-theme-border-subtle pb-4">
+    <div
+        class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-theme-border-subtle pb-4">
         <div>
             <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
-                {% if is_add %}Add {{ model_admin.verbose_name }}{% else %}Change {{ model_admin.verbose_name }}{% endif %}
+                {% if is_add %}Add {{ model_admin.verbose_name }}{% else %}Change {{ model_admin.verbose_name }}{% endif
+                %}
             </h1>
             {% if not is_add %}
-            <p class="mt-1 font-mono text-xs text-slate-500 dark:text-kwuo-sage">
+            <p class="mt-1 font-body text-xs text-slate-500 dark:text-kwuo-sage">
                 ID: {{ instance.id }}
             </p>
             {% endif %}
@@ -35,64 +38,74 @@
         {% if not is_add %}
         <div class="mt-4 sm:mt-0 flex flex-wrap items-center gap-2">
             {% if model_admin.slug == 'users' %}
-                <!-- Toggle Super Admin -->
-                <form action="/admin/users/{{ instance.id }}/toggle-admin" method="POST" class="inline">
-                    <button type="submit" class="rounded-lg border border-kwuo-sage px-3 py-1.5 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
-                        {% if instance.is_super_admin %}Demote from Admin{% else %}Promote to Admin{% endif %}
-                    </button>
-                </form>
-
-                <!-- Toggle Active/Suspended -->
-                <form action="/admin/users/{{ instance.id }}/toggle-status" method="POST" class="inline">
-                    <button type="submit" class="rounded-lg border border-rose-300 dark:border-rose-900/60 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
-                        {% if instance.is_active %}Suspend Account{% else %}Activate Account{% endif %}
-                    </button>
-                </form>
-
-                <!-- Reset Password Trigger -->
-                <button type="button" @click="resetPasswordModalOpen = true" class="rounded-lg bg-theme-surface-subtle border border-theme-border px-3 py-1.5 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/40 transition">
-                    Reset Password
+            <!-- Toggle Super Admin -->
+            <form action="/admin/users/{{ instance.id }}/toggle-admin" method="POST" class="inline">
+                <button type="submit"
+                    class="rounded-lg border border-kwuo-sage px-3 py-1.5 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
+                    {% if instance.is_super_admin %}Demote from Admin{% else %}Promote to Admin{% endif %}
                 </button>
-            {% elif model_admin.slug == 'groups' %}
-                <!-- Clone Group -->
-                <form action="/admin/groups/{{ instance.id }}/clone" method="POST" class="inline">
-                    <button type="submit" class="rounded-lg border border-kwuo-sage px-3 py-1.5 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
-                        Duplicate Group
-                    </button>
-                </form>
+            </form>
 
-                <!-- Assign All Users -->
-                <form action="/admin/groups/{{ instance.id }}/assign-all" method="POST" class="inline">
-                    <button type="submit" class="rounded-lg bg-kwuo-bronze px-3 py-1.5 text-xs font-semibold text-white hover:bg-kwuo-mahogany transition">
-                        Assign All Active Users
-                    </button>
-                </form>
+            <!-- Toggle Active/Suspended -->
+            <form action="/admin/users/{{ instance.id }}/toggle-status" method="POST" class="inline">
+                <button type="submit"
+                    class="rounded-lg border border-rose-300 dark:border-rose-900/60 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
+                    {% if instance.is_active %}Suspend Account{% else %}Activate Account{% endif %}
+                </button>
+            </form>
+
+            <!-- Reset Password Trigger -->
+            <button type="button" @click="resetPasswordModalOpen = true"
+                class="rounded-lg bg-theme-surface-subtle border border-theme-border px-3 py-1.5 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/40 transition">
+                Reset Password
+            </button>
+            {% elif model_admin.slug == 'groups' %}
+            <!-- Clone Group -->
+            <form action="/admin/groups/{{ instance.id }}/clone" method="POST" class="inline">
+                <button type="submit"
+                    class="rounded-lg border border-kwuo-sage px-3 py-1.5 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
+                    Duplicate Group
+                </button>
+            </form>
+
+            <!-- Assign All Users -->
+            <form action="/admin/groups/{{ instance.id }}/assign-all" method="POST" class="inline">
+                <button type="submit"
+                    class="rounded-lg bg-kwuo-bronze px-3 py-1.5 text-xs font-semibold text-white hover:bg-kwuo-mahogany transition">
+                    Assign All Active Users
+                </button>
+            </form>
             {% endif %}
         </div>
         {% endif %}
     </div>
 
     <!-- Main Change Form -->
-    <form method="POST" action="{% if is_add %}/admin/{{ model_admin.slug }}/add{% else %}/admin/{{ model_admin.slug }}/{{ instance.id }}{% endif %}" class="space-y-6">
+    <form method="POST"
+        action="{% if is_add %}/admin/{{ model_admin.slug }}/add{% else %}/admin/{{ model_admin.slug }}/{{ instance.id }}{% endif %}"
+        class="space-y-6">
         <div class="rounded-xl border border-theme-border bg-theme-surface shadow-sm p-6 space-y-6">
 
             <!-- Readonly Metadata Strip (if editing) -->
             {% if not is_add %}
-            <div class="rounded-lg bg-theme-surface-subtle border border-theme-border-subtle p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div
+                class="rounded-lg bg-theme-surface-subtle border border-theme-border-subtle p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                 <div>
                     <span class="block text-slate-500 dark:text-kwuo-sage font-medium">Record ID</span>
-                    <span class="font-mono font-bold text-slate-800 dark:text-kwuo-sand">{{ instance.id }}</span>
+                    <span class="font-body font-bold text-slate-800 dark:text-kwuo-sand">{{ instance.id }}</span>
                 </div>
                 {% if instance.created_at is defined and instance.created_at %}
                 <div>
                     <span class="block text-slate-500 dark:text-kwuo-sage font-medium">Created At</span>
-                    <span class="text-slate-800 dark:text-kwuo-sand">{{ instance.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</span>
+                    <span class="text-slate-800 dark:text-kwuo-sand">{{ instance.created_at.strftime('%Y-%m-%d %H:%M:%S
+                        UTC') }}</span>
                 </div>
                 {% endif %}
                 {% if instance.updated_at is defined and instance.updated_at %}
                 <div>
                     <span class="block text-slate-500 dark:text-kwuo-sage font-medium">Last Modified</span>
-                    <span class="text-slate-800 dark:text-kwuo-sand">{{ instance.updated_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</span>
+                    <span class="text-slate-800 dark:text-kwuo-sand">{{ instance.updated_at.strftime('%Y-%m-%d %H:%M:%S
+                        UTC') }}</span>
                 </div>
                 {% endif %}
             </div>
@@ -102,25 +115,33 @@
             {% if model_admin.slug == 'users' %}
             <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         Full Name <span class="text-rose-500">*</span>
                     </label>
-                    <input type="text" name="full_name" required value="{{ instance.full_name if instance else '' }}" placeholder="e.g. Tab Master Alice" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                    <input type="text" name="full_name" required value="{{ instance.full_name if instance else '' }}"
+                        placeholder="e.g. Tab Master Alice"
+                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         Email Address <span class="text-rose-500">*</span>
                     </label>
-                    <input type="email" name="email" required value="{{ instance.email if instance else '' }}" placeholder="user@institution.edu" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                    <input type="email" name="email" required value="{{ instance.email if instance else '' }}"
+                        placeholder="user@institution.edu"
+                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
                 </div>
 
                 {% if is_add %}
                 <div class="sm:col-span-2">
-                    <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         Initial Password
                     </label>
-                    <input type="password" name="password" placeholder="Leave empty for zero-auth / invite links" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                    <input type="password" name="password" placeholder="Leave empty for zero-auth / invite links"
+                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
                     <p class="mt-1 text-[11px] text-slate-500 dark:text-kwuo-sage">
                         Passwords are automatically hashed with Argon2id.
                     </p>
@@ -134,18 +155,24 @@
                     </h3>
                     <div class="flex flex-col sm:flex-row gap-6">
                         <label class="relative flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" name="is_super_admin" value="true" {% if instance and instance.is_super_admin %}checked{% endif %} class="h-4 w-4 rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze mt-0.5">
+                            <input type="checkbox" name="is_super_admin" value="true" {% if instance and
+                                instance.is_super_admin %}checked{% endif %}
+                                class="h-4 w-4 rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze mt-0.5">
                             <div class="text-xs">
                                 <span class="font-bold text-slate-800 dark:text-kwuo-sand">Superuser status</span>
-                                <p class="text-slate-500 dark:text-kwuo-sage">Designates that this user has all permissions without explicitly assigning them.</p>
+                                <p class="text-slate-500 dark:text-kwuo-sage">Designates that this user has all
+                                    permissions without explicitly assigning them.</p>
                             </div>
                         </label>
 
                         <label class="relative flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" name="is_active" value="true" {% if is_add or (instance and instance.is_active) %}checked{% endif %} class="h-4 w-4 rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze mt-0.5">
+                            <input type="checkbox" name="is_active" value="true" {% if is_add or (instance and
+                                instance.is_active) %}checked{% endif %}
+                                class="h-4 w-4 rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze mt-0.5">
                             <div class="text-xs">
                                 <span class="font-bold text-slate-800 dark:text-kwuo-sand">Active</span>
-                                <p class="text-slate-500 dark:text-kwuo-sage">Designates whether this user should be treated as active. Unselect this instead of deleting accounts.</p>
+                                <p class="text-slate-500 dark:text-kwuo-sage">Designates whether this user should be
+                                    treated as active. Unselect this instead of deleting accounts.</p>
                             </div>
                         </label>
                     </div>
@@ -153,13 +180,18 @@
 
                 <!-- Group Memberships Multi-Select -->
                 <div class="sm:col-span-2 border-t border-theme-border-subtle pt-4">
-                    <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-2">
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-2">
                         Security Groups
                     </label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 border border-slate-200 dark:border-kwuo-dark-border rounded-lg p-3 bg-theme-surface-subtle max-h-60 overflow-y-auto">
+                    <div
+                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 border border-slate-200 dark:border-kwuo-dark-border rounded-lg p-3 bg-theme-surface-subtle max-h-60 overflow-y-auto">
                         {% for g in groups %}
-                        <label class="flex items-center gap-2 text-xs p-1 rounded hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent cursor-pointer">
-                            <input type="checkbox" name="groups" value="{{ g.id }}" {% if assigned_group_ids and g.id in assigned_group_ids %}checked{% endif %} class="rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze">
+                        <label
+                            class="flex items-center gap-2 text-xs p-1 rounded hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent cursor-pointer">
+                            <input type="checkbox" name="groups" value="{{ g.id }}" {% if assigned_group_ids and g.id in
+                                assigned_group_ids %}checked{% endif %}
+                                class="rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze">
                             <span class="font-medium text-slate-800 dark:text-kwuo-sand">{{ g.name }}</span>
                             {% if g.tournament_id %}
                             <span class="text-[10px] text-kwuo-bronze font-bold">(Tourn)</span>
@@ -174,35 +206,49 @@
             {% elif model_admin.slug == 'groups' %}
             <div class="space-y-5">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         Group Name <span class="text-rose-500">*</span>
                     </label>
-                    <input type="text" name="name" required value="{{ instance.name if instance else '' }}" placeholder="e.g. Chief Adjudication Panel (CAP)" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                    <input type="text" name="name" required value="{{ instance.name if instance else '' }}"
+                        placeholder="e.g. Chief Adjudication Panel (CAP)"
+                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         Description
                     </label>
-                    <textarea name="description" rows="2" placeholder="Responsibilities and scope of this security group..." class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">{{ instance.description if instance and instance.description else '' }}</textarea>
+                    <textarea name="description" rows="2"
+                        placeholder="Responsibilities and scope of this security group..."
+                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">{{ instance.description if instance and instance.description else '' }}</textarea>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                        <label
+                            class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                             Scope
                         </label>
-                        <select name="scope_type" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
-                            <option value="global" {% if instance and not instance.tournament_id %}selected{% endif %}>Platform Global (All Tournaments)</option>
-                            <option value="tournament" {% if instance and instance.tournament_id %}selected{% endif %}>Tournament-Scoped</option>
+                        <select name="scope_type"
+                            class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                            <option value="global" {% if instance and not instance.tournament_id %}selected{% endif %}>
+                                Platform Global (All Tournaments)</option>
+                            <option value="tournament" {% if instance and instance.tournament_id %}selected{% endif %}>
+                                Tournament-Scoped</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                        <label
+                            class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                             Tournament ID (if tournament-scoped)
                         </label>
-                        <input type="text" name="tournament_id" value="{{ instance.tournament_id if instance and instance.tournament_id else '' }}" placeholder="tourn_..." class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                        <input type="text" name="tournament_id"
+                            value="{{ instance.tournament_id if instance and instance.tournament_id else '' }}"
+                            placeholder="tourn_..."
+                            class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
                     </div>
                 </div>
 
@@ -215,7 +261,9 @@
 
                     <!-- Add Permission Inline Form -->
                     <div class="flex items-center gap-2 mb-4">
-                        <input type="text" id="new_perm_input" placeholder="e.g. tournament:ballot:edit or section:allocate" class="flex-1 rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-1.5 text-xs text-slate-900 dark:text-kwuo-sand focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                        <input type="text" id="new_perm_input"
+                            placeholder="e.g. tournament:ballot:edit or section:allocate"
+                            class="flex-1 rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-1.5 text-xs text-slate-900 dark:text-kwuo-sand focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
                         <button type="button" onclick="
                             const val = document.getElementById('new_perm_input').value.trim();
                             if(val) {
@@ -230,7 +278,8 @@
                                 document.body.appendChild(f);
                                 f.submit();
                             }
-                        " class="rounded-lg bg-kwuo-bronze px-3 py-1.5 text-xs font-semibold text-white hover:bg-kwuo-mahogany transition flex items-center gap-1">
+                        "
+                            class="rounded-lg bg-kwuo-bronze px-3 py-1.5 text-xs font-semibold text-white hover:bg-kwuo-mahogany transition flex items-center gap-1">
                             <i class="ph-bold ph-plus text-xs"></i>
                             <span>Add Permission</span>
                         </button>
@@ -239,16 +288,20 @@
                     <!-- Permissions List -->
                     <div class="flex flex-wrap gap-2">
                         {% for p in group_permissions %}
-                        <div class="inline-flex items-center gap-1.5 rounded-lg bg-theme-surface-subtle border border-theme-border px-2.5 py-1 text-xs text-theme-heading font-mono">
+                        <div
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-theme-surface-subtle border border-theme-border px-2.5 py-1 text-xs text-theme-heading font-body">
                             <span>{{ p.permission }}</span>
-                            <form action="/admin/groups/{{ instance.id }}/permissions/{{ p.id }}/delete" method="POST" class="inline">
-                                <button type="submit" class="text-slate-400 hover:text-rose-600 font-bold ml-1" title="Remove permission">
+                            <form action="/admin/groups/{{ instance.id }}/permissions/{{ p.id }}/delete" method="POST"
+                                class="inline">
+                                <button type="submit" class="text-slate-400 hover:text-rose-600 font-bold ml-1"
+                                    title="Remove permission">
                                     <i class="ph-bold ph-x text-xs"></i>
                                 </button>
                             </form>
                         </div>
                         {% else %}
-                        <span class="text-xs text-slate-500 italic">No permissions currently assigned to this group.</span>
+                        <span class="text-xs text-slate-500 italic">No permissions currently assigned to this
+                            group.</span>
                         {% endfor %}
                     </div>
                 </div>
@@ -259,20 +312,26 @@
             {% elif model_admin.slug == 'group-permissions' %}
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         Group <span class="text-rose-500">*</span>
                     </label>
-                    <select name="group_id" required class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze">
+                    <select name="group_id" required
+                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze">
                         {% for g in groups %}
-                        <option value="{{ g.id }}" {% if instance and instance.group_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                        <option value="{{ g.id }}" {% if instance and instance.group_id==g.id %}selected{% endif %}>{{
+                            g.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         Permission String <span class="text-rose-500">*</span>
                     </label>
-                    <input type="text" name="permission" required value="{{ instance.permission if instance else '' }}" placeholder="e.g. tournament:ballot:edit" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand font-mono shadow-sm focus:border-kwuo-bronze">
+                    <input type="text" name="permission" required value="{{ instance.permission if instance else '' }}"
+                        placeholder="e.g. tournament:ballot:edit"
+                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand font-body shadow-sm focus:border-kwuo-bronze">
                 </div>
             </div>
 
@@ -280,32 +339,147 @@
             {% elif model_admin.slug == 'group-memberships' %}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         User <span class="text-rose-500">*</span>
                     </label>
-                    <select name="user_id" required class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze">
+                    <select name="user_id" required
+                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze">
                         {% for u in users %}
-                        <option value="{{ u.id }}" {% if instance and instance.user_id == u.id %}selected{% endif %}>{{ u.full_name }} ({{ u.email }})</option>
+                        <option value="{{ u.id }}" {% if instance and instance.user_id==u.id %}selected{% endif %}>{{
+                            u.full_name }} ({{ u.email }})</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         Group <span class="text-rose-500">*</span>
                     </label>
-                    <select name="group_id" required class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze">
+                    <select name="group_id" required
+                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze">
                         {% for g in groups %}
-                        <option value="{{ g.id }}" {% if instance and instance.group_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                        <option value="{{ g.id }}" {% if instance and instance.group_id==g.id %}selected{% endif %}>{{
+                            g.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
+            </div>
+
+            <!-- Audit Log Read-Only Compliance View -->
+            {% elif model_admin.slug == 'audit-logs' %}
+            <div class="space-y-6">
+                <!-- Severity & Status Banner -->
+                <div
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-theme-border bg-theme-surface-subtle">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Severity:</span>
+                        {{ model_admin.severity_badge(instance) | safe }}
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-2">Outcome:</span>
+                        {% if instance.success %}
+                        <span
+                            class="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 px-2.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+                            <i class="ph-bold ph-check-circle"></i> SUCCESS
+                        </span>
+                        {% else %}
+                        <span
+                            class="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 px-2.5 py-0.5 rounded border border-rose-300 dark:border-rose-900/60">
+                            <i class="ph-bold ph-x-circle"></i> FAILED
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="text-xs text-slate-500 font-body">
+                        {{ instance.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') if instance.created_at else '' }}
+                    </div>
+                </div>
+
+                <!-- Event Details Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                    <div class="rounded-lg bg-theme-surface-subtle p-3.5 border border-theme-border-subtle">
+                        <span
+                            class="block text-slate-500 font-medium mb-1 uppercase tracking-wider text-[10px]">Action</span>
+                        <span class="font-body font-bold text-kwuo-bronze dark:text-kwuo-gold text-sm">{{
+                            instance.action }}</span>
+                        {% if instance.action_description %}
+                        <p class="mt-1 text-slate-600 dark:text-kwuo-sage">{{ instance.action_description }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="rounded-lg bg-theme-surface-subtle p-3.5 border border-theme-border-subtle">
+                        <span
+                            class="block text-slate-500 font-medium mb-1 uppercase tracking-wider text-[10px]">Actor</span>
+                        <span class="font-bold text-slate-800 dark:text-kwuo-sand">{{ instance.user_email or 'Anonymous
+                            / System' }}</span>
+                        {% if instance.user_id %}
+                        <span class="block font-body text-[11px] text-slate-500 mt-0.5">{{ instance.user_id }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="rounded-lg bg-theme-surface-subtle p-3.5 border border-theme-border-subtle">
+                        <span class="block text-slate-500 font-medium mb-1 uppercase tracking-wider text-[10px]">Target
+                            Resource</span>
+                        <span class="font-bold text-slate-800 dark:text-kwuo-sand">{{ instance.resource_type or 'None'
+                            }}</span>
+                        {% if instance.resource_name or instance.resource_id %}
+                        <span class="block font-body text-[11px] text-slate-500 mt-0.5">{{ instance.resource_name or
+                            instance.resource_id }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="rounded-lg bg-theme-surface-subtle p-3.5 border border-theme-border-subtle">
+                        <span class="block text-slate-500 font-medium mb-1 uppercase tracking-wider text-[10px]">IP
+                            Address</span>
+                        <span class="font-body text-slate-800 dark:text-kwuo-sand">{{ instance.ip_address or 'Unknown'
+                            }}</span>
+                    </div>
+                    <div class="rounded-lg bg-theme-surface-subtle p-3.5 border border-theme-border-subtle">
+                        <span class="block text-slate-500 font-medium mb-1 uppercase tracking-wider text-[10px]">HTTP
+                            Request</span>
+                        <span class="font-body text-slate-800 dark:text-kwuo-sand">{{ instance.request_method or 'N/A'
+                            }} {{ instance.request_path or '' }}</span>
+                    </div>
+                    <div class="rounded-lg bg-theme-surface-subtle p-3.5 border border-theme-border-subtle">
+                        <span class="block text-slate-500 font-medium mb-1 uppercase tracking-wider text-[10px]">User
+                            Agent</span>
+                        <span class="truncate block text-slate-600 dark:text-kwuo-sage text-[11px]"
+                            title="{{ instance.user_agent }}">{{ instance.user_agent or 'N/A' }}</span>
+                    </div>
+                </div>
+
+                <!-- Changes / Payload JSON -->
+                {% if instance.changes %}
+                <div class="rounded-xl border border-theme-border p-4 bg-theme-surface-subtle">
+                    <span
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-2">Attribute
+                        Changes</span>
+                    <pre
+                        class="bg-black/80 text-emerald-400 p-3 rounded-lg text-xs font-body overflow-x-auto">{{ instance.changes }}</pre>
+                </div>
+                {% endif %}
+
+                {% if instance.extra_data %}
+                <div class="rounded-xl border border-theme-border p-4 bg-theme-surface-subtle">
+                    <span
+                        class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-2">Extra
+                        Metadata</span>
+                    <pre
+                        class="bg-black/80 text-slate-300 p-3 rounded-lg text-xs font-body overflow-x-auto">{{ instance.extra_data }}</pre>
+                </div>
+                {% endif %}
+
+                {% if instance.error_message %}
+                <div
+                    class="rounded-xl border border-rose-300 dark:border-rose-900/60 p-4 bg-rose-50 dark:bg-rose-950/30 text-xs text-rose-800 dark:text-rose-300">
+                    <span class="font-bold block mb-1">Error Message</span>
+                    <p>{{ instance.error_message }}</p>
+                </div>
+                {% endif %}
             </div>
             {% endif %}
 
         </div>
 
         <!-- Django-style Submit Row -->
-        <div class="rounded-xl border border-theme-border bg-theme-surface-subtle p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+        {% if model_admin.slug != 'audit-logs' %}
+        <div
+            class="rounded-xl border border-theme-border bg-theme-surface-subtle p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
             <div>
                 {% if not is_add %}
                 <button type="button" onclick="if(confirm('Are you sure you want to delete this {{ model_admin.verbose_name.lower() }}?')) {
@@ -314,30 +488,48 @@
                     f.action = '/admin/{{ model_admin.slug }}/{{ instance.id }}/delete';
                     document.body.appendChild(f);
                     f.submit();
-                }" class="rounded-lg bg-rose-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-700 transition">
+                }"
+                    class="rounded-lg bg-rose-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-700 transition">
                     Delete
                 </button>
                 {% endif %}
             </div>
 
             <div class="flex items-center gap-2">
-                <button type="submit" name="_action" value="_addanother" class="rounded-lg border border-kwuo-sage bg-theme-surface px-3.5 py-2 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
+                <button type="submit" name="_action" value="_addanother"
+                    class="rounded-lg border border-kwuo-sage bg-theme-surface px-3.5 py-2 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
                     Save and add another
                 </button>
-                <button type="submit" name="_action" value="_continue" class="rounded-lg border border-kwuo-sage bg-theme-surface px-3.5 py-2 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
+                <button type="submit" name="_action" value="_continue"
+                    class="rounded-lg border border-kwuo-sage bg-theme-surface px-3.5 py-2 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
                     Save and continue editing
                 </button>
-                <button type="submit" name="_action" value="_save" class="rounded-lg bg-kwuo-bronze px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-kwuo-mahogany transition">
+                <button type="submit" name="_action" value="_save"
+                    class="rounded-lg bg-kwuo-bronze px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-kwuo-mahogany transition">
                     Save
                 </button>
             </div>
         </div>
+        {% else %}
+        <div
+            class="rounded-xl border border-theme-border bg-theme-surface-subtle p-4 flex items-center justify-between shadow-sm">
+            <span class="text-xs text-slate-500 italic flex items-center gap-1.5">
+                <i class="ph-bold ph-lock-key"></i> Compliance Audit Logs are append-only and strictly immutable.
+            </span>
+            <a href="/admin/audit-logs"
+                class="rounded-lg border border-theme-border bg-theme-surface px-4 py-2 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
+                &larr; Back to Audit Logs
+            </a>
+        </div>
+        {% endif %}
     </form>
 
     <!-- Reset Password Modal (for Users) -->
     {% if not is_add and model_admin.slug == 'users' %}
-    <div x-show="resetPasswordModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-        <div @click.away="resetPasswordModalOpen = false" class="w-full max-w-md rounded-xl border border-theme-border bg-theme-surface p-6 shadow-xl space-y-4">
+    <div x-show="resetPasswordModalOpen" x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div @click.away="resetPasswordModalOpen = false"
+            class="w-full max-w-md rounded-xl border border-theme-border bg-theme-surface p-6 shadow-xl space-y-4">
             <h3 class="text-base font-heading font-bold text-theme-heading">
                 Set New Password
             </h3>
@@ -346,14 +538,18 @@
             </p>
             <form action="/admin/users/{{ instance.id }}/reset-password" method="POST" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 dark:text-kwuo-gold mb-1">New Password</label>
-                    <input type="password" name="new_password" required minlength="8" placeholder="Minimum 8 characters" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-kwuo-gold mb-1">New
+                        Password</label>
+                    <input type="password" name="new_password" required minlength="8" placeholder="Minimum 8 characters"
+                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand">
                 </div>
                 <div class="flex justify-end gap-2">
-                    <button type="button" @click="resetPasswordModalOpen = false" class="rounded-lg border border-slate-300 dark:border-kwuo-dark-border px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-kwuo-sand">
+                    <button type="button" @click="resetPasswordModalOpen = false"
+                        class="rounded-lg border border-slate-300 dark:border-kwuo-dark-border px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-kwuo-sand">
                         Cancel
                     </button>
-                    <button type="submit" class="rounded-lg bg-kwuo-bronze px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-kwuo-mahogany">
+                    <button type="submit"
+                        class="rounded-lg bg-kwuo-bronze px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-kwuo-mahogany">
                         Update Password
                     </button>
                 </div>

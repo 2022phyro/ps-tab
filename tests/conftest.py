@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from kwuo.main import app
 from kwuo.models.base import Base
+import kwuo.models  # Ensure all model tables are registered on Base.metadata
 from kwuo.core.database import get_db_session
 
 # In-memory async SQLite engine for lightning-fast testing

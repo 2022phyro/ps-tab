@@ -1,0 +1,48 @@
+{# =========================================================================
+   Kwuo Editorial Components Macro
+   - Torn-Docket Card (Primary Content Container)
+   - Wind-Curled Post-It Note (Alert & Briefing Container)
+   Usage:
+     {% import "macros/editorial.html" as edit %}
+     {% call edit.torn_docket() %} ... {% endcall %}
+     {% call edit.post_it(title="Motion Release") %} ... {% endcall %}
+   ========================================================================= #}
+
+{% macro torn_docket(class="", wrapper_class="", attrs="") %}
+<div class="kwuo-torn-docket-wrapper {{ wrapper_class }}">
+    <article class="kwuo-torn-docket {{ class }}" {% if attrs %}{{ attrs|safe }}{% endif %}>
+        {{ caller() if caller else '' }}
+    </article>
+</div>
+{% endmacro %}
+
+{% macro post_it(title=None, tag="", curl="right", curl_md=None, size="md", tone=None, color=None, tape=true, class="", style="", attrs="") %}
+{% set presets = ["xs", "sm", "md", "lg"] %}
+{% set size_class = ("kwuo-post-it-" ~ size) if size in presets else "" %}
+{% set inline_vars = ("" if size in presets else ("--curl-size:" ~ size ~ ";")) ~ (("--note:" ~ color ~ ";") if color else "") %}
+<aside class="kwuo-post-it kwuo-post-it-{{ curl }}{% if curl_md %} kwuo-post-it-from-md-{{ curl_md }}{% endif %} {{ size_class }}{% if tone %} kwuo-post-it-tone-{{ tone }}{% endif %} {{ class }}"
+       {% if inline_vars or style %}style="{{ inline_vars }}{{ style }}"{% endif %}
+       {% if attrs %}{{ attrs|safe }}{% endif %}>
+    {% if tape %}
+    <div class="kwuo-tape-strip" aria-hidden="true"></div>
+    {% endif %}
+
+    {% if tag or title %}
+    <div class="flex items-center justify-between gap-3 mb-2.5">
+        {% if tag %}
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-kwuo-mahogany/10 dark:bg-kwuo-dark-border text-kwuo-mahogany dark:text-kwuo-gold border border-kwuo-mahogany/20 dark:border-kwuo-gold/20">
+            <span class="h-1.5 w-1.5 rounded-full bg-kwuo-bronze dark:bg-kwuo-gold animate-pulse"></span>
+            {{ tag }}
+        </span>
+        {% endif %}
+    </div>
+    {% if title %}
+    <h3 class="text-base sm:text-lg font-heading font-black tracking-tight text-kwuo-mahogany dark:text-kwuo-sand mb-2">
+        {{ title }}
+    </h3>
+    {% endif %}
+    {% endif %}
+
+    {{ caller() if caller else '' }}
+</aside>
+{% endmacro %}

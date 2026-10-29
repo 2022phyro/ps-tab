@@ -1,0 +1,552 @@
+{% extends "base.html" %}
+
+{% block title %}Kwuo Button Component — Design Specification{% endblock %}
+
+{% block content %}
+{% import "macros/button.html" as ui %}
+
+<div class="min-h-screen bg-theme-canvas text-theme-body py-12 sm:py-20 transition-colors">
+    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-16">
+
+        <!-- Header / Component Identity -->
+        <div class="space-y-4 border-b border-theme-border pb-8">
+            <div class="flex items-center gap-2">
+                <span
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-body font-bold tracking-wider uppercase bg-kwuo-sand/70 dark:bg-kwuo-dark-accent text-kwuo-mahogany dark:text-kwuo-sand border border-kwuo-sage/40">
+                    Component Specification &bull; Core UI System
+                </span>
+                <span class="text-xs font-body text-slate-500 dark:text-kwuo-sage">v2.0.0 (Standard Tactile)</span>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-heading font-black tracking-tight text-theme-heading">
+                The Kwuo Button System
+            </h1>
+            <p class="max-w-3xl text-sm sm:text-base text-slate-600 dark:text-kwuo-gold leading-relaxed">
+                Standard, ergonomic geometry paired with a uniquely tactile oratorical personality. Direct harmony with
+                Kwuo’s headers and footers, featuring rich warm shadows, responsive 1px mechanical press transitions,
+                and high-contrast accessible tokens.
+            </p>
+        </div>
+
+        <!-- 1. LIVE HERO SPECIMEN -->
+        <div class="rounded-3xl border border-theme-border bg-theme-surface p-8 sm:p-12 shadow-sm space-y-8">
+            <div class="flex items-center justify-between border-b border-theme-border-subtle pb-4">
+                <span class="text-xs font-body font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                    01 &bull; Interactive Specimen
+                </span>
+                <span class="text-xs text-slate-500 dark:text-kwuo-sage font-body">Hover, click, or tab through each
+                    variant</span>
+            </div>
+
+            <!-- Specimen Display -->
+            <div class="py-6 flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+                <!-- Full Solid Primary -->
+                {{ ui.button("Open Dashboard", variant="primary", size="lg", icon="ph-bold ph-rocket-launch") }}
+
+                <!-- Alternate Filled -->
+                {{ ui.button("Submit Ballot", variant="alternate", size="lg", icon="ph-bold ph-check") }}
+
+                <!-- Full Outlined -->
+                {{ ui.button("Pairing Matrix", variant="outline", size="lg", icon="ph-bold ph-table") }}
+
+                <!-- Surface Outlined (Secondary) -->
+                {{ ui.button("View Standings", variant="secondary", size="lg", icon="ph-bold ph-chart-bar") }}
+
+                <!-- Ghost Action -->
+                {{ ui.button("Read Docs", variant="ghost", size="lg", icon="ph-bold ph-book-open") }}
+            </div>
+
+            <div class="text-center text-xs text-slate-500 dark:text-kwuo-sage font-body">
+                Clean rounded geometry &bull; Real micro-borders &bull; Tactile active press &bull; High-contrast dark
+                mode support
+            </div>
+        </div>
+
+        <!-- 2. COMPREHENSIVE VARIANT MATRIX -->
+        <div class="space-y-6">
+            <div>
+                <span class="text-xs font-body font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                    02 &bull; Variant Hierarchy
+                </span>
+                <h2 class="text-2xl font-heading font-bold text-theme-heading mt-1">
+                    Intent-Driven Button Variants
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-kwuo-sage mt-1">
+                    Standardized visual weight mapped to clear transactional priorities across tournament workflows.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 1. Full Solid (Primary) -->
+                <div
+                    class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-theme-heading font-heading">1. Full Solid
+                                (Primary)</span>
+                            <span
+                                class="px-2 py-0.5 rounded text-[10px] font-body bg-kwuo-mahogany text-kwuo-sand">Dominant</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Deep Mahogany with warm bronze hover. For primary hero conversions, round submissions, and
+                            irreversible confirmations.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div
+                            class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("Launch Tournament", variant="primary", size="md", icon="ph-bold
+                            ph-arrow-right", icon_pos="right") }}
+                        </div>
+                        <span class="text-[11px] font-body text-slate-500 dark:text-kwuo-sage text-center">Class:
+                            <code>kwuo-btn-primary</code></span>
+                    </div>
+                </div>
+
+                <!-- 2. Alternate Filled -->
+                <div
+                    class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-theme-heading font-heading">2. Alternate Filled</span>
+                            <span
+                                class="px-2 py-0.5 rounded text-[10px] font-body bg-kwuo-sand/70 text-kwuo-mahogany dark:bg-kwuo-dark-accent dark:text-kwuo-sand">Tactile
+                                Warm</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Warm Sand surface with dark mahogany typography. High-prominence secondary action with
+                            tactile soft contrast.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div
+                            class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("Review Scorecard", variant="alternate", size="md", icon="ph-bold
+                            ph-pencil-simple") }}
+                        </div>
+                        <span class="text-[11px] font-body text-slate-500 dark:text-kwuo-sage text-center">Class:
+                            <code>kwuo-btn-alternate</code></span>
+                    </div>
+                </div>
+
+                <!-- 3. Full Outlined -->
+                <div
+                    class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-theme-heading font-heading">3. Full Outlined</span>
+                            <span
+                                class="px-2 py-0.5 rounded text-[10px] font-body border border-theme-border text-theme-heading">Crisp
+                                Frame</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Transparent canvas with a distinct 1.5px solid border. Perfectly balances beside a Full
+                            Solid primary CTA.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div
+                            class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("Explore Workflows", variant="outline", size="md", icon="ph-bold
+                            ph-caret-down", icon_pos="right") }}
+                        </div>
+                        <span class="text-[11px] font-body text-slate-500 dark:text-kwuo-sage text-center">Class:
+                            <code>kwuo-btn-outline</code></span>
+                    </div>
+                </div>
+
+                <!-- 4. Secondary (Surface Outlined) -->
+                <div
+                    class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-theme-heading font-heading">4. Surface Outlined</span>
+                            <span
+                                class="px-2 py-0.5 rounded text-[10px] font-body bg-theme-surface-subtle border border-theme-border text-slate-600">Neutral</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Surface card background with subtle parchment border. Harmonized with footer's Open Source
+                            and navigation controls.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div
+                            class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("Download CSV", variant="secondary", size="md", icon="ph-bold
+                            ph-download-simple") }}
+                        </div>
+                        <span class="text-[11px] font-body text-slate-500 dark:text-kwuo-sage text-center">Class:
+                            <code>kwuo-btn-secondary</code></span>
+                    </div>
+                </div>
+
+                <!-- 5. Ghost / Editorial -->
+                <div
+                    class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-theme-heading font-heading">5. Ghost / Editorial</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-body text-slate-500">Borderless</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Zero border with warm hover wash. Ideal for low-emphasis utility actions, cancel options,
+                            and inline link pairs.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div
+                            class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("Cancel Changes", variant="ghost", size="md") }}
+                        </div>
+                        <span class="text-[11px] font-body text-slate-500 dark:text-kwuo-sage text-center">Class:
+                            <code>kwuo-btn-ghost</code></span>
+                    </div>
+                </div>
+
+                <!-- 6. Destructive / Danger -->
+                <div
+                    class="p-6 rounded-2xl border border-rose-200 dark:border-rose-950/60 bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-rose-800 dark:text-rose-400 font-heading">6. Destructive
+                                (Danger)</span>
+                            <span
+                                class="px-2 py-0.5 rounded text-[10px] font-body bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">Warning</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Solid and outlined crimson. Reserved for deleting tournaments, revoking signed ballots, and
+                            reset actions.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div
+                            class="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 flex items-center justify-center gap-3">
+                            {{ ui.button("Delete Round", variant="danger", size="sm", icon="ph-bold ph-trash") }}
+                            {{ ui.button("Revoke", variant="danger-outline", size="sm") }}
+                        </div>
+                        <span class="text-[11px] font-body text-slate-500 dark:text-kwuo-sage text-center">Classes:
+                            <code>kwuo-btn-danger</code> &amp; <code>kwuo-btn-danger-outline</code></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. INTERACTION STATE MATRIX -->
+        <div class="space-y-6">
+            <div>
+                <span class="text-xs font-body font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                    03 &bull; State Matrix
+                </span>
+                <h2 class="text-2xl font-heading font-bold text-theme-heading mt-1">
+                    Interactive States Under All Conditions
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-kwuo-sage mt-1">
+                    Every variant behaves predictably with immediate tactile feedback, crisp accessibility focus
+                    indicators, and active loading indicators.
+                </p>
+            </div>
+
+            <!-- Primary State Matrix -->
+            <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-theme-border-subtle">
+                    <div class="flex items-center gap-2">
+                        <span class="h-2.5 w-2.5 rounded-full bg-kwuo-mahogany"></span>
+                        <h3 class="text-sm font-heading font-bold text-theme-heading">Primary (Full Solid) State Rows
+                        </h3>
+                    </div>
+                    <span class="text-xs font-body text-slate-500 dark:text-kwuo-sage">Hover &bull; Press &bull; Focus
+                        &bull; Disabled &bull; Loading</span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center">
+                    <!-- Default -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Default</span>
+                        {{ ui.button("Save Draw", variant="primary", size="sm") }}
+                    </div>
+
+                    <!-- Hover (Simulated) -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Hover</span>
+                        <div class="kwuo-btn kwuo-btn-primary kwuo-btn-sm"
+                            style="background-color: #995F2F; box-shadow: 0 3px 6px rgba(98, 43, 20, 0.2);">
+                            <span>Save Draw</span>
+                        </div>
+                    </div>
+
+                    <!-- Pressed / Active -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Pressed
+                            (1px)</span>
+                        <div class="kwuo-btn kwuo-btn-primary kwuo-btn-sm is-active">
+                            <span>Save Draw</span>
+                        </div>
+                    </div>
+
+                    <!-- Focus -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Focus
+                            Ring</span>
+                        <div class="kwuo-btn kwuo-btn-primary kwuo-btn-sm is-focused">
+                            <span>Save Draw</span>
+                        </div>
+                    </div>
+
+                    <!-- Disabled -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Disabled</span>
+                        {{ ui.button("Save Draw", variant="primary", size="sm", disabled=true) }}
+                    </div>
+
+                    <!-- Loading -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Loading</span>
+                        {{ ui.button("Save Draw", variant="primary", size="sm", loading=true) }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Outlined State Matrix -->
+            <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-theme-border-subtle">
+                    <div class="flex items-center gap-2">
+                        <span class="h-2.5 w-2.5 rounded-full border border-kwuo-mahogany"></span>
+                        <h3 class="text-sm font-heading font-bold text-theme-heading">Full Outlined State Rows</h3>
+                    </div>
+                    <span class="text-xs font-body text-slate-500 dark:text-kwuo-sage">Hover &bull; Press &bull; Focus
+                        &bull; Disabled &bull; Loading</span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center">
+                    <!-- Default -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Default</span>
+                        {{ ui.button("View Heats", variant="outline", size="sm") }}
+                    </div>
+
+                    <!-- Hover (Simulated) -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Hover</span>
+                        <div class="kwuo-btn kwuo-btn-outline kwuo-btn-sm"
+                            style="background-color: rgba(98, 43, 20, 0.08);">
+                            <span>View Heats</span>
+                        </div>
+                    </div>
+
+                    <!-- Pressed / Active -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Pressed
+                            (1px)</span>
+                        <div class="kwuo-btn kwuo-btn-outline kwuo-btn-sm is-active">
+                            <span>View Heats</span>
+                        </div>
+                    </div>
+
+                    <!-- Focus -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Focus
+                            Ring</span>
+                        <div class="kwuo-btn kwuo-btn-outline kwuo-btn-sm is-focused">
+                            <span>View Heats</span>
+                        </div>
+                    </div>
+
+                    <!-- Disabled -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Disabled</span>
+                        {{ ui.button("View Heats", variant="outline", size="sm", disabled=true) }}
+                    </div>
+
+                    <!-- Loading -->
+                    <div
+                        class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex flex-col items-center justify-between gap-3">
+                        <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Loading</span>
+                        {{ ui.button("View Heats", variant="outline", size="sm", loading=true) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. SIZING SCALE & PROPORTIONS -->
+        <div class="space-y-6">
+            <div>
+                <span class="text-xs font-body font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                    04 &bull; Standard Scale
+                </span>
+                <h2 class="text-2xl font-heading font-bold text-theme-heading mt-1">
+                    Three Standard Heights
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-kwuo-sage mt-1">
+                    Calibrated vertical footprints for data-dense admin changelists, form dialogs, and marketing hero
+                    banners.
+                </p>
+            </div>
+
+            <div
+                class="rounded-2xl border border-theme-border bg-theme-surface p-6 sm:p-8 shadow-sm divide-y divide-theme-border-subtle space-y-6">
+                <!-- Large -->
+                <div
+                    class="pt-6 first:pt-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-heading font-bold text-theme-heading">Large (48px)</span>
+                            <span class="font-body text-xs text-slate-500 dark:text-kwuo-sage">kwuo-btn-lg &bull; 12px
+                                Radius &bull; 1rem Font</span>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-kwuo-sage mt-0.5">Hero CTAs, Break Reveal screen
+                            actions, Onboarding entrypoints.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        {{ ui.button("Open Dashboard", variant="primary", size="lg", icon="ph-bold ph-rocket-launch") }}
+                        {{ ui.button("Explore Workflows", variant="outline", size="lg") }}
+                    </div>
+                </div>
+
+                <!-- Medium (Base) -->
+                <div class="pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-heading font-bold text-theme-heading">Medium (40px)</span>
+                            <span class="font-body text-xs text-slate-500 dark:text-kwuo-sage">kwuo-btn-md &bull; 10px
+                                Radius &bull; 0.875rem Font</span>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-kwuo-sage mt-0.5">Standard forms, modal submissions,
+                            card actions, navigation.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        {{ ui.button("Submit Ballot", variant="primary", size="md", icon="ph-bold ph-check") }}
+                        {{ ui.button("Cancel Edit", variant="secondary", size="md") }}
+                    </div>
+                </div>
+
+                <!-- Small -->
+                <div class="pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-heading font-bold text-theme-heading">Small (32px)</span>
+                            <span class="font-body text-xs text-slate-500 dark:text-kwuo-sage">kwuo-btn-sm &bull; 8px
+                                Radius &bull; 0.8125rem Font</span>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-kwuo-sage mt-0.5">Admin changelists, table toolbars,
+                            filters, and audit logs.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        {{ ui.button("Filter Heats", variant="primary", size="sm", icon="ph-bold ph-funnel") }}
+                        {{ ui.button("Export CSV", variant="secondary", size="sm", icon="ph-bold ph-export") }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. ICON CONFIGURATIONS -->
+        <div class="space-y-6">
+            <div>
+                <span class="text-xs font-body font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                    05 &bull; Icon Flexibility
+                </span>
+                <h2 class="text-2xl font-heading font-bold text-theme-heading mt-1">
+                    Leading, Trailing &amp; Text-Only Arrangements
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-kwuo-sage mt-1">
+                    Decoupled icon positioning using standard Phosphor Icons.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="p-5 rounded-2xl border border-theme-border bg-theme-surface space-y-3">
+                    <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Leading Icon</span>
+                    <h4 class="text-sm font-heading font-bold text-theme-heading">Action Initiation</h4>
+                    <p class="text-xs text-slate-500 dark:text-kwuo-sage">Icon precedes label for instant visual
+                        category recognition.</p>
+                    <div class="pt-2">
+                        {{ ui.button("Download Scores", variant="primary", size="md", icon="ph-bold ph-download-simple",
+                        icon_pos="left") }}
+                    </div>
+                </div>
+
+                <div class="p-5 rounded-2xl border border-theme-border bg-theme-surface space-y-3">
+                    <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Trailing
+                        Icon</span>
+                    <h4 class="text-sm font-heading font-bold text-theme-heading">Forward Motion</h4>
+                    <p class="text-xs text-slate-500 dark:text-kwuo-sage">Icon follows label to indicate navigation or
+                        transition.</p>
+                    <div class="pt-2">
+                        {{ ui.button("Proceed to Round 2", variant="alternate", size="md", icon="ph-bold
+                        ph-arrow-right", icon_pos="right") }}
+                    </div>
+                </div>
+
+                <div class="p-5 rounded-2xl border border-theme-border bg-theme-surface space-y-3">
+                    <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Text Only</span>
+                    <h4 class="text-sm font-heading font-bold text-theme-heading">Focused Dialogue</h4>
+                    <p class="text-xs text-slate-500 dark:text-kwuo-sage">Zero icon distraction for standard form
+                        controls.</p>
+                    <div class="pt-2">
+                        {{ ui.button("Save Changes", variant="outline", size="md") }}
+                    </div>
+                </div>
+
+                <div class="p-5 rounded-2xl border border-theme-border bg-theme-surface space-y-3">
+                    <span class="text-[11px] font-body uppercase text-slate-500 dark:text-kwuo-sage">Icon Only /
+                        Compact</span>
+                    <h4 class="text-sm font-heading font-bold text-theme-heading">Toolbar Utility</h4>
+                    <p class="text-xs text-slate-500 dark:text-kwuo-sage">Compact square buttons for table operations.
+                    </p>
+                    <div class="pt-2 flex items-center gap-2">
+                        {{ ui.button("", variant="secondary", size="md", icon="ph-bold ph-arrows-clockwise",
+                        class="!px-3") }}
+                        {{ ui.button("", variant="secondary", size="md", icon="ph-bold ph-printer", class="!px-3") }}
+                        {{ ui.button("", variant="secondary", size="md", icon="ph-bold ph-dots-three", class="!px-3") }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. CODE REFERENCE & USAGE -->
+        <div class="rounded-3xl border border-theme-border bg-theme-surface p-8 sm:p-10 shadow-sm space-y-6">
+            <div class="border-b border-theme-border-subtle pb-4">
+                <span class="text-xs font-body font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                    06 &bull; Jinja2 Developer Reference
+                </span>
+                <h3 class="text-xl font-heading font-bold text-theme-heading mt-1">
+                    Copy-and-Paste Macro Usage
+                </h3>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-theme-surface-subtle border border-theme-border-subtle space-y-3">
+                <pre class="text-xs font-body text-kwuo-bronze dark:text-kwuo-gold overflow-x-auto leading-relaxed"><code>{% raw %}{# 1. Import macro in any template #}
+{% import "macros/button.html" as ui %}
+
+{# 2. Full Solid Primary (Anchor Link) #}
+{{ ui.button("Open Dashboard", variant="primary", size="lg", href="/dashboard", icon="ph-bold ph-rocket-launch") }}
+
+{# 3. Alternate Filled (Form Submission) #}
+{{ ui.button("Submit Scorecard", variant="alternate", size="md", type="submit", icon="ph-bold ph-check") }}
+
+{# 4. Full Outlined (With Trailing Navigation Icon) #}
+{{ ui.button("View Heats", variant="outline", size="md", href="#heats", icon="ph-bold ph-arrow-right", icon_pos="right") }}
+
+{# 5. Surface Outlined Secondary #}
+{{ ui.button("Export CSV", variant="secondary", size="sm", icon="ph-bold ph-export") }}
+
+{# 6. Ghost Action #}
+{{ ui.button("Dismiss", variant="ghost", size="sm") }}
+
+{# 7. Destructive Action #}
+{{ ui.button("Revoke Ballot", variant="danger", size="sm", icon="ph-bold ph-trash") }}{% endraw %}</code></pre>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

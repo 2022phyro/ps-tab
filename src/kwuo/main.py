@@ -5,12 +5,14 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from kwuo.core.config import settings
 from kwuo.core.cache import get_redis_client
-from kwuo.core.database import engine
+from kwuo.core.database import engine, async_session_factory
+from kwuo.core.rbac import seed_system_groups
 from kwuo.models.base import Base
 
 # Import web routes
 from kwuo.web.routes.home import router as home_router
 from kwuo.web.routes.auth import router as auth_router
+from kwuo.web.routes.profile import router as profile_router
 from kwuo.web.routes.dashboard import router as dashboard_router
 from kwuo.web.routes.admin import router as admin_router
 from kwuo.web.routes.documentation import router as docs_router
@@ -23,11 +25,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Seed pre-defined system security groups and permissions
+    try:
+        async with async_session_factory() as session:
+            await seed_system_groups(session)
+            await session.commit()
+    except Exception as e:
+        # Avoid blocking startup if DB is in migration
+        pass
+
     # Initialize Redis client
     redis = get_redis_client()
     yield
     # Cleanup on shutdown
-    await redis.aclose()
+    try:
+        await redis.aclose()
+    except Exception:
+        pass
 
 
 def create_app() -> FastAPI:
@@ -42,6 +56,7 @@ def create_app() -> FastAPI:
     # Register web route modules
     app.include_router(home_router)
     app.include_router(auth_router)
+    app.include_router(profile_router)
     app.include_router(dashboard_router)
     app.include_router(admin_router)
     app.include_router(docs_router)

@@ -38,6 +38,25 @@ async def about_page(
     )
 
 
+@router.get("/design", response_class=HTMLResponse)
+async def design_showcase_page(
+    request: Request,
+    user: Optional[User] = Depends(get_optional_current_user),
+):
+    """Render high-fidelity Kwuo Editorial Design System & Component Specification."""
+    return templates.TemplateResponse(
+        request=request,
+        name="design/index.html",
+        context={"user": user},
+    )
+
+
+@router.get("/design/button")
+async def design_button_redirect():
+    """Redirect legacy /design/button to consolidated /design showcase."""
+    return RedirectResponse(url="/design", status_code=status.HTTP_301_MOVED_PERMANENTLY)
+
+
 @router.get("/contact", response_class=HTMLResponse)
 async def contact_page(
     request: Request,

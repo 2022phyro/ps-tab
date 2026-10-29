@@ -7,16 +7,20 @@
     <!-- Hero Section -->
     <div class="border-b border-theme-border-subtle bg-theme-surface/70 backdrop-blur">
         <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20 text-center">
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-kwuo-sand/60 dark:bg-kwuo-dark-accent px-3.5 py-1 text-xs font-semibold text-kwuo-mahogany dark:text-kwuo-sand ring-1 ring-inset ring-kwuo-sage/40 mb-6">
+            <span
+                class="inline-flex items-center gap-1.5 rounded-full bg-kwuo-sand/60 dark:bg-kwuo-dark-accent px-3.5 py-1 text-xs font-semibold text-kwuo-mahogany dark:text-kwuo-sand ring-1 ring-inset ring-kwuo-sage/40 mb-6">
                 <i class="ph-fill ph-sparkle text-kwuo-bronze"></i>
                 <span>The Philosophy Behind Kwuo</span>
             </span>
-            <h1 class="text-4xl font-heading font-black tracking-tight text-theme-heading sm:text-5xl lg:text-6xl max-w-4xl mx-auto">
+            <h1
+                class="text-4xl font-heading font-black tracking-tight text-theme-heading sm:text-5xl lg:text-6xl max-w-4xl mx-auto">
                 Built for the unique art of <br class="hidden sm:inline" />
                 <span class="text-kwuo-bronze dark:text-kwuo-gold">individual oratorical competition</span>
             </h1>
             <p class="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-theme-body">
-                Named after the Igbo verb <strong>"Kwuo"</strong> (<em>to speak, utter, or declare with conviction</em>), Kwuo is a purpose-built tabulation software engineered specifically for individual speech tournaments, forensic showcases, and university oratorical championships.
+                Named after the Igbo verb <strong>"Kwuo"</strong> (<em>to speak, utter, or declare with
+                    conviction</em>), Kwuo is a purpose-built tabulation software engineered specifically for individual
+                speech tournaments, forensic showcases, and university oratorical championships.
             </p>
         </div>
     </div>
@@ -26,7 +30,7 @@
         <!-- Section: Why Legacy Debate Systems Break -->
         <div class="grid grid-cols-1 gap-12 lg:grid-cols-2 items-center">
             <div class="space-y-4">
-                <span class="text-xs font-bold font-mono tracking-wider text-kwuo-bronze dark:text-kwuo-gold uppercase">
+                <span class="text-xs font-bold font-body tracking-wider text-kwuo-bronze dark:text-kwuo-gold uppercase">
                     The Origin Problem
                 </span>
                 <h2 class="text-2xl font-heading font-extrabold text-theme-heading sm:text-3xl">
@@ -34,13 +38,21 @@
                 </h2>
                 <div class="space-y-3 text-sm text-theme-body leading-relaxed">
                     <p>
-                        For decades, university public speaking and speech tournaments have been forced to run on software designed for parliamentary debate. But debate systems make a fundamental assumption: that every round is a 2-team (Government vs. Opposition) or 4-team (British Parliamentary) binary clash.
+                        For decades, university public speaking and speech tournaments have been forced to run on
+                        software designed for parliamentary debate. But debate systems make a fundamental assumption:
+                        that every round is a 2-team (Government vs. Opposition) or 4-team (British Parliamentary)
+                        binary clash.
                     </p>
                     <p>
-                        Public speaking does not work that way. A single speech heat involves <strong>4 to 8 individual competitors</strong> presenting independently. The mathematical realities of speaker order rotation, multi-category rubric scoring, judge panel normalization, and institutional clash avoidance make debate software cumbersome and error-prone.
+                        Public speaking does not work that way. A single speech heat involves <strong>4 to 8 individual
+                            competitors</strong> presenting independently. The mathematical realities of speaker order
+                        rotation, multi-category rubric scoring, judge panel normalization, and institutional clash
+                        avoidance make debate software cumbersome and error-prone.
                     </p>
                     <p>
-                        <strong>Kwuo was built from the ground up to solve this.</strong> Every algorithm in our pipeline—from room sizing to break generation—respects the specific geometry of multi-speaker heats.
+                        <strong>Kwuo was built from the ground up to solve this.</strong> Every algorithm in our
+                        pipeline—from room sizing to break generation—respects the specific geometry of multi-speaker
+                        heats.
                     </p>
                 </div>
             </div>
@@ -51,23 +63,29 @@
                     Debate Tab vs. Speech Tab: Key Differences
                 </h3>
                 <div class="space-y-4 text-xs">
-                    <div class="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
+                    <div
+                        class="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
                         <div class="font-bold text-rose-800 dark:text-rose-300 flex items-center gap-1.5 mb-1">
                             <i class="ph-bold ph-x-circle text-sm text-rose-600"></i>
                             <span>Legacy Debate Software</span>
                         </div>
                         <p class="text-rose-700 dark:text-rose-400">
-                            Assumes 2 or 4 entries per room. Treats speaker ranks as byproducts of team wins/losses. Speaking order is fixed by team position (Prime Minister, Leader of Opposition). No concept of dynamic 5-to-7 speaker section balancing.
+                            Assumes 2 or 4 entries per room. Treats speaker ranks as byproducts of team wins/losses.
+                            Speaking order is fixed by team position (Prime Minister, Leader of Opposition). No concept
+                            of dynamic 5-to-7 speaker section balancing.
                         </p>
                     </div>
 
-                    <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40">
+                    <div
+                        class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40">
                         <div class="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 mb-1">
                             <i class="ph-bold ph-check-circle text-sm text-emerald-600"></i>
                             <span>Kwuo Tabulation Engine</span>
                         </div>
                         <p class="text-emerald-700 dark:text-emerald-400">
-                            Dynamically balances heats within $[R_{\min}, R_{\max}]$, neutralizes speaking-order bias via Latin-square cycle rotation, and evaluates multidimensional rubrics (Content, Delivery, Argumentation) with panel consensus normalization.
+                            Dynamically balances heats within $[R_{\min}, R_{\max}]$, neutralizes speaking-order bias
+                            via Latin-square cycle rotation, and evaluates multidimensional rubrics (Content, Delivery,
+                            Argumentation) with panel consensus normalization.
                         </p>
                     </div>
                 </div>
@@ -77,46 +95,53 @@
         <!-- Section: The Creators & Philosophy -->
         <div class="border-t border-theme-border-subtle pt-16">
             <div class="max-w-3xl mx-auto text-center space-y-4">
-                <span class="text-xs font-bold font-mono tracking-wider text-kwuo-bronze dark:text-kwuo-gold uppercase">
+                <span class="text-xs font-bold font-body tracking-wider text-kwuo-bronze dark:text-kwuo-gold uppercase">
                     The Builders
                 </span>
                 <h2 class="text-2xl font-heading font-extrabold text-theme-heading sm:text-3xl">
                     Built by Orators, Coaches &amp; Systems Engineers
                 </h2>
                 <p class="text-sm text-theme-body">
-                    Kwuo was conceived and crafted by veteran tournament directors, competitive speech champions, and open-source software architects who have spent hundreds of weekends in university tab rooms.
+                    Kwuo was conceived and crafted by veteran tournament directors, competitive speech champions, and
+                    open-source software architects who have spent hundreds of weekends in university tab rooms.
                 </p>
             </div>
 
             <!-- Creator Core Pillars (Duotone Icons) -->
             <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent mb-4">
+                    <div
+                        class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent mb-4">
                         <i class="ph-duotone ph-target text-3xl text-kwuo-bronze"></i>
                     </div>
                     <h3 class="font-heading font-bold text-base text-theme-heading">Algorithmic Fairness</h3>
                     <p class="mt-2 text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
-                        No student's tournament fate should be determined by bad speaking order luck or an unbalanced judge panel. Every room pairing and position rotation is mathematically balanced.
+                        No student's tournament fate should be determined by bad speaking order luck or an unbalanced
+                        judge panel. Every room pairing and position rotation is mathematically balanced.
                     </p>
                 </div>
 
                 <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent mb-4">
+                    <div
+                        class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent mb-4">
                         <i class="ph-duotone ph-lightning text-3xl text-kwuo-bronze"></i>
                     </div>
                     <h3 class="font-heading font-bold text-base text-theme-heading">Zero-Friction Access</h3>
                     <p class="mt-2 text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
-                        Judges and competitors shouldn't need to create accounts or download native apps. Tokenized magic links and QR codes allow immediate mobile scorecard entry directly in the browser.
+                        Judges and competitors shouldn't need to create accounts or download native apps. Tokenized
+                        magic links and QR codes allow immediate mobile scorecard entry directly in the browser.
                     </p>
                 </div>
 
                 <div class="rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-sm">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent mb-4">
+                    <div
+                        class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent mb-4">
                         <i class="ph-duotone ph-shield-check text-3xl text-kwuo-bronze"></i>
                     </div>
                     <h3 class="font-heading font-bold text-base text-theme-heading">Auditability &amp; Integrity</h3>
                     <p class="mt-2 text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
-                        Full audit trails for every ballot edit, state-gated visibility controls, emergency judge swaps, and reproducible tie-breaking ladders ensure total tabroom transparency.
+                        Full audit trails for every ballot edit, state-gated visibility controls, emergency judge swaps,
+                        and reproducible tie-breaking ladders ensure total tabroom transparency.
                     </p>
                 </div>
             </div>
@@ -126,33 +151,39 @@
         <div class="border-t border-theme-border-subtle pt-16">
             <div class="rounded-3xl border border-theme-border bg-theme-surface-subtle/70 p-8 sm:p-12">
                 <div class="max-w-3xl">
-                    <span class="text-xs font-bold font-mono tracking-wider text-kwuo-bronze dark:text-kwuo-gold uppercase">
+                    <span
+                        class="text-xs font-bold font-body tracking-wider text-kwuo-bronze dark:text-kwuo-gold uppercase">
                         Modern Tech Stack
                     </span>
                     <h2 class="mt-2 text-2xl font-heading font-extrabold text-theme-heading sm:text-3xl">
                         Engineered for High-Concurrence Tabrooms
                     </h2>
                     <p class="mt-4 text-sm text-theme-body leading-relaxed">
-                        Kwuo is built with a state-of-the-art async Python and hypermedia stack, engineered to maintain sub-10ms response times even when 500 adjudicators submit ballots simultaneously:
+                        Kwuo is built with a state-of-the-art async Python and hypermedia stack, engineered to maintain
+                        sub-10ms response times even when 500 adjudicators submit ballots simultaneously:
                     </p>
                 </div>
 
                 <div class="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-medium">
                     <div class="rounded-xl bg-theme-surface border border-theme-border p-4">
                         <div class="font-bold text-theme-heading">FastAPI &amp; Python 3.13</div>
-                        <div class="text-slate-500 dark:text-kwuo-sage text-[11px] mt-1">High-throughput async ASGI core</div>
+                        <div class="text-slate-500 dark:text-kwuo-sage text-[11px] mt-1">High-throughput async ASGI core
+                        </div>
                     </div>
                     <div class="rounded-xl bg-theme-surface border border-theme-border p-4">
                         <div class="font-bold text-theme-heading">PostgreSQL + asyncpg</div>
-                        <div class="text-slate-500 dark:text-kwuo-sage text-[11px] mt-1">ACID relational tournament state</div>
+                        <div class="text-slate-500 dark:text-kwuo-sage text-[11px] mt-1">ACID relational tournament
+                            state</div>
                     </div>
                     <div class="rounded-xl bg-theme-surface border border-theme-border p-4">
                         <div class="font-bold text-theme-heading">Redis &amp; MessagePack</div>
-                        <div class="text-slate-500 dark:text-kwuo-sage text-[11px] mt-1">Binary cached round pairings</div>
+                        <div class="text-slate-500 dark:text-kwuo-sage text-[11px] mt-1">Binary cached round pairings
+                        </div>
                     </div>
                     <div class="rounded-xl bg-theme-surface border border-theme-border p-4">
                         <div class="font-bold text-theme-heading">HTMX + Alpine.js</div>
-                        <div class="text-slate-500 dark:text-kwuo-sage text-[11px] mt-1">Server-driven responsive UI</div>
+                        <div class="text-slate-500 dark:text-kwuo-sage text-[11px] mt-1">Server-driven responsive UI
+                        </div>
                     </div>
                 </div>
             </div>
@@ -160,26 +191,32 @@
 
         <!-- Section: Buy Me a Coffee / Community Sponsorship -->
         <div class="border-t border-theme-border-subtle pt-16">
-            <div class="rounded-3xl border border-kwuo-bronze/40 bg-gradient-to-br from-theme-surface-subtle via-theme-surface to-kwuo-sand/20 dark:to-kwuo-dark-accent p-8 sm:p-12 text-center max-w-4xl mx-auto shadow-sm">
-                <div class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent mb-4">
+            <div
+                class="rounded-3xl border border-kwuo-bronze/40 bg-gradient-to-br from-theme-surface-subtle via-theme-surface to-kwuo-sand/20 dark:to-kwuo-dark-accent p-8 sm:p-12 text-center max-w-4xl mx-auto shadow-sm">
+                <div
+                    class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-kwuo-sand/60 dark:bg-kwuo-dark-accent mb-4">
                     <i class="ph-duotone ph-coffee text-4xl text-kwuo-bronze"></i>
                 </div>
                 <h2 class="text-2xl font-heading font-extrabold text-theme-heading sm:text-3xl">
                     Support Open-Source Tabulation
                 </h2>
                 <p class="mx-auto mt-4 max-w-2xl text-sm text-theme-body leading-relaxed">
-                    Kwuo is completely free and open source. We believe tournament organizers and non-profit forensics leagues shouldn't pay exorbitant per-team licensing fees just to run fair events. If Kwuo saves your tab room time or caffeine, consider buying the maintainers a coffee!
+                    Kwuo is completely free and open source. We believe tournament organizers and non-profit forensics
+                    leagues shouldn't pay exorbitant per-team licensing fees just to run fair events. If Kwuo saves your
+                    tab room time or caffeine, consider buying the maintainers a coffee!
                 </p>
 
                 <div class="mt-8 flex flex-wrap justify-center items-center gap-4">
                     <!-- Buy Me a Coffee Button -->
-                    <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2.5 rounded-xl bg-kwuo-mahogany hover:bg-kwuo-bronze px-6 py-3 text-sm font-bold text-kwuo-sand shadow-md transition transform hover:-translate-y-0.5 border border-kwuo-sage/40">
+                    <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer"
+                        class="inline-flex items-center gap-2.5 rounded-xl bg-kwuo-mahogany hover:bg-kwuo-bronze px-6 py-3 text-sm font-bold text-kwuo-sand shadow-md transition transform hover:-translate-y-0.5 border border-kwuo-sage/40">
                         <i class="ph-duotone ph-coffee text-lg text-kwuo-sand"></i>
                         <span>Buy Me a Coffee</span>
                     </a>
 
                     <!-- Contact & GitHub Links -->
-                    <a href="/contact" class="inline-flex items-center gap-2 rounded-xl border border-kwuo-sage bg-theme-surface px-6 py-3 text-sm font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
+                    <a href="/contact"
+                        class="inline-flex items-center gap-2 rounded-xl border border-kwuo-sage bg-theme-surface px-6 py-3 text-sm font-semibold text-theme-heading hover:bg-kwuo-sand/30 transition">
                         <span>Talk to the Team</span>
                         <i class="ph-bold ph-arrow-right"></i>
                     </a>

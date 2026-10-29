@@ -34,13 +34,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def create_session_token(user_id: str, expires_delta: Optional[timedelta] = None) -> str:
-    """Generate a signed JWT session token."""
+def create_session_token(
+    user_id: str,
+    auth_updated_at: Optional[datetime] = None,
+    expires_delta: Optional[timedelta] = None,
+) -> str:
+    """Generate a signed JWT session token with embedded auth_updated_at timestamp for instant invalidation."""
     expire = datetime.now(timezone.utc) + (
         expires_delta if expires_delta else timedelta(days=DEFAULT_SESSION_EXPIRE_DAYS)
     )
+    auth_ts = int(auth_updated_at.timestamp()) if auth_updated_at else int(datetime.now(timezone.utc).timestamp())
     payload = {
         "sub": user_id,
+        "auth_updated_at": auth_ts,
         "exp": expire,
         "iat": datetime.now(timezone.utc),
     }

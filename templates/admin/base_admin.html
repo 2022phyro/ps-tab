@@ -8,8 +8,10 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <!-- Branding & Breadcrumbs -->
                 <div class="flex items-center gap-3">
-                    <a href="/admin" class="flex items-center gap-1.5 font-heading font-extrabold text-theme-heading text-base hover:text-kwuo-bronze transition">
-                        <span class="rounded bg-kwuo-mahogany text-kwuo-sand px-2 py-0.5 text-xs font-bold font-mono">ADMIN</span>
+                    <a href="/admin"
+                        class="flex items-center gap-1.5 font-heading font-extrabold text-theme-heading text-base hover:text-kwuo-bronze transition">
+                        <span
+                            class="rounded bg-kwuo-mahogany text-kwuo-sand px-2 py-0.5 text-xs font-bold font-body">ADMIN</span>
                         <span>Kwuo Administration</span>
                     </a>
 
@@ -30,7 +32,8 @@
                     <span class="text-theme-border">|</span>
                     <a href="/" class="text-kwuo-bronze dark:text-kwuo-gold hover:underline font-semibold">View Site</a>
                     <span class="text-theme-border">|</span>
-                    <a href="/dashboard" class="text-slate-600 dark:text-kwuo-sage hover:text-kwuo-mahogany dark:hover:text-white transition">Dashboard</a>
+                    <a href="/dashboard"
+                        class="text-slate-600 dark:text-kwuo-sage hover:text-kwuo-mahogany dark:hover:text-white transition">Dashboard</a>
                 </div>
             </div>
         </div>
@@ -39,7 +42,8 @@
     <!-- Django-style Flash Messages Strip -->
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
         {% if msg %}
-        <div class="mb-4 rounded-lg p-3 text-sm flex items-center justify-between border {% if msg_type == 'error' %}bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900/60{% elif msg_type == 'warning' %}bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900/60{% else %}bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60{% endif %}">
+        <div
+            class="mb-4 rounded-lg p-3 text-sm flex items-center justify-between border {% if msg_type == 'error' %}bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900/60{% elif msg_type == 'warning' %}bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900/60{% else %}bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60{% endif %}">
             <div class="flex items-center gap-2">
                 {% if msg_type == 'error' %}
                 <i class="ph-bold ph-warning-circle text-base text-rose-600 dark:text-rose-400"></i>

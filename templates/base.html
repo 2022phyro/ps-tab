@@ -1,5 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full antialiased" x-data="{ darkMode: false, mobileMenuOpen: false }" x-init="
+<html lang="en" class="h-full antialiased" x-data="{ 
+    darkMode: false, 
+    mobileMenuOpen: false,
+    headerHidden: false,
+    lastScrollY: 0,
+    scrollThreshold: 80
+}" x-init="
     darkMode = document.documentElement.classList.contains('dark');
     $watch('darkMode', val => {
         if (val) {
@@ -11,6 +17,7 @@
         }
     });
 ">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,7 +35,9 @@
     <!-- Google Fonts: Bricolage Grotesque (Headings/Display) & Onest (UI/Body) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Onest:wght@300..800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Onest:wght@300..800&display=swap"
+        rel="stylesheet">
 
     <!-- Phosphor Icons: Regular, Bold, Fill & Duotone -->
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
@@ -52,18 +61,18 @@
                         // Named Brand Swatches
                         kwuo: {
                             mahogany: '#622B14',  // Primary accent / brand display
-                            bronze:   '#995F2F',  // Interactive brand / buttons / links
-                            sage:     '#978F66',  // Secondary / muted text / subtle borders
-                            sand:     '#E4D6A9',  // Parchment / light accents / borders
-                            gold:     '#D3C18E',  // Dark mode text highlight / warm gold
-                            canvas:   '#FAF7F0',  // Light page background
+                            bronze: '#995F2F',  // Interactive brand / buttons / links
+                            sage: '#978F66',  // Secondary / muted text / subtle borders
+                            sand: '#E4D6A9',  // Parchment / light accents / borders
+                            gold: '#D3C18E',  // Dark mode text highlight / warm gold
+                            canvas: '#FAF7F0',  // Light page background
                             dark: {
-                                canvas:  '#16110F', // Dark page background
+                                canvas: '#16110F', // Dark page background
                                 surface: '#231A15', // Dark card surface
-                                subtle:  '#1E1612', // Dark header/footer/subtle
-                                accent:  '#2B1F19', // Dark badges/pills
-                                border:  '#3D2D23', // Dark primary border
-                                input:   '#4D392D', // Dark input border
+                                subtle: '#1E1612', // Dark header/footer/subtle
+                                accent: '#2B1F19', // Dark badges/pills
+                                border: '#3D2D23', // Dark primary border
+                                input: '#4D392D', // Dark input border
                             }
                         },
                         // Semantic Theme Tokens (Mapped to CSS variables for automatic light/dark mode)
@@ -89,7 +98,7 @@
     </script>
 
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.2/dist/htmx.min.js"></script>
 
     <!-- Alpine.js -->
     <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
@@ -108,6 +117,7 @@
             --color-interactive-hover: #622B14;
             --color-interactive-text: #FFFFFF;
         }
+
         .dark {
             --color-canvas: #16110F;
             --color-surface: #231A15;
@@ -122,158 +132,1083 @@
             --color-interactive-text: #E4D6A9;
         }
 
-        [x-cloak] { display: none !important; }
-        .htmx-indicator { display: none; }
-        .htmx-request .htmx-indicator { display: inline-block; }
-        .htmx-request.htmx-indicator { display: inline-block; }
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .htmx-indicator {
+            display: none;
+        }
+
+        .htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+
+        .htmx-request.htmx-indicator {
+            display: inline-block;
+        }
 
         /* Smooth Phosphor Icon Transitions */
-        i.ph, i.ph-bold, i.ph-fill, i.ph-duotone {
+        i.ph,
+        i.ph-bold,
+        i.ph-fill,
+        i.ph-duotone {
             vertical-align: -0.125em;
             display: inline-block;
             line-height: 1;
         }
+
+        /* =========================================================================
+           Kwuo Production Button Component
+           Standard, yet uniquely tactile design system
+           Harmonized with Header, Footer, and Tabroom Controls
+           ========================================================================= */
+
+        .kwuo-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+            font-weight: 600;
+            line-height: 1.25;
+            letter-spacing: -0.01em;
+            text-decoration: none;
+            cursor: pointer;
+            border: 1px solid transparent;
+            outline: none;
+            user-select: none;
+            vertical-align: middle;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 150ms ease,
+                border-color 150ms ease,
+                color 150ms ease,
+                box-shadow 150ms ease,
+                transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .kwuo-btn:active:not(:disabled):not(.is-disabled),
+        .kwuo-btn.is-active {
+            transform: translateY(1px);
+        }
+
+        .kwuo-btn:focus-visible,
+        .kwuo-btn.is-focused {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--color-canvas, #FAF7F0), 0 0 0 4.5px #995F2F;
+        }
+
+        /* Sizing modifiers */
+        .kwuo-btn-sm {
+            height: 32px;
+            padding: 0 0.875rem;
+            font-size: 0.8125rem;
+            border-radius: 0.5rem;
+            /* rounded-lg */
+            gap: 0.375rem;
+        }
+
+        .kwuo-btn-md {
+            height: 40px;
+            padding: 0 1.25rem;
+            font-size: 0.875rem;
+            border-radius: 0.625rem;
+            /* rounded-xl */
+            gap: 0.5rem;
+        }
+
+        .kwuo-btn-lg {
+            height: 48px;
+            padding: 0 1.625rem;
+            font-size: 1rem;
+            border-radius: 0.75rem;
+            /* rounded-xl */
+            gap: 0.625rem;
+        }
+
+        /* Pill Button Modifier (both .kwuo-btn-pill and .kwuo-btn.pill supported) */
+        .kwuo-btn-pill,
+        .kwuo-btn.pill {
+            border-radius: 9999px !important;
+        }
+
+        /* Icon Button Modifiers */
+        .kwuo-btn-icon-sm {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            justify-content: center;
+            border-radius: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .kwuo-btn-icon-md {
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            justify-content: center;
+            border-radius: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        /* ---------------------------------------------------------------------
+           NAVBAR ACTIVE TAB INDICATOR & TRANSITION
+           --------------------------------------------------------------------- */
+        .kwuo-nav-tab {
+            position: relative;
+            padding-top: 0.375rem;
+            padding-bottom: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: rgba(98, 43, 20, 0.72);
+            border-bottom: 2px solid transparent;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 250ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .kwuo-nav-tab:hover {
+            color: #622B14;
+            border-bottom-color: rgba(98, 43, 20, 0.25);
+        }
+
+        .kwuo-nav-tab.is-active {
+            font-weight: 700;
+            color: #622B14;
+            border-bottom-color: #622B14;
+        }
+
+        .dark .kwuo-nav-tab {
+            color: rgba(211, 193, 142, 0.75);
+            border-bottom-color: transparent;
+        }
+
+        .dark .kwuo-nav-tab:hover {
+            color: #FFFFFF;
+            border-bottom-color: rgba(228, 214, 169, 0.25);
+        }
+
+        .dark .kwuo-nav-tab.is-active {
+            color: #E4D6A9;
+            border-bottom-color: #E4D6A9;
+        }
+
+        .kwuo-mobile-nav-tab {
+            display: block;
+            padding: 0.625rem 0.875rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: rgba(98, 43, 20, 0.75);
+            border-left: 3px solid transparent;
+            text-decoration: none;
+            border-radius: 0 0.5rem 0.5rem 0;
+            transition: color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 250ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .kwuo-mobile-nav-tab:hover {
+            color: #622B14;
+            border-left-color: rgba(98, 43, 20, 0.25);
+            background-color: rgba(98, 43, 20, 0.04);
+        }
+
+        .kwuo-mobile-nav-tab.is-active {
+            font-weight: 700;
+            color: #622B14;
+            border-left-color: #622B14;
+            background-color: rgba(98, 43, 20, 0.06);
+        }
+
+        .dark .kwuo-mobile-nav-tab {
+            color: rgba(211, 193, 142, 0.75);
+            border-left-color: transparent;
+        }
+
+        .dark .kwuo-mobile-nav-tab:hover {
+            color: #FFFFFF;
+            border-left-color: rgba(228, 214, 169, 0.25);
+            background-color: rgba(228, 214, 169, 0.04);
+        }
+
+        .dark .kwuo-mobile-nav-tab.is-active {
+            color: #E4D6A9;
+            border-left-color: #E4D6A9;
+            background-color: rgba(228, 214, 169, 0.08);
+        }
+
+        /* ---------------------------------------------------------------------
+           1. PRIMARY VARIANT: Full Solid (Deep Mahogany / Kwuo Bronze)
+           --------------------------------------------------------------------- */
+        .kwuo-btn-primary {
+            background-color: #622B14;
+            color: #FAF7F0;
+            border-color: rgba(74, 30, 13, 0.4);
+            box-shadow: 0 1px 2px rgba(98, 43, 20, 0.16), 0 1px 0 rgba(255, 255, 255, 0.1) inset;
+        }
+
+        .kwuo-btn-primary:hover:not(:disabled):not(.is-disabled) {
+            background-color: #995F2F;
+            border-color: #622B14;
+            color: #FAF7F0;
+            box-shadow: 0 3px 6px rgba(98, 43, 20, 0.2), 0 1px 0 rgba(255, 255, 255, 0.15) inset;
+        }
+
+        .kwuo-btn-primary:active:not(:disabled):not(.is-disabled),
+        .kwuo-btn-primary.is-active {
+            background-color: #4A1E0D;
+            box-shadow: 0 1px 1px rgba(98, 43, 20, 0.15);
+        }
+
+        /* ---------------------------------------------------------------------
+           2. ALTERNATE VARIANT: Soft Filled (Warm Sand Canvas)
+           --------------------------------------------------------------------- */
+        .kwuo-btn-alternate {
+            background-color: #E4D6A9;
+            color: #622B14;
+            border-color: #D3C18E;
+            box-shadow: 0 1px 2px rgba(98, 43, 20, 0.06);
+        }
+
+        .kwuo-btn-alternate:hover:not(:disabled):not(.is-disabled) {
+            background-color: #D8C896;
+            border-color: #995F2F;
+            color: #4A1E0D;
+            box-shadow: 0 2px 4px rgba(98, 43, 20, 0.1);
+        }
+
+        .kwuo-btn-alternate:active:not(:disabled):not(.is-disabled),
+        .kwuo-btn-alternate.is-active {
+            background-color: #CAB880;
+            box-shadow: none;
+        }
+
+        /* ---------------------------------------------------------------------
+           3. FULL OUTLINED VARIANT: Crisp Line Boundary
+           --------------------------------------------------------------------- */
+        .kwuo-btn-outline {
+            background-color: transparent;
+            color: #622B14;
+            border: 1.5px solid #622B14;
+            box-shadow: 0 1px 2px rgba(98, 43, 20, 0.04);
+        }
+
+        .kwuo-btn-outline:hover:not(:disabled):not(.is-disabled) {
+            background-color: rgba(98, 43, 20, 0.08);
+            border-color: #622B14;
+            color: #622B14;
+            box-shadow: 0 2px 4px rgba(98, 43, 20, 0.08);
+        }
+
+        .kwuo-btn-outline:active:not(:disabled):not(.is-disabled),
+        .kwuo-btn-outline.is-active {
+            background-color: rgba(98, 43, 20, 0.14);
+            box-shadow: none;
+        }
+
+        /* Secondary alias (defaults to refined outline with subtle surface tone) */
+        .kwuo-btn-secondary {
+            background-color: var(--color-surface, #FFFFFF);
+            color: #622B14;
+            border: 1.5px solid #E4D6A9;
+            box-shadow: 0 1px 2px rgba(98, 43, 20, 0.06);
+        }
+
+        .kwuo-btn-secondary:hover:not(:disabled):not(.is-disabled) {
+            background-color: #FAF7F0;
+            border-color: #995F2F;
+            color: #622B14;
+            box-shadow: 0 2px 4px rgba(98, 43, 20, 0.1);
+        }
+
+        .kwuo-btn-secondary:active:not(:disabled):not(.is-disabled),
+        .kwuo-btn-secondary.is-active {
+            background-color: #E4D6A9;
+        }
+
+        /* ---------------------------------------------------------------------
+           4. GHOST / EDITORIAL VARIANT: Borderless
+           --------------------------------------------------------------------- */
+        .kwuo-btn-ghost {
+            background-color: transparent;
+            border-color: transparent;
+            color: #622B14;
+        }
+
+        .kwuo-btn-ghost:hover:not(:disabled):not(.is-disabled) {
+            background-color: rgba(228, 214, 169, 0.4);
+            color: #622B14;
+        }
+
+        .kwuo-btn-ghost:active:not(:disabled):not(.is-disabled),
+        .kwuo-btn-ghost.is-active {
+            background-color: rgba(228, 214, 169, 0.6);
+        }
+
+        /* ---------------------------------------------------------------------
+           5. DANGER / DESTRUCTIVE VARIANT
+           --------------------------------------------------------------------- */
+        .kwuo-btn-danger {
+            background-color: #9F1239;
+            color: #FFFFFF;
+            border-color: #881337;
+            box-shadow: 0 1px 2px rgba(159, 18, 57, 0.2);
+        }
+
+        .kwuo-btn-danger:hover:not(:disabled):not(.is-disabled) {
+            background-color: #BE123C;
+            border-color: #9F1239;
+            color: #FFFFFF;
+            box-shadow: 0 3px 6px rgba(159, 18, 57, 0.25);
+        }
+
+        .kwuo-btn-danger:active:not(:disabled):not(.is-disabled),
+        .kwuo-btn-danger.is-active {
+            background-color: #881337;
+        }
+
+        .kwuo-btn-danger-outline {
+            background-color: transparent;
+            color: #9F1239;
+            border: 1.5px solid #9F1239;
+        }
+
+        .kwuo-btn-danger-outline:hover:not(:disabled):not(.is-disabled) {
+            background-color: rgba(159, 18, 57, 0.08);
+            border-color: #BE123C;
+            color: #BE123C;
+        }
+
+        .kwuo-btn-danger-outline:active:not(:disabled):not(.is-disabled),
+        .kwuo-btn-danger-outline.is-active {
+            background-color: rgba(159, 18, 57, 0.15);
+        }
+
+        /* ---------------------------------------------------------------------
+           DISABLED STATE
+           --------------------------------------------------------------------- */
+        .kwuo-btn:disabled,
+        .kwuo-btn.is-disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+            transform: none !important;
+            box-shadow: none !important;
+            pointer-events: none;
+        }
+
+        /* ---------------------------------------------------------------------
+           LOADING STATE
+           --------------------------------------------------------------------- */
+        .kwuo-btn.is-loading {
+            cursor: wait;
+            pointer-events: none;
+            opacity: 0.85;
+        }
+
+        .kwuo-btn-spinner {
+            width: 1em;
+            height: 1em;
+            border: 2px solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            animation: kwuo-spin 0.65s linear infinite;
+        }
+
+        @keyframes kwuo-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ---------------------------------------------------------------------
+           DARK MODE OVERRIDES
+           --------------------------------------------------------------------- */
+        .dark .kwuo-btn-primary {
+            background-color: #622B14;
+            color: #E4D6A9;
+            border-color: rgba(228, 214, 169, 0.25);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+        }
+
+        .dark .kwuo-btn-primary:hover:not(:disabled):not(.is-disabled) {
+            background-color: #995F2F;
+            color: #FFFFFF;
+            border-color: #E4D6A9;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+        }
+
+        .dark .kwuo-btn-primary:active:not(:disabled):not(.is-disabled),
+        .dark .kwuo-btn-primary.is-active {
+            background-color: #4A1E0D;
+        }
+
+        .dark .kwuo-btn-alternate {
+            background-color: #2B1F19;
+            color: #E4D6A9;
+            border-color: #3D2D23;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .dark .kwuo-btn-alternate:hover:not(:disabled):not(.is-disabled) {
+            background-color: #3D2D23;
+            color: #FFFFFF;
+            border-color: #995F2F;
+        }
+
+        .dark .kwuo-btn-outline {
+            color: #E4D6A9;
+            border-color: #E4D6A9;
+        }
+
+        .dark .kwuo-btn-outline:hover:not(:disabled):not(.is-disabled) {
+            background-color: rgba(228, 214, 169, 0.1);
+            color: #FFFFFF;
+            border-color: #FAF7F0;
+        }
+
+        .dark .kwuo-btn-secondary {
+            background-color: #231A15;
+            color: #E4D6A9;
+            border-color: #3D2D23;
+        }
+
+        .dark .kwuo-btn-secondary:hover:not(:disabled):not(.is-disabled) {
+            background-color: #2B1F19;
+            color: #FFFFFF;
+            border-color: #995F2F;
+        }
+
+        .dark .kwuo-btn-ghost {
+            color: #E4D6A9;
+        }
+
+        .dark .kwuo-btn-ghost:hover:not(:disabled):not(.is-disabled) {
+            background-color: rgba(61, 45, 35, 0.6);
+            color: #FFFFFF;
+        }
+
+        .dark .kwuo-btn:focus-visible,
+        .dark .kwuo-btn.is-focused {
+            box-shadow: 0 0 0 2px #16110F, 0 0 0 4.5px #D3C18E;
+        }
+
+        /* =========================================================================
+           COMPONENT 2: THE TORN-DOCKET CARD (Primary Content Container)
+           Physical deckled/torn sheet appearance with straight vertical sides
+           ========================================================================= */
+        .kwuo-torn-docket-wrapper {
+            filter: drop-shadow(0 4px 6px rgba(98, 43, 20, 0.08)) drop-shadow(0 1px 3px rgba(98, 43, 20, 0.04));
+            transition: filter 250ms ease, transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .kwuo-torn-docket-wrapper:hover {
+            filter: drop-shadow(0 10px 18px rgba(98, 43, 20, 0.12)) drop-shadow(0 4px 6px rgba(98, 43, 20, 0.06));
+        }
+
+        .kwuo-torn-docket {
+            background-color: var(--color-surface, #FFFFFF);
+            border-left: 1.5px solid var(--color-border, #E4D6A9);
+            border-right: 1.5px solid var(--color-border, #E4D6A9);
+            border-top: none;
+            border-bottom: none;
+            padding: 2rem 1.5rem;
+            position: relative;
+            /* Undulating organic torn silhouette on top and bottom edges; 100% flat vertical sides */
+            clip-path: polygon(0% 4px,
+                    4% 2px,
+                    8% 5px,
+                    12% 1px,
+                    16% 4px,
+                    20% 6px,
+                    24% 2px,
+                    28% 5px,
+                    32% 1px,
+                    36% 4px,
+                    40% 6px,
+                    44% 2px,
+                    48% 5px,
+                    52% 1px,
+                    56% 4px,
+                    60% 6px,
+                    64% 2px,
+                    68% 5px,
+                    72% 1px,
+                    76% 4px,
+                    80% 6px,
+                    84% 2px,
+                    88% 5px,
+                    92% 1px,
+                    96% 4px,
+                    100% 3px,
+                    /* Straight vertical right edge */
+                    100% calc(100% - 3px),
+                    /* Undulating torn bottom edge */
+                    96% calc(100% - 5px),
+                    92% calc(100% - 1px),
+                    88% calc(100% - 4px),
+                    84% calc(100% - 6px),
+                    80% calc(100% - 2px),
+                    76% calc(100% - 5px),
+                    72% calc(100% - 1px),
+                    68% calc(100% - 4px),
+                    64% calc(100% - 6px),
+                    60% calc(100% - 2px),
+                    56% calc(100% - 5px),
+                    52% calc(100% - 1px),
+                    48% calc(100% - 4px),
+                    44% calc(100% - 6px),
+                    40% calc(100% - 2px),
+                    36% calc(100% - 5px),
+                    32% calc(100% - 1px),
+                    28% calc(100% - 4px),
+                    24% calc(100% - 6px),
+                    20% calc(100% - 2px),
+                    16% calc(100% - 5px),
+                    12% calc(100% - 1px),
+                    8% calc(100% - 4px),
+                    4% calc(100% - 2px),
+                    0% calc(100% - 4px)
+                    /* Straight vertical left edge */
+                );
+        }
+
+        .dark .kwuo-torn-docket-wrapper {
+            filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+        }
+
+        .dark .kwuo-torn-docket-wrapper:hover {
+            filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.7));
+        }
+
+        .dark .kwuo-torn-docket {
+            background-color: var(--color-surface, #231A15);
+            border-left-color: var(--color-border, #3D2D23);
+            border-right-color: var(--color-border, #3D2D23);
+        }
+
+        /* =========================================================================
+   COMPONENT 3: PEELED-CORNER POST-IT
+   ========================================================================= */
+        @property --curl {
+            syntax: '<length>';
+            inherits: true;
+            initial-value: 0px;
+        }
+
+        .kwuo-post-it {
+            /* ---- COLOUR: set --note and everything else follows ---- */
+            --note: #FAF2DB;
+            --note-ink: #622B14;
+            --tint-a: white 25%;
+            /* sheet gradient start */
+            --tint-c: white 50%;
+            /* sheet gradient end */
+            --tint-hi: white 70%;
+            /* flap tip */
+            --tint-mid: white 25%;
+            --tint-lo: #622B14 14%;
+            /* flap crease */
+            --tint-edge: #622B14 30%;
+            /* outline, visible on any surface */
+            --shadow: 98 43 20;
+            --flap-shadow: 0.38;
+
+            /* ---- SIZE ---- */
+            --curl-size: 44px;
+            /* layout size (drives padding) */
+            --curl: var(--curl-size);
+            /* animated size (hover uncurls this) */
+
+            position: relative;
+            isolation: isolate;
+            padding: 1.25rem 1.25rem calc(1rem + var(--curl-size) * 0.8);
+            color: var(--note-ink);
+            filter: drop-shadow(0 1px 1px rgb(var(--shadow) / 0.12)) drop-shadow(0 5px 7px rgb(var(--shadow) / 0.12));
+            transform: rotate(var(--rot));
+            transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1),
+                --curl 300ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @media (min-width: 640px) {
+            .kwuo-post-it {
+                padding: 1.5rem 1.5rem calc(1.25rem + var(--curl-size) * 0.8);
+            }
+        }
+
+        /* The sheet */
+        .kwuo-post-it::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            border: 1px solid color-mix(in srgb, var(--note), var(--tint-edge));
+            border-radius: 3px;
+            background: linear-gradient(135deg,
+                    color-mix(in srgb, var(--note), var(--tint-a)) 0%,
+                    var(--note) 68%,
+                    color-mix(in srgb, var(--note), var(--tint-c)) 100%);
+            clip-path: var(--clip);
+        }
+
+        /* The lifted flap */
+        .kwuo-post-it::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: var(--flap-l);
+            right: var(--flap-r);
+            z-index: 1;
+            width: var(--curl);
+            height: var(--curl);
+            pointer-events: none;
+            border-radius: var(--flap-tip);
+            background: linear-gradient(var(--flap-angle),
+                    color-mix(in srgb, var(--note), var(--tint-hi)) 0%,
+                    color-mix(in srgb, var(--note), var(--tint-mid)) 38%,
+                    color-mix(in srgb, var(--note), var(--tint-lo)) 49.6%,
+                    transparent 50.4%);
+            filter: drop-shadow(calc(var(--curl) * 0.09 * var(--flap-dx)) calc(var(--curl) * 0.14) calc(var(--curl) * 0.11) rgb(var(--shadow) / var(--flap-shadow)));
+        }
+
+        /* ---- Size presets ---- */
+        .kwuo-post-it-xs {
+            --curl-size: 20px;
+        }
+
+        .kwuo-post-it-sm {
+            --curl-size: 28px;
+        }
+
+        .kwuo-post-it-md {
+            --curl-size: 44px;
+        }
+
+        .kwuo-post-it-lg {
+            --curl-size: 60px;
+        }
+
+        /* ---- Curl direction ---- */
+        .kwuo-post-it-right {
+            --rot: -0.85deg;
+            --clip: polygon(0 0, 100% 0, 100% calc(100% - var(--curl)), calc(100% - var(--curl)) 100%, 0 100%);
+            --flap-l: auto;
+            --flap-r: 0;
+            --flap-angle: 135deg;
+            --flap-tip: calc(var(--curl) * 0.18) 0 0 0;
+            --flap-dx: 1;
+        }
+
+        .kwuo-post-it-left {
+            --rot: 0.85deg;
+            --clip: polygon(0 0, 100% 0, 100% 100%, var(--curl) 100%, 0 calc(100% - var(--curl)));
+            --flap-l: 0;
+            --flap-r: auto;
+            --flap-angle: 225deg;
+            --flap-tip: 0 calc(var(--curl) * 0.18) 0 0;
+            --flap-dx: -1;
+        }
+
+        /* ---- Different direction from md upwards (must stay AFTER the two blocks above) ---- */
+        @media (min-width: 768px) {
+            .kwuo-post-it-from-md-right {
+                --rot: -0.85deg;
+                --clip: polygon(0 0, 100% 0, 100% calc(100% - var(--curl)), calc(100% - var(--curl)) 100%, 0 100%);
+                --flap-l: auto;
+                --flap-r: 0;
+                --flap-angle: 135deg;
+                --flap-tip: calc(var(--curl) * 0.18) 0 0 0;
+                --flap-dx: 1;
+            }
+
+            .kwuo-post-it-from-md-left {
+                --rot: 0.85deg;
+                --clip: polygon(0 0, 100% 0, 100% 100%, var(--curl) 100%, 0 calc(100% - var(--curl)));
+                --flap-l: 0;
+                --flap-r: auto;
+                --flap-angle: 225deg;
+                --flap-tip: 0 calc(var(--curl) * 0.18) 0 0;
+                --flap-dx: -1;
+            }
+        }
+
+        /* ---- Hover: straighten and uncurl ---- */
+        .kwuo-post-it:hover {
+            --curl: 0px;
+            transform: rotate(0deg) translateY(-2px);
+        }
+
+        /* ---- Dark mode ---- */
+        .dark .kwuo-post-it {
+            --note: #2B1F19;
+            --note-ink: #FAF7F0;
+            --tint-a: black 18%;
+            --tint-c: white 12%;
+            --tint-hi: #E4D6A9 18%;
+            --tint-mid: #E4D6A9 8%;
+            --tint-lo: black 40%;
+            --tint-edge: #E4D6A9 22%;
+            --shadow: 0 0 0;
+            --flap-shadow: 0.75;
+            filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.5)) drop-shadow(0 6px 10px rgb(0 0 0 / 0.55));
+        }
+
+        /* ---- Tone presets (keep AFTER the dark block) ---- */
+        .kwuo-post-it-tone-butter {
+            --note: #FFF1A8;
+        }
+
+        .kwuo-post-it-tone-sage {
+            --note: #E3E8CF;
+        }
+
+        .kwuo-post-it-tone-sky {
+            --note: #D5ECF7;
+        }
+
+        .kwuo-post-it-tone-rose {
+            --note: #F9DCDD;
+        }
+
+        .dark .kwuo-post-it-tone-butter {
+            --note: #3A3217;
+        }
+
+        .dark .kwuo-post-it-tone-sage {
+            --note: #262B1D;
+        }
+
+        .dark .kwuo-post-it-tone-sky {
+            --note: #1B2A33;
+        }
+
+        .dark .kwuo-post-it-tone-rose {
+            --note: #33201F;
+        }
+
+        /* ---- Clear cellotape ---- */
+        .kwuo-tape-strip {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            z-index: 3;
+            width: 76px;
+            height: 22px;
+            transform: translateX(-50%) rotate(-1.5deg);
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(228, 214, 169, 0.45) 100%);
+            border: 1px solid rgba(98, 43, 20, 0.30);
+            border-left: 2px dashed rgba(98, 43, 20, 0.38);
+            border-right: 2px dashed rgba(98, 43, 20, 0.38);
+            box-shadow: 0 1px 2px rgba(98, 43, 20, 0.20), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+        }
+
+        .dark .kwuo-tape-strip {
+            background: linear-gradient(180deg, rgba(228, 214, 169, 0.28) 0%, rgba(228, 214, 169, 0.14) 100%);
+            border-color: rgba(228, 214, 169, 0.50);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        }
+
+        /* =========================================================================
+   TIMELINE LEAF + BRANCH (trunk node → centre of the tape)
+   The 40px below is the centre of the number node (top-4 = 16px + half of h-12 = 24px).
+   ========================================================================= */
+        .kwuo-leaf {
+            --drop: 24px;
+            /* how far the branch hangs down to the tape */
+            position: relative;
+            width: 100%;
+            max-width: 24rem;
+            margin-top: calc(40px + var(--drop));
+        }
+
+        .kwuo-branch {
+            position: absolute;
+            right: 50%;
+            /* branch ends at the note's top-centre (the tape) */
+            top: calc(var(--drop) * -1);
+            width: calc(50% + 2rem);
+            /* and runs back to the trunk node */
+            height: calc(var(--drop) + 1px);
+            pointer-events: none;
+        }
+
+        @media (min-width: 640px) {
+            .kwuo-branch {
+                width: calc(50% + 2.5rem);
+            }
+
+            /* matches sm:pl-16 on the row */
+        }
+
+        @media (min-width: 768px) {
+            .kwuo-leaf {
+                --drop: 40px;
+                width: min(24rem, calc(100% - 4rem));
+            }
+
+            .kwuo-branch {
+                width: calc(50% + 4rem);
+            }
+
+            /* 4rem = the mr-16 / ml-16 gap to the trunk */
+            .kwuo-branch-flip {
+                right: auto;
+                left: 50%;
+                transform: scaleX(-1);
+            }
+
+            /* for left-column notes */
+        }
     </style>
     {% block head %}{% endblock %}
 </head>
-<body class="flex min-h-full flex-col font-sans bg-theme-canvas text-theme-body transition-colors duration-200">
 
-    <!-- Top Navigation Bar -->
-    <header class="sticky top-0 z-40 border-b border-theme-border-subtle bg-theme-surface/95 backdrop-blur">
-        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-            <!-- Brand Logo -->
-            <div class="flex items-center gap-3">
-                <a href="/" class="flex items-center gap-2 group">
-                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-kwuo-mahogany text-kwuo-sand font-bold shadow-sm group-hover:bg-kwuo-bronze transition border border-kwuo-sage/30">
-                        K
-                    </span>
-                    <span class="text-xl font-heading font-extrabold tracking-tight text-theme-heading">Kwuo</span>
-                </a>
-            </div>
+<body class="flex min-h-full flex-col font-sans bg-theme-canvas text-theme-body transition-colors duration-200"
+    @scroll.window="
+        let currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+        if (currentScroll < 0) return;
+        if (currentScroll > scrollThreshold && currentScroll > lastScrollY && !mobileMenuOpen) {
+            headerHidden = true;
+        } else if (currentScroll < lastScrollY || currentScroll <= scrollThreshold) {
+            headerHidden = false;
+        }
+        lastScrollY = currentScroll;
+    ">
 
-            <!-- Desktop Nav Links -->
-            <nav class="hidden md:flex items-center gap-6 text-sm font-medium">
-                <a href="/" class="text-slate-700 dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white transition">Home</a>
-                <a href="/about" class="text-slate-700 dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white transition">About</a>
-                <a href="/documentation" class="text-slate-700 dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white transition">Documentation</a>
-                {% if user %}
-                    <a href="/dashboard" class="text-slate-700 dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white transition">Dashboard</a>
+    {% block header %}
+    {% if not hide_header %}
+    <!-- Top Navigation Bar (Sticky with integrated wavy border, auto-hides on downward scroll) -->
+    <header class="sticky top-0 z-40 transition-transform duration-300 ease-in-out"
+        :class="headerHidden ? '-translate-y-full' : 'translate-y-0'">
+        <div class="bg-kwuo-sand dark:bg-kwuo-dark-surface transition-colors">
+            <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+                <!-- Brand Logo -->
+                <div class="flex items-center gap-3">
+                    <a href="/" class="flex items-center gap-2 group">
+                        <span
+                            class="flex h-9 w-9 items-center justify-center rounded-lg bg-kwuo-mahogany text-kwuo-sand font-bold shadow-sm group-hover:bg-kwuo-bronze transition border border-kwuo-mahogany/30">
+                            K
+                        </span>
+                        <span
+                            class="text-xl font-heading font-extrabold tracking-tight text-kwuo-mahogany dark:text-kwuo-sand">Kwuo</span>
+                    </a>
+                </div>
+
+                <!-- Desktop Nav Links -->
+                {% set p = request.url.path if request is defined and request.url is defined else '' %}
+                {% set is_home = (p == '/') %}
+                {% set is_about = p.startswith('/about') %}
+                {% set is_docs = p.startswith('/documentation') %}
+                {% set is_dash = p.startswith('/dashboard') %}
+                {% set is_profile = p.startswith('/profile') %}
+                {% set is_admin = p.startswith('/admin') %}
+
+                <nav class="hidden md:flex items-center gap-6 lg:gap-7 text-sm"
+                    x-data="{ currentTab: '{% if is_home %}home{% elif is_about %}about{% elif is_docs %}docs{% elif is_dash %}dash{% elif is_profile %}profile{% elif is_admin %}admin{% else %}none{% endif %}' }">
+                    <!-- Home Tab -->
+                    <a href="/" @click="currentTab = 'home'" class="kwuo-nav-tab {% if is_home %}is-active{% endif %}"
+                        :class="{ 'is-active': currentTab === 'home' }">
+                        <span>Home</span>
+                    </a>
+
+                    <!-- About Tab -->
+                    <a href="/about" @click="currentTab = 'about'"
+                        class="kwuo-nav-tab {% if is_about %}is-active{% endif %}"
+                        :class="{ 'is-active': currentTab === 'about' }">
+                        <span>About</span>
+                    </a>
+
+                    <!-- Documentation Tab -->
+                    <a href="/documentation" @click="currentTab = 'docs'"
+                        class="kwuo-nav-tab {% if is_docs %}is-active{% endif %}"
+                        :class="{ 'is-active': currentTab === 'docs' }">
+                        <span>Documentation</span>
+                    </a>
+
+                    {% if user %}
+                    <!-- Dashboard Tab -->
+                    <a href="/dashboard" @click="currentTab = 'dash'"
+                        class="kwuo-nav-tab {% if is_dash %}is-active{% endif %}"
+                        :class="{ 'is-active': currentTab === 'dash' }">
+                        <span>Dashboard</span>
+                    </a>
+
+                    <!-- Profile Tab -->
+                    <a href="/profile" @click="currentTab = 'profile'"
+                        class="kwuo-nav-tab {% if is_profile %}is-active{% endif %}"
+                        :class="{ 'is-active': currentTab === 'profile' }">
+                        <span>Profile</span>
+                    </a>
+
                     {% if user.is_super_admin %}
-                        <a href="/admin" class="text-kwuo-bronze dark:text-kwuo-sand hover:text-kwuo-mahogany transition flex items-center gap-1.5 font-semibold">
-                            <span class="h-2 w-2 rounded-full bg-kwuo-bronze dark:bg-kwuo-sand animate-pulse"></span>
-                            Admin Panel
-                        </a>
+                    <!-- Admin Panel Tab -->
+                    <a href="/admin" @click="currentTab = 'admin'"
+                        class="kwuo-nav-tab flex items-center gap-1.5 {% if is_admin %}is-active{% endif %}"
+                        :class="{ 'is-active': currentTab === 'admin' }">
+                        <span class="h-2 w-2 rounded-full bg-kwuo-bronze dark:bg-kwuo-sand animate-pulse"></span>
+                        <span>Admin Panel</span>
+                    </a>
                     {% endif %}
-                {% endif %}
-            </nav>
+                    {% endif %}
+                </nav>
 
-            <!-- User / Auth / Theme Section (Desktop) -->
-            <div class="hidden md:flex items-center gap-3">
-                <!-- Theme Toggle Button -->
-                <button @click="darkMode = !darkMode" type="button" class="rounded-lg p-2 text-slate-600 dark:text-kwuo-gold hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent transition focus:outline-none" title="Toggle theme">
-                    <i x-show="darkMode" x-cloak class="ph-bold ph-sun text-lg"></i>
-                    <i x-show="!darkMode" class="ph-bold ph-moon text-lg"></i>
-                </button>
+                <!-- User / Auth / Theme Section (Desktop) -->
+                <div class="hidden md:flex items-center gap-3">
+                    <!-- Theme Toggle Button -->
+                    <button @click="darkMode = !darkMode" type="button"
+                        class="kwuo-btn kwuo-btn-outline kwuo-btn-icon-sm" title="Toggle theme"
+                        aria-label="Toggle dark mode">
+                        <i x-show="darkMode" x-cloak
+                            class="ph-bold ph-sun text-base text-kwuo-sand dark:text-kwuo-gold"></i>
+                        <i x-show="!darkMode" class="ph-bold ph-moon text-base text-kwuo-mahogany"></i>
+                    </button>
 
-                {% if user %}
-                    <div class="flex items-center gap-2.5 border-r border-theme-border pr-3">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-kwuo-sand dark:bg-kwuo-dark-border text-kwuo-mahogany dark:text-kwuo-sand font-bold text-xs uppercase border border-kwuo-sage/40">
+                    {% if user %}
+                    <a href="/profile" class="flex items-center gap-2.5 pr-3 hover:opacity-80 transition"
+                        title="Account Settings & Security">
+                        <div
+                            class="flex h-8 w-8 items-center justify-center rounded-full bg-kwuo-mahogany text-kwuo-sand dark:bg-kwuo-dark-border dark:text-kwuo-sand font-bold text-xs uppercase shadow-sm">
                             {{ user.full_name[:2] }}
                         </div>
                         <div class="text-xs">
-                            <div class="font-semibold text-slate-800 dark:text-kwuo-sand">{{ user.full_name }}</div>
-                            <div class="text-slate-500 dark:text-kwuo-sage truncate max-w-[140px]">{{ user.email }}</div>
+                            <div class="font-bold text-kwuo-mahogany dark:text-kwuo-sand">{{ user.full_name }}</div>
+                            <div class="text-kwuo-mahogany/70 dark:text-kwuo-sage truncate max-w-[140px] font-medium">{{
+                                user.email }}</div>
                         </div>
-                    </div>
-                    <form action="/auth/logout" method="post" class="inline">
-                        <button type="submit" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
-                            Log out
-                        </button>
-                    </form>
-                {% else %}
-                    <a href="/auth/login" class="rounded-lg px-3.5 py-1.5 text-sm font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent transition">
+                    </a>
+                    {% else %}
+                    <a href="/auth/login" class="kwuo-btn kwuo-btn-outline kwuo-btn-sm">
                         Log in
                     </a>
-                    <a href="/auth/register" class="rounded-lg bg-kwuo-bronze px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-kwuo-mahogany transition">
+                    <a href="/auth/register" class="kwuo-btn kwuo-btn-primary kwuo-btn-sm">
                         Sign up
                     </a>
-                {% endif %}
+                    {% endif %}
+                </div>
+
+                <!-- Mobile Header Action Buttons -->
+                <div class="flex items-center gap-2 md:hidden">
+                    <!-- Mobile Theme Toggle Button -->
+                    <button @click="darkMode = !darkMode" type="button"
+                        class="kwuo-btn kwuo-btn-outline kwuo-btn-icon-md" title="Toggle theme"
+                        aria-label="Toggle dark mode">
+                        <i x-show="darkMode" x-cloak
+                            class="ph-bold ph-sun text-base text-kwuo-sand dark:text-kwuo-gold"></i>
+                        <i x-show="!darkMode" class="ph-bold ph-moon text-base text-kwuo-mahogany"></i>
+                    </button>
+
+                    <!-- Mobile Hamburger / Close Button -->
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" type="button"
+                        class="kwuo-btn kwuo-btn-outline kwuo-btn-icon-md transition"
+                        :class="mobileMenuOpen ? '!bg-kwuo-mahogany !text-kwuo-sand !border-kwuo-mahogany dark:!bg-kwuo-sand dark:!text-kwuo-mahogany' : ''"
+                        title="Toggle navigation menu" aria-label="Toggle navigation menu">
+                        <i x-show="!mobileMenuOpen" class="ph-bold ph-list text-xl"></i>
+                        <i x-show="mobileMenuOpen" x-cloak class="ph-bold ph-x text-xl"></i>
+                    </button>
+                </div>
             </div>
 
-            <!-- Mobile Buttons (Theme + Hamburger) -->
-            <div class="flex items-center gap-1 md:hidden">
-                <button @click="darkMode = !darkMode" type="button" class="rounded-md p-2 text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent focus:outline-none">
-                    <i x-show="darkMode" x-cloak class="ph-bold ph-sun text-lg"></i>
-                    <i x-show="!darkMode" class="ph-bold ph-moon text-lg"></i>
-                </button>
-                <button @click="mobileMenuOpen = !mobileMenuOpen" type="button" class="inline-flex items-center justify-center rounded-md p-2 text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent focus:outline-none">
-                    <i x-show="!mobileMenuOpen" class="ph-bold ph-list text-xl"></i>
-                    <i x-show="mobileMenuOpen" x-cloak class="ph-bold ph-x text-xl"></i>
-                </button>
+            <!-- Mobile Drawer Menu -->
+            <div x-show="mobileMenuOpen" x-cloak @click.away="mobileMenuOpen = false"
+                class="md:hidden border-t border-kwuo-mahogany/15 dark:border-theme-border bg-kwuo-sand dark:bg-kwuo-dark-surface px-4 pt-2 pb-4 space-y-1"
+                x-data="{ mobileTab: '{% if is_home %}home{% elif is_about %}about{% elif is_docs %}docs{% elif is_dash %}dash{% elif is_profile %}profile{% elif is_admin %}admin{% else %}none{% endif %}' }">
+                <a href="/" @click="mobileTab = 'home'" class="kwuo-mobile-nav-tab {% if is_home %}is-active{% endif %}"
+                    :class="{ 'is-active': mobileTab === 'home' }">Home</a>
+                <a href="/about" @click="mobileTab = 'about'"
+                    class="kwuo-mobile-nav-tab {% if is_about %}is-active{% endif %}"
+                    :class="{ 'is-active': mobileTab === 'about' }">About</a>
+                <a href="/documentation" @click="mobileTab = 'docs'"
+                    class="kwuo-mobile-nav-tab {% if is_docs %}is-active{% endif %}"
+                    :class="{ 'is-active': mobileTab === 'docs' }">Documentation</a>
+                {% if user %}
+                <a href="/dashboard" @click="mobileTab = 'dash'"
+                    class="kwuo-mobile-nav-tab {% if is_dash %}is-active{% endif %}"
+                    :class="{ 'is-active': mobileTab === 'dash' }">Dashboard</a>
+                <a href="/profile" @click="mobileTab = 'profile'"
+                    class="kwuo-mobile-nav-tab {% if is_profile %}is-active{% endif %}"
+                    :class="{ 'is-active': mobileTab === 'profile' }">Profile &amp; Security</a>
+                {% if user.is_super_admin %}
+                <a href="/admin" @click="mobileTab = 'admin'"
+                    class="kwuo-mobile-nav-tab flex items-center gap-2 {% if is_admin %}is-active{% endif %}"
+                    :class="{ 'is-active': mobileTab === 'admin' }">
+                    <span class="h-2 w-2 rounded-full bg-kwuo-bronze dark:bg-kwuo-sand animate-pulse"></span>
+                    <span>Admin Panel</span>
+                </a>
+                {% endif %}
+                {% else %}
+                <div
+                    class="border-t border-kwuo-mahogany/15 dark:border-theme-border-subtle pt-4 mt-3 flex flex-col gap-2.5">
+                    <a href="/auth/login"
+                        class="kwuo-btn kwuo-btn-outline kwuo-btn-md w-full justify-center font-bold text-sm">
+                        Log in
+                    </a>
+                    <a href="/auth/register"
+                        class="kwuo-btn kwuo-btn-primary kwuo-btn-md w-full justify-center font-bold text-sm">
+                        Sign up
+                    </a>
+                </div>
+                {% endif %}
             </div>
         </div>
 
-        <!-- Mobile Drawer Menu -->
-        <div x-show="mobileMenuOpen" x-cloak @click.away="mobileMenuOpen = false" class="md:hidden border-b border-theme-border bg-theme-surface px-4 pt-2 pb-4 space-y-2">
-            <a href="/" class="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-canvas dark:hover:bg-kwuo-dark-accent">Home</a>
-            <a href="/about" class="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-canvas dark:hover:bg-kwuo-dark-accent">About</a>
-            <a href="/documentation" class="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-canvas dark:hover:bg-kwuo-dark-accent">Documentation</a>
-            {% if user %}
-                <a href="/dashboard" class="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-canvas dark:hover:bg-kwuo-dark-accent">Dashboard</a>
-                {% if user.is_super_admin %}
-                    <a href="/admin" class="block rounded-lg px-3 py-2 text-base font-medium text-kwuo-bronze dark:text-kwuo-sand bg-kwuo-sand/20 dark:bg-kwuo-dark-accent">Admin Panel</a>
-                {% endif %}
-                <div class="border-t border-theme-border-subtle pt-3 mt-2 flex items-center justify-between">
-                    <div class="text-sm font-semibold text-slate-700 dark:text-kwuo-sand">{{ user.full_name }}</div>
-                    <form action="/auth/logout" method="post" class="inline">
-                        <button type="submit" class="text-sm font-semibold text-rose-700 dark:text-rose-400">Log out</button>
-                    </form>
-                </div>
-            {% else %}
-                <div class="border-t border-theme-border-subtle pt-3 mt-2 flex flex-col gap-2">
-                    <a href="/auth/login" class="text-center rounded-lg border border-slate-300 dark:border-kwuo-dark-border py-2 text-sm font-medium text-slate-700 dark:text-kwuo-gold hover:bg-kwuo-canvas dark:hover:bg-kwuo-dark-accent">Log in</a>
-                    <a href="/auth/register" class="text-center rounded-lg bg-kwuo-bronze py-2 text-sm font-semibold text-white hover:bg-kwuo-mahogany">Sign up</a>
-                </div>
-            {% endif %}
+        <!-- Wavy Border Divider as Part of Header -->
+        <div
+            class="w-full overflow-hidden leading-none -mt-px pointer-events-none select-none text-kwuo-sand dark:text-kwuo-dark-surface drop-shadow-[0_3px_5px_rgba(98,43,20,0.06)] dark:drop-shadow-[0_3px_5px_rgba(0,0,0,0.5)]">
+            <svg class="w-full h-3 sm:h-3.5 block" viewBox="0 0 1200 12" preserveAspectRatio="none">
+                <path d="M0,0 C150,12 350,0 500,8 C650,16 850,2 1000,10 C1120,16 1180,4 1200,8 L1200,0 L0,0 Z"
+                    fill="currentColor"></path>
+            </svg>
         </div>
     </header>
-
-    <!-- Wavy Border Divider Below Navigation -->
-    <div class="w-full overflow-hidden leading-none -mt-px pointer-events-none select-none text-kwuo-sand/80 dark:text-kwuo-dark-border">
-        <svg class="w-full h-3 sm:h-3.5 block" viewBox="0 0 1200 12" preserveAspectRatio="none">
-            <path d="M0,0 C150,12 350,0 500,8 C650,16 850,2 1000,10 C1120,16 1180,4 1200,8 L1200,0 L0,0 Z" fill="currentColor"></path>
-        </svg>
-    </div>
+    {% endif %}
+    {% endblock header %}
 
     <!-- Main Content Slot -->
     <main class="flex-1">
         {% block content %}{% endblock %}
     </main>
 
+    <!-- Reversed Wavy Border Divider for Top of Footer -->
+    <div
+        class="w-full overflow-hidden leading-none pointer-events-none select-none text-theme-surface -mb-px rotate-180 drop-shadow-[0_-3px_5px_rgba(98,43,20,0.04)] dark:drop-shadow-[0_-3px_5px_rgba(0,0,0,0.3)]">
+        <svg class="w-full h-3 sm:h-3.5 block" viewBox="0 0 1200 12" preserveAspectRatio="none">
+            <path d="M0,0 C150,12 350,0 500,8 C650,16 850,2 1000,10 C1120,16 1180,4 1200,8 L1200,0 L0,0 Z"
+                fill="currentColor"></path>
+        </svg>
+    </div>
+
     <!-- Comprehensive Multi-Column Footer -->
-    <footer class="border-t border-theme-border-subtle bg-theme-surface text-slate-600 dark:text-kwuo-sage transition-colors">
+    <footer class="bg-theme-surface text-slate-600 dark:text-kwuo-sage transition-colors">
         <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-10">
                 <!-- Col 1: Brand & Mission (Spans 2 columns on lg) -->
                 <div class="lg:col-span-2 space-y-4">
                     <div class="flex items-center gap-2.5">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-mahogany text-kwuo-sand font-bold text-sm shadow-sm border border-kwuo-sage/30">
+                        <span
+                            class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-mahogany text-kwuo-sand font-bold text-sm shadow-sm border border-kwuo-sage/30">
                             K
                         </span>
                         <span class="text-xl font-heading font-extrabold tracking-tight text-theme-heading">Kwuo</span>
                     </div>
                     <p class="text-xs leading-relaxed max-w-sm text-slate-600 dark:text-kwuo-sage">
-                        The dedicated tabulation engine for individual speech tournaments and tertiary forensics. Engineered for multi-speaker heats, zero-auth digital ballots, and mathematical position-bias balancing.
+                        The dedicated tabulation engine for individual speech tournaments and tertiary forensics.
+                        Engineered for multi-speaker heats, zero-auth digital ballots, and mathematical position-bias
+                        balancing.
                     </p>
 
                     <!-- Buy Me a Coffee & Sponsor Pill -->
                     <div class="pt-2 flex flex-wrap items-center gap-3">
-                        <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-lg bg-kwuo-mahogany hover:bg-kwuo-bronze px-3.5 py-1.5 text-xs font-bold text-kwuo-sand shadow-sm transition border border-kwuo-sage/40">
+                        <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer"
+                            class="inline-flex items-center gap-2 rounded-lg bg-kwuo-mahogany hover:bg-kwuo-bronze px-3.5 py-1.5 text-xs font-bold text-kwuo-sand shadow-sm transition border border-kwuo-sage/40">
                             <i class="ph-duotone ph-coffee text-base text-kwuo-sand"></i>
                             <span>Buy Me a Coffee</span>
                         </a>
 
-                        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface-subtle px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-kwuo-sand hover:bg-kwuo-sand/30 transition">
+                        <a href="https://github.com" target="_blank" rel="noopener noreferrer"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface-subtle px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-kwuo-sand hover:bg-kwuo-sand/30 transition">
                             <i class="ph-bold ph-github-logo text-base"></i>
                             <span>Open Source</span>
                         </a>
@@ -282,62 +1217,162 @@
 
                 <!-- Col 2: Platform Links -->
                 <div class="space-y-3">
-                    <h4 class="text-xs font-bold font-mono uppercase tracking-wider text-theme-heading">
+                    <h4 class="text-xs font-bold font-body uppercase tracking-wider text-theme-heading">
                         Platform
                     </h4>
                     <ul class="space-y-2 text-xs">
-                        <li><a href="/" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Home</a></li>
-                        <li><a href="/about" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">About Kwuo</a></li>
-                        <li><a href="/documentation" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Documentation &amp; Guides</a></li>
-                        <li><a href="/dashboard" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Tabroom Dashboard</a></li>
+                        <li><a href="/" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Home</a>
+                        </li>
+                        <li><a href="/about" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">About
+                                Kwuo</a></li>
+                        <li><a href="/documentation"
+                                class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Documentation &amp;
+                                Guides</a></li>
+                        <li><a href="/dashboard"
+                                class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Tabroom
+                                Dashboard</a></li>
                         {% if user and user.is_super_admin %}
-                        <li><a href="/admin" class="text-kwuo-bronze dark:text-kwuo-sand font-semibold hover:underline">Admin Panel</a></li>
+                        <li><a href="/admin"
+                                class="text-kwuo-bronze dark:text-kwuo-sand font-semibold hover:underline">Admin
+                                Panel</a></li>
                         {% endif %}
                     </ul>
                 </div>
 
                 <!-- Col 3: Governance & Legal -->
                 <div class="space-y-3">
-                    <h4 class="text-xs font-bold font-mono uppercase tracking-wider text-theme-heading">
+                    <h4 class="text-xs font-bold font-body uppercase tracking-wider text-theme-heading">
                         Governance
                     </h4>
                     <ul class="space-y-2 text-xs">
-                        <li><a href="/privacy" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Privacy Policy</a></li>
-                        <li><a href="/terms" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Terms of Service</a></li>
-                        <li><a href="/documentation/03-adjudication-and-rubrics/ballot-modes.md" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Ballot Integrity</a></li>
-                        <li><a href="/documentation/02-tournament-mechanics/position-bias.md" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Position Bias Policy</a></li>
+                        <li><a href="/privacy"
+                                class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Privacy Policy</a>
+                        </li>
+                        <li><a href="/terms" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Terms
+                                of Service</a></li>
+                        <li><a href="/documentation/03-adjudication-and-rubrics/ballot-modes.md"
+                                class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Ballot Integrity</a>
+                        </li>
+                        <li><a href="/documentation/02-tournament-mechanics/position-bias.md"
+                                class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Position Bias
+                                Policy</a></li>
                     </ul>
                 </div>
 
                 <!-- Col 4: Community & Support -->
                 <div class="space-y-3">
-                    <h4 class="text-xs font-bold font-mono uppercase tracking-wider text-theme-heading">
+                    <h4 class="text-xs font-bold font-body uppercase tracking-wider text-theme-heading">
                         Connect
                     </h4>
                     <ul class="space-y-2 text-xs">
-                        <li><a href="/contact" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition font-semibold text-kwuo-bronze dark:text-kwuo-gold">Talk to Us / Support</a></li>
-                        <li><a href="mailto:tab@kwuo.org" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">tab@kwuo.org</a></li>
-                        <li><a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Sponsor the Project</a></li>
-                        <li><a href="/health" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition font-mono text-[11px]">System Status: OK</a></li>
+                        <li><a href="/contact"
+                                class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition font-semibold text-kwuo-bronze dark:text-kwuo-gold">Talk
+                                to Us / Support</a></li>
+                        <li><a href="mailto:tab@kwuo.org"
+                                class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">tab@kwuo.org</a>
+                        </li>
+                        </li>
+                        <li><a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer"
+                                class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition">Sponsor the
+                                Project</a></li>
+                        <li><a href="/health"
+                                class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold transition font-body text-[11px]">System
+                                Status: OK</a></li>
                     </ul>
                 </div>
             </div>
 
             <!-- Bottom Bar -->
-            <div class="border-t border-theme-border-subtle pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500 dark:text-kwuo-sage">
+            <div
+                class="border-t border-theme-border-subtle pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500 dark:text-kwuo-sage">
                 <div>
-                    &copy; 2026 Kwuo Tabulation Platform. <em>Kwuo</em> is Igbo for <em>"to speak or declare"</em>. MIT Open Source.
+                    &copy; 2026 Kwuo Tabulation Platform. MIT Open Source. All rights reserved
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="rounded bg-kwuo-sand/50 dark:bg-kwuo-dark-accent text-kwuo-mahogany dark:text-kwuo-sand px-2 py-0.5 font-mono text-[10px] font-semibold border border-kwuo-sage/30">
-                        v0.1.0-alpha
+                    <span
+                        class="rounded bg-kwuo-sand/50 dark:bg-kwuo-dark-accent text-kwuo-mahogany dark:text-kwuo-sand px-2 py-0.5 font-body text-[10px] font-semibold border border-kwuo-sage/30">
+                        v0.1.0
                     </span>
-                    <span>Designed for tertiary speech tournaments</span>
+                    <span>Designed for Competitive public speaking tournaments</span>
                 </div>
             </div>
         </div>
     </footer>
 
+    <!-- Global Floating Toast Notification System -->
+    <div x-data="kwuoToastSystem()" @toast.window="add($event.detail)"
+        class="fixed top-20 right-4 sm:right-6 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0"
+        x-cloak>
+        <template x-for="t in toasts" :key="t.id">
+            <div x-show="t.visible" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-[-10px] scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                x-transition:leave-end="opacity-0 translate-y-[-10px] scale-95"
+                class="pointer-events-auto rounded-2xl p-4 shadow-xl border flex items-start gap-3 backdrop-blur-md transition"
+                :class="t.type === 'error' ? 'bg-rose-50/95 dark:bg-rose-950/90 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200' :
+                        t.type === 'warning' ? 'bg-amber-50/95 dark:bg-amber-950/90 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200' :
+                        'bg-emerald-50/95 dark:bg-emerald-950/90 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'">
+                <div class="shrink-0 mt-0.5">
+                    <i :class="t.type === 'error' ? 'ph-bold ph-warning-circle text-lg text-rose-600 dark:text-rose-400' :
+                               t.type === 'warning' ? 'ph-bold ph-warning text-lg text-amber-600 dark:text-amber-400' :
+                               'ph-bold ph-check-circle text-lg text-emerald-600 dark:text-emerald-400'"></i>
+                </div>
+                <div class="flex-1 text-xs font-semibold leading-relaxed" x-text="t.message"></div>
+                <button @click="remove(t.id)"
+                    class="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5">
+                    <i class="ph-bold ph-x text-sm"></i>
+                </button>
+            </div>
+        </template>
+    </div>
+
+    <script>
+        function kwuoToastSystem() {
+            return {
+                toasts: [],
+                lastMessage: '',
+                lastTime: 0,
+                add(detail) {
+                    if (!detail) return;
+                    const message = typeof detail === 'string' ? detail : detail.message;
+                    const type = (typeof detail === 'object' && detail.type) ? detail.type : 'success';
+                    const duration = (typeof detail === 'object' && detail.duration) ? detail.duration : 4500;
+                    if (!message) return;
+
+                    // Deduplicate identical toasts dispatched within 1 second
+                    const now = Date.now();
+                    if (this.lastMessage === message && (now - this.lastTime < 1000)) {
+                        return;
+                    }
+                    this.lastMessage = message;
+                    this.lastTime = now;
+
+                    const id = now + Math.random();
+                    const toast = { id, message, type, visible: true };
+                    this.toasts.push(toast);
+                    setTimeout(() => {
+                        this.remove(id);
+                    }, duration);
+                },
+                remove(id) {
+                    const idx = this.toasts.findIndex(t => t.id === id);
+                    if (idx !== -1) {
+                        this.toasts[idx].visible = false;
+                        setTimeout(() => {
+                            this.toasts = this.toasts.filter(t => t.id !== id);
+                        }, 250);
+                    }
+                }
+            };
+        }
+        window.showToast = function (message, type = 'success', duration = 4500) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { message, type, duration } }));
+        };
+    </script>
+
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

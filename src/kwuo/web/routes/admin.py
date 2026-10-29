@@ -2,6 +2,8 @@
 
 from typing import List, Optional, Dict, Any
 from urllib.parse import urlencode
+from datetime import datetime, timezone
+import secrets
 from fastapi import APIRouter, Request, Depends, Form, Query, status, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select, func, or_, delete
@@ -11,7 +13,9 @@ from sqlalchemy.orm import selectinload
 from kwuo.core.database import get_db_session
 from kwuo.core.rbac import require_super_admin
 from kwuo.core.security import hash_password
-from kwuo.models.user import User, Group, GroupPermission, GroupMembership
+from kwuo.models.user import User, UserStatus, Group, GroupPermission, GroupMembership
+from kwuo.models.audit import AuditLog, AuditAction, AuditSeverity
+from kwuo.services.audit import record_audit_log
 from kwuo.admin.site import admin_site
 from kwuo.web.templates import templates
 
@@ -203,7 +207,7 @@ async def admin_model_add_submit(
         if existing:
             raise HTTPException(status_code=400, detail=f"User with email '{email}' already exists.")
 
-        pwd_hash = hash_password(raw_password) if raw_password else None
+        pwd_hash = hash_password(raw_password) if raw_password else hash_password(secrets.token_urlsafe(16))
         new_obj = User(
             email=email,
             full_name=full_name,
@@ -318,37 +322,114 @@ async def admin_bulk_action(
     elif action == "activate_users" and model_slug == "users":
         stmt = select(User).where(User.id.in_(selected_ids))
         users = (await db.execute(stmt)).scalars().all()
+        now = datetime.now(timezone.utc)
         for u in users:
-            u.is_active = True
+            u.status = UserStatus.ACTIVE
+            u.is_verified = True
+            u.auth_updated_at = now
+            await record_audit_log(
+                db,
+                action=AuditAction.USER_REACTIVATE,
+                actor=current_admin,
+                request=request,
+                resource_type="user",
+                resource_id=u.id,
+                severity=AuditSeverity.INFO.value,
+                success=True,
+                description=f"Admin {current_admin.email} activated user {u.email}",
+            )
         await db.flush()
         msg = f"Activated {len(users)} user accounts."
 
     elif action == "suspend_users" and model_slug == "users":
         stmt = select(User).where(User.id.in_(selected_ids))
         users = (await db.execute(stmt)).scalars().all()
+        now = datetime.now(timezone.utc)
         suspended = 0
         for u in users:
             if u.id != current_admin.id:
-                u.is_active = False
+                u.status = UserStatus.SUSPENDED
+                u.auth_updated_at = now
+                await record_audit_log(
+                    db,
+                    action=AuditAction.USER_SUSPEND,
+                    actor=current_admin,
+                    request=request,
+                    resource_type="user",
+                    resource_id=u.id,
+                    severity=AuditSeverity.WARNING.value,
+                    success=True,
+                    description=f"Admin {current_admin.email} suspended user {u.email}",
+                )
                 suspended += 1
         await db.flush()
         msg = f"Suspended {suspended} user accounts."
 
+    elif action == "ban_users" and model_slug == "users":
+        stmt = select(User).where(User.id.in_(selected_ids))
+        users = (await db.execute(stmt)).scalars().all()
+        now = datetime.now(timezone.utc)
+        banned = 0
+        for u in users:
+            if u.id != current_admin.id:
+                u.status = UserStatus.BANNED
+                u.auth_updated_at = now
+                await record_audit_log(
+                    db,
+                    action=AuditAction.USER_BAN,
+                    actor=current_admin,
+                    request=request,
+                    resource_type="user",
+                    resource_id=u.id,
+                    severity=AuditSeverity.WARNING.value,
+                    success=True,
+                    description=f"Admin {current_admin.email} permanently banned user {u.email}",
+                )
+                banned += 1
+        await db.flush()
+        msg = f"Banned {banned} user accounts."
+
     elif action == "make_super_admin" and model_slug == "users":
         stmt = select(User).where(User.id.in_(selected_ids))
         users = (await db.execute(stmt)).scalars().all()
+        now = datetime.now(timezone.utc)
         for u in users:
             u.is_super_admin = True
+            u.auth_updated_at = now
+            await record_audit_log(
+                db,
+                action=AuditAction.ROLE_GRANT,
+                actor=current_admin,
+                request=request,
+                resource_type="user",
+                resource_id=u.id,
+                severity=AuditSeverity.WARNING.value,
+                success=True,
+                description=f"Admin {current_admin.email} granted Super Admin to {u.email}",
+            )
         await db.flush()
         msg = f"Granted Super Admin privileges to {len(users)} users."
 
     elif action == "remove_super_admin" and model_slug == "users":
         stmt = select(User).where(User.id.in_(selected_ids))
         users = (await db.execute(stmt)).scalars().all()
+        now = datetime.now(timezone.utc)
         demoted = 0
         for u in users:
             if u.id != current_admin.id:
                 u.is_super_admin = False
+                u.auth_updated_at = now
+                await record_audit_log(
+                    db,
+                    action=AuditAction.ROLE_REVOKE,
+                    actor=current_admin,
+                    request=request,
+                    resource_type="user",
+                    resource_id=u.id,
+                    severity=AuditSeverity.WARNING.value,
+                    success=True,
+                    description=f"Admin {current_admin.email} revoked Super Admin from {u.email}",
+                )
                 demoted += 1
         await db.flush()
         msg = f"Revoked Super Admin privileges from {demoted} users."
@@ -403,7 +484,7 @@ async def admin_model_change_view(
 
     # Fetch auxiliary options for relations
     groups = (await db.execute(select(Group).order_by(Group.name))).scalars().all()
-    users = (await db.execute(select(User).order_by(User.full_name))).scalars().all()
+    users = (await db.execute(select(User).order_by(User.first_name, User.last_name))).scalars().all()
 
     # User's currently assigned group IDs
     assigned_group_ids = []

@@ -1,0 +1,592 @@
+{% extends "base.html" %}
+
+{% block title %}Kwuo Editorial Design System &bull; Components Specification{% endblock %}
+
+{% block content %}
+{% import "macros/button.html" as ui %}
+{% import "macros/editorial.html" as edit %}
+
+<div class="min-h-screen bg-theme-canvas text-theme-body py-12 sm:py-20 transition-colors"
+     x-data="{ 
+         pillMode: false,
+         cardView: 'preview',
+         noteHovered: false 
+     }">
+    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-20">
+
+        <!-- ========================================================================= -->
+        <!-- HEADER / SYSTEM IDENTITY                                                  -->
+        <!-- ========================================================================= -->
+        <div class="space-y-4 border-b border-theme-border pb-8">
+            <div class="flex flex-wrap items-center gap-2">
+                <span
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider uppercase bg-kwuo-sand/70 dark:bg-kwuo-dark-accent text-kwuo-mahogany dark:text-kwuo-sand border border-kwuo-sage/40">
+                    <span class="h-2 w-2 rounded-full bg-kwuo-bronze animate-pulse"></span>
+                    Design Specification &bull; Editorial System
+                </span>
+                <span class="text-xs font-mono text-slate-500 dark:text-kwuo-sage">v2.1.0 &bull; Tactile Paper Aesthetic</span>
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-heading font-black tracking-tight text-theme-heading">
+                The Kwuo Design System
+            </h1>
+            <p class="max-w-3xl text-sm sm:text-base text-slate-600 dark:text-kwuo-gold leading-relaxed">
+                An editorial, tactile, paper-inspired interface designed specifically for competitive public speaking and debate tabulation.
+                Combining rich espresso mahogany, warm deckled parchment, asymmetric curled sticky notes, and pill-shaped mechanical buttons.
+            </p>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- SECTION 1: RESPONSIVE DASHBOARD SHOWCASE (INTEGRATED DEMO)                -->
+        <!-- ========================================================================= -->
+        <section class="space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <span class="text-xs font-mono font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                        Specimen 01 &bull; Live Composite Section
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-heading font-bold text-theme-heading mt-1">
+                        Responsive Tabroom Dashboard Demo
+                    </h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono text-slate-500 dark:text-kwuo-sage">Pill Buttons:</span>
+                    <button @click="pillMode = !pillMode" type="button"
+                        class="kwuo-btn kwuo-btn-sm"
+                        :class="pillMode ? 'kwuo-btn-primary' : 'kwuo-btn-outline'">
+                        <span x-text="pillMode ? 'Pill Mode: ON' : 'Pill Mode: OFF'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Composite Frame -->
+            <div class="p-6 sm:p-10 rounded-3xl border border-theme-border bg-theme-surface-subtle/40 dark:bg-kwuo-dark-canvas/60 space-y-8">
+                
+                <!-- 1. The "Wind-Curled" Post-It Note (Urgent Announcement / Briefing) -->
+                <div>
+                    {% call edit.post_it(
+                        title="URGENT BRIEFING: Round 3 Motion Release at 14:15 in Hall B",
+                        tag="CRITICAL TABROOM NOTICE"
+                    ) %}
+                    <div class="mt-2 text-xs sm:text-sm text-kwuo-mahogany/90 dark:text-kwuo-sand/90 leading-relaxed space-y-2">
+                        <p>
+                            All Room Adjudicators and Speaking Order Stewards must report to the Central Hall 10 minutes prior to draw release. 
+                            Zero-auth digital ballots for Round 3 will activate automatically on room check-in.
+                        </p>
+                        <div class="pt-2 flex flex-wrap items-center gap-3">
+                            <span class="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-kwuo-mahogany dark:text-kwuo-gold">
+                                <i class="ph-bold ph-clock"></i> Motion Embargo: T-minus 18m
+                            </span>
+                            <span class="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-kwuo-mahogany dark:text-kwuo-gold">
+                                <i class="ph-bold ph-map-pin"></i> Venue: Oratory Auditorium B
+                            </span>
+                        </div>
+                    </div>
+                    {% endcall %}
+                </div>
+
+                <!-- 2. Two-Column Grid of "Torn-Docket" Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    
+                    <!-- Docket Card 1: Room Matchup / Ballot Info -->
+                    <div class="kwuo-torn-docket-wrapper">
+                        <article class="kwuo-torn-docket space-y-6">
+                            <!-- Card Header -->
+                            <div class="flex items-start justify-between gap-3 border-b border-theme-border-subtle pb-4">
+                                <div>
+                                    <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                                        Round 3 &bull; Persuasive Speaking
+                                    </span>
+                                    <h3 class="text-xl font-heading font-black text-theme-heading mt-0.5">
+                                        Room 204 &bull; Heat B
+                                    </h3>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shrink-0">
+                                    Ballot Pending
+                                </span>
+                            </div>
+
+                            <!-- Panel Info -->
+                            <div class="space-y-3 text-xs">
+                                <div class="flex items-center justify-between text-slate-600 dark:text-kwuo-sage">
+                                    <span class="font-semibold">Chair Adjudicator:</span>
+                                    <span class="font-bold text-theme-heading">Dr. Chinedu Okafor</span>
+                                </div>
+                                <div class="flex items-center justify-between text-slate-600 dark:text-kwuo-sage">
+                                    <span class="font-semibold">Wing Judges:</span>
+                                    <span class="font-bold text-theme-heading">A. Mensah, T. Adeleke</span>
+                                </div>
+                                <div class="flex items-center justify-between text-slate-600 dark:text-kwuo-sage">
+                                    <span class="font-semibold">Competitor Count:</span>
+                                    <span class="font-bold text-theme-heading font-mono">6 Orators</span>
+                                </div>
+                            </div>
+
+                            <!-- Speakers Preview Table -->
+                            <div class="p-3.5 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle text-xs space-y-2">
+                                <div class="font-mono text-[10px] uppercase font-bold text-slate-500 dark:text-kwuo-sage">Speaking Order (Latin-Square)</div>
+                                <div class="flex justify-between items-center text-slate-700 dark:text-kwuo-sand">
+                                    <span>1. Ngozi Eze &bull; Unilag</span>
+                                    <span class="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">Checked in</span>
+                                </div>
+                                <div class="flex justify-between items-center text-slate-700 dark:text-kwuo-sand">
+                                    <span>2. Farouk Bello &bull; ABU Zaria</span>
+                                    <span class="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">Checked in</span>
+                                </div>
+                                <div class="flex justify-between items-center text-slate-700 dark:text-kwuo-sand">
+                                    <span>3. Tariq Adams &bull; University of Ibadan</span>
+                                    <span class="font-mono text-[11px] text-amber-600 dark:text-amber-400 font-bold">In Room</span>
+                                </div>
+                            </div>
+
+                            <!-- Integrated Pill Buttons -->
+                            <div class="pt-2 flex flex-col sm:flex-row gap-3">
+                                <a href="#ballot"
+                                    class="kwuo-btn kwuo-btn-primary kwuo-btn-md flex-1 justify-center"
+                                    :class="pillMode ? 'kwuo-btn-pill' : ''">
+                                    <i class="ph-bold ph-pencil-simple text-base"></i>
+                                    <span>Enter Judge Ballot</span>
+                                </a>
+                                <a href="#roster"
+                                    class="kwuo-btn kwuo-btn-secondary kwuo-btn-md flex-1 justify-center"
+                                    :class="pillMode ? 'kwuo-btn-pill' : ''">
+                                    <i class="ph-bold ph-users text-base"></i>
+                                    <span>View Roster</span>
+                                </a>
+                            </div>
+                        </article>
+                    </div>
+
+                    <!-- Docket Card 2: Ballot Submission & Verification -->
+                    <div class="kwuo-torn-docket-wrapper">
+                        <article class="kwuo-torn-docket space-y-6">
+                            <!-- Card Header -->
+                            <div class="flex items-start justify-between gap-3 border-b border-theme-border-subtle pb-4">
+                                <div>
+                                    <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                                        Tabulation Gate &bull; Round 2
+                                    </span>
+                                    <h3 class="text-xl font-heading font-black text-theme-heading mt-0.5">
+                                        Audit &amp; Verification
+                                    </h3>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0">
+                                    Audit Sealed
+                                </span>
+                            </div>
+
+                            <!-- Metric Indicators -->
+                            <div class="grid grid-cols-2 gap-3 text-center">
+                                <div class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle">
+                                    <div class="text-2xl font-heading font-black text-theme-heading font-mono">100%</div>
+                                    <div class="text-[11px] text-slate-500 dark:text-kwuo-sage font-medium">Ballots Returned</div>
+                                </div>
+                                <div class="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle">
+                                    <div class="text-2xl font-heading font-black text-theme-heading font-mono">0.02</div>
+                                    <div class="text-[11px] text-slate-500 dark:text-kwuo-sage font-medium">Bias Variance (&le; 0.05)</div>
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                                Cumulative rankings have passed algorithmic position-bias normalization and outlier check. 
+                                Ready for state-gated public release or tab director embargo.
+                            </p>
+
+                            <div class="p-3 rounded-xl border border-dashed border-theme-border flex items-center justify-between text-xs">
+                                <span class="font-mono text-slate-600 dark:text-kwuo-sand">Audit Hash: <code class="font-bold">#kwuo-8f2a9c</code></span>
+                                <span class="text-emerald-600 dark:text-emerald-400 font-bold font-mono">Verified</span>
+                            </div>
+
+                            <!-- Integrated Pill Buttons -->
+                            <div class="pt-2 flex flex-col sm:flex-row gap-3">
+                                <button type="button"
+                                    class="kwuo-btn kwuo-btn-primary kwuo-btn-md flex-1 justify-center"
+                                    :class="pillMode ? 'kwuo-btn-pill' : ''">
+                                    <i class="ph-bold ph-lock-key-open text-base"></i>
+                                    <span>Release Standings</span>
+                                </button>
+                                <button type="button"
+                                    class="kwuo-btn kwuo-btn-outline kwuo-btn-md flex-1 justify-center"
+                                    :class="pillMode ? 'kwuo-btn-pill' : ''">
+                                    <i class="ph-bold ph-file-text text-base"></i>
+                                    <span>Download Log</span>
+                                </button>
+                            </div>
+                        </article>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- SECTION 2: COMPONENT 2 DEEP DIVE — THE "TORN-DOCKET" CARD                 -->
+        <!-- ========================================================================= -->
+        <section class="space-y-8 border-t border-theme-border pt-12">
+            <div>
+                <span class="text-xs font-mono font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                    Component 02 Specification
+                </span>
+                <h2 class="text-2xl sm:text-3xl font-heading font-bold text-theme-heading mt-1">
+                    The "Torn-Docket" Card
+                </h2>
+                <p class="max-w-2xl text-xs sm:text-sm text-slate-600 dark:text-kwuo-sage mt-1 leading-relaxed">
+                    A physical paper container featuring deckled, organic torn edges on the top and bottom while preserving 100% straight vertical edges for grid alignment.
+                </p>
+            </div>
+
+            <!-- Technical Anatomy Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+                <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-2">
+                    <div class="flex items-center gap-2 font-bold font-heading text-sm text-theme-heading">
+                        <i class="ph-bold ph-ruler text-kwuo-bronze"></i>
+                        <span>Grid Alignment Guarantee</span>
+                    </div>
+                    <p class="text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        Left and right vertical boundaries remain strictly at <code>X = 0%</code> and <code>X = 100%</code>. Multiple docket cards line up evenly in multi-column layouts without jagged side overlap.
+                    </p>
+                </div>
+
+                <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-2">
+                    <div class="flex items-center gap-2 font-bold font-heading text-sm text-theme-heading">
+                        <i class="ph-bold ph-scissors text-kwuo-bronze"></i>
+                        <span>Subtle Deckled Tear</span>
+                    </div>
+                    <p class="text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        Top and bottom cuts oscillate organically between <code>1px</code> and <code>6px</code> via <code>clip-path: polygon(...)</code>. Content inside is insulated by <code>py-8 px-6</code> padding.
+                    </p>
+                </div>
+
+                <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-2">
+                    <div class="flex items-center gap-2 font-bold font-heading text-sm text-theme-heading">
+                        <i class="ph-bold ph-sun-horizon text-kwuo-bronze"></i>
+                        <span>Silhouette Drop Shadow</span>
+                    </div>
+                    <p class="text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        The clipped shape is housed within a <code>.kwuo-torn-docket-wrapper</code> utilizing <code>filter: drop-shadow(...)</code>, casting shadows that hug the authentic torn contour.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Code Snippet -->
+            <div class="rounded-2xl border border-theme-border bg-theme-surface-subtle p-5 font-mono text-xs overflow-x-auto space-y-2">
+                <div class="text-slate-500 dark:text-kwuo-sage text-[11px] font-bold uppercase tracking-wider">Jinja2 &amp; HTML Usage</div>
+                <pre class="text-theme-heading leading-relaxed"><code>{% raw %}{% import "macros/editorial.html" as edit %}
+
+{% call edit.torn_docket() %}
+    &lt;h3 class="text-lg font-bold font-heading text-theme-heading"&gt;Docket Title&lt;/h3&gt;
+    &lt;p class="text-xs text-slate-600 dark:text-kwuo-sage mt-2"&gt;Docket content goes here...&lt;/p&gt;
+    &lt;div class="mt-4 flex gap-3"&gt;
+        {{ ui.button("Confirm", variant="primary", pill=true) }}
+        {{ ui.button("Cancel", variant="outline", pill=true) }}
+    &lt;/div&gt;
+{% endcall %}{% endraw %}</code></pre>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- SECTION 3: COMPONENT 3 DEEP DIVE — THE "WIND-CURLED" POST-IT NOTE         -->
+        <!-- ========================================================================= -->
+        <section class="space-y-8 border-t border-theme-border pt-12">
+            <div>
+                <span class="text-xs font-mono font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                    Component 03 Specification
+                </span>
+                <h2 class="text-2xl sm:text-3xl font-heading font-bold text-theme-heading mt-1">
+                    The "Wind-Curled" Post-It Note
+                </h2>
+                <p class="max-w-2xl text-xs sm:text-sm text-slate-600 dark:text-kwuo-sage mt-1 leading-relaxed">
+                    Authentic physical memo sheets featuring liftoff corner curls, frosted cellophane tape strips, paper lighting gradients, and directional curl options (Left or Right).
+                </p>
+            </div>
+
+            <!-- Two Directional Curl Specimens Side-by-Side -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                
+                <!-- 1. Right-Curled Post-It (curl="right") -->
+                <div class="p-8 rounded-3xl border border-theme-border bg-theme-surface-subtle/50 flex flex-col items-center justify-center min-h-[260px] space-y-4">
+                    <span class="text-xs font-mono font-bold text-theme-heading uppercase tracking-wider">
+                        Direction 1: Right-Corner Curl (<code>curl="right"</code>)
+                    </span>
+
+                    <aside class="kwuo-post-it kwuo-post-it-right p-6 max-w-sm w-full cursor-pointer">
+                        <div class="kwuo-tape-strip" aria-hidden="true"></div>
+                        <div class="flex items-center justify-between gap-3 mb-2">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-kwuo-mahogany/10 dark:bg-kwuo-dark-border text-kwuo-mahogany dark:text-kwuo-gold border border-kwuo-mahogany/20 dark:border-kwuo-gold/20">
+                                <span class="h-1.5 w-1.5 rounded-full bg-kwuo-bronze dark:bg-kwuo-gold animate-pulse"></span>
+                                Right Lift Curl
+                            </span>
+                            <span class="text-[10px] font-mono text-kwuo-mahogany/70 dark:text-kwuo-sage">Hover to uncurl</span>
+                        </div>
+                        <h4 class="font-heading font-black text-base text-kwuo-mahogany dark:text-kwuo-sand">
+                            Round 3 Motion Drop at 14:15
+                        </h4>
+                        <p class="text-xs text-kwuo-mahogany/85 dark:text-kwuo-sand/85 mt-2 leading-relaxed">
+                            Bottom-right corner sweeps upward by 22px with deep perspective shadow cast underneath. Cellophane tape holds top flat.
+                        </p>
+                    </aside>
+                    <span class="text-[11px] font-mono text-slate-500 dark:text-kwuo-sage">Class: <code>kwuo-post-it kwuo-post-it-right</code></span>
+                </div>
+
+                <!-- 2. Left-Curled Post-It (curl="left") -->
+                <div class="p-8 rounded-3xl border border-theme-border bg-theme-surface-subtle/50 flex flex-col items-center justify-center min-h-[260px] space-y-4">
+                    <span class="text-xs font-mono font-bold text-theme-heading uppercase tracking-wider">
+                        Direction 2: Left-Corner Curl (<code>curl="left"</code>)
+                    </span>
+
+                    <aside class="kwuo-post-it kwuo-post-it-left p-6 max-w-sm w-full cursor-pointer">
+                        <div class="kwuo-tape-strip" aria-hidden="true"></div>
+                        <div class="flex items-center justify-between gap-3 mb-2">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-kwuo-mahogany/10 dark:bg-kwuo-dark-border text-kwuo-mahogany dark:text-kwuo-gold border border-kwuo-mahogany/20 dark:border-kwuo-gold/20">
+                                <span class="h-1.5 w-1.5 rounded-full bg-kwuo-bronze dark:bg-kwuo-gold animate-pulse"></span>
+                                Left Lift Curl
+                            </span>
+                            <span class="text-[10px] font-mono text-kwuo-mahogany/70 dark:text-kwuo-sage">Hover to uncurl</span>
+                        </div>
+                        <h4 class="font-heading font-black text-base text-kwuo-mahogany dark:text-kwuo-sand">
+                            Speaker Check-in Reminder
+                        </h4>
+                        <p class="text-xs text-kwuo-mahogany/85 dark:text-kwuo-sand/85 mt-2 leading-relaxed">
+                            Mirrored alternating variant! Bottom-left corner lifts upward with left-angled shadow, perfect for alternating board arrangements.
+                        </p>
+                    </aside>
+                    <span class="text-[11px] font-mono text-slate-500 dark:text-kwuo-sage">Class: <code>kwuo-post-it kwuo-post-it-left</code></span>
+                </div>
+
+            </div>
+
+            <!-- Technical Anatomy Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+                <div class="p-5 rounded-2xl border border-theme-border bg-theme-surface space-y-2">
+                    <div class="flex items-center gap-2 font-bold font-heading text-sm text-theme-heading">
+                        <i class="ph-bold ph-corners-out text-kwuo-bronze"></i>
+                        <span>Elliptical Corner Lift</span>
+                    </div>
+                    <p class="text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        Rather than a simple rounded rectangle, <code>border-bottom-right-radius: 75px 22px</code> creates an upward 22px curve along a 75px sweep, modeling physical paper curling.
+                    </p>
+                </div>
+
+                <div class="p-5 rounded-2xl border border-theme-border bg-theme-surface space-y-2">
+                    <div class="flex items-center gap-2 font-bold font-heading text-sm text-theme-heading">
+                        <i class="ph-bold ph-sun text-kwuo-bronze"></i>
+                        <span>Paper Lighting Gradient</span>
+                    </div>
+                    <p class="text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        A directional 135&deg; / 225&deg; gradient illuminates the curling corner with a natural highlight (light reflecting off the curved face) while shading the flatter anchor area.
+                    </p>
+                </div>
+
+                <div class="p-5 rounded-2xl border border-theme-border bg-theme-surface space-y-2">
+                    <div class="flex items-center gap-2 font-bold font-heading text-sm text-theme-heading">
+                        <i class="ph-bold ph-adhesive-tape text-kwuo-bronze"></i>
+                        <span>Frosted Tape Teeth</span>
+                    </div>
+                    <p class="text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                        <code>.kwuo-tape-strip</code> features translucent parchment tone with <code>1.5px dashed</code> side borders simulating the serrated teeth of a physical tape dispenser.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Code Usage Snippet -->
+            <div class="rounded-2xl border border-theme-border bg-theme-surface-subtle p-5 font-mono text-xs overflow-x-auto space-y-2">
+                <div class="text-slate-500 dark:text-kwuo-sage text-[11px] font-bold uppercase tracking-wider">Jinja2 &amp; HTML Usage</div>
+                <pre class="text-theme-heading leading-relaxed"><code>{% raw %}{# Right-curled sticky note (default) #}
+{% call edit.post_it(title="Urgent Briefing", curl="right") %}
+    &lt;p&gt;Round 3 motion release details...&lt;/p&gt;
+{% endcall %}
+
+{# Left-curled sticky note (alternating) #}
+{% call edit.post_it(title="Judge Room Check-in", curl="left") %}
+    &lt;p&gt;Ballots will lock automatically...&lt;/p&gt;
+{% endcall %}{% endraw %}</code></pre>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- SECTION 4: COMPONENT 1 — THE KWUO BUTTON SYSTEM (PILL & STANDARD)         -->
+        <!-- ========================================================================= -->
+        <section class="space-y-8 border-t border-theme-border pt-12">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <span class="text-xs font-mono font-bold uppercase tracking-wider text-kwuo-bronze dark:text-kwuo-gold">
+                        Component 01 Specification
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-heading font-bold text-theme-heading mt-1">
+                        The Kwuo Button &amp; Pill System
+                    </h2>
+                    <p class="max-w-2xl text-xs sm:text-sm text-slate-600 dark:text-kwuo-sage mt-1 leading-relaxed">
+                        Default tactile buttons feature comfortable slightly rounded corners (<code>rounded-lg</code> / <code>rounded-xl</code>). Adding the <code>pill</code> class provides full-capsule geometry whenever desired.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Geometry Comparison Banner: Default vs Pill -->
+            <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold uppercase text-theme-heading">Mode A: Default (Slightly Rounded)</span>
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-kwuo-sand/60 dark:bg-kwuo-dark-accent text-kwuo-mahogany dark:text-kwuo-sand">Default Style</span>
+                    </div>
+                    <p class="text-xs text-slate-600 dark:text-kwuo-sage">
+                        Standard tactile geometry with <code>rounded-lg</code> (sm: 8px) or <code>rounded-xl</code> (md: 10px, lg: 12px) corners.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                        {{ ui.button("Primary Standard", variant="primary", size="md", pill=false) }}
+                        {{ ui.button("Secondary Standard", variant="secondary", size="md", pill=false) }}
+                        {{ ui.button("Outline Standard", variant="outline", size="md", pill=false) }}
+                    </div>
+                    <div class="text-[11px] font-mono text-slate-500">Usage: <code>kwuo-btn kwuo-btn-primary</code> (pill=False)</div>
+                </div>
+
+                <div class="space-y-3 border-t md:border-t-0 md:border-l border-theme-border-subtle pt-4 md:pt-0 md:pl-6">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold uppercase text-kwuo-bronze dark:text-kwuo-gold">Mode B: Pill Mode (Capsule)</span>
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-kwuo-bronze text-white">Additive .pill class</span>
+                    </div>
+                    <p class="text-xs text-slate-600 dark:text-kwuo-sage">
+                        Full capsule geometry via <code>border-radius: 9999px</code>. Enabled by simply adding the <code>pill</code> class or <code>pill=true</code>.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                        {{ ui.button("Primary Pill", variant="primary", size="md", pill=true) }}
+                        {{ ui.button("Secondary Pill", variant="secondary", size="md", pill=true) }}
+                        {{ ui.button("Outline Pill", variant="outline", size="md", pill=true) }}
+                    </div>
+                    <div class="text-[11px] font-mono text-slate-500">Usage: <code>kwuo-btn kwuo-btn-primary pill</code> (pill=True)</div>
+                </div>
+            </div>
+
+            <!-- Variant Matrix -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 1. Full Solid (Primary) -->
+                <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-theme-heading font-heading">1. Full Solid (Primary)</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-kwuo-mahogany text-kwuo-sand">Dominant</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Deep Mahogany with warm bronze hover. For primary hero conversions and round submissions.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("Launch Tabroom", variant="primary", size="md", pill=true, icon="ph-bold ph-rocket-launch") }}
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-500 dark:text-kwuo-sage text-center">Class: <code>kwuo-btn-primary kwuo-btn-pill</code></span>
+                    </div>
+                </div>
+
+                <!-- 2. Alternate Filled -->
+                <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-theme-heading font-heading">2. Alternate Filled</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-kwuo-sand/70 text-kwuo-mahogany dark:bg-kwuo-dark-accent dark:text-kwuo-sand">Warm Sand</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Warm Sand surface with dark mahogany typography. High-prominence secondary action.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("Review Scorecard", variant="alternate", size="md", pill=true, icon="ph-bold ph-pencil-simple") }}
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-500 dark:text-kwuo-sage text-center">Class: <code>kwuo-btn-alternate kwuo-btn-pill</code></span>
+                    </div>
+                </div>
+
+                <!-- 3. Full Outlined -->
+                <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-theme-heading font-heading">3. Full Outlined</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono border border-theme-border text-theme-heading">Crisp Frame</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Transparent canvas with a distinct 1.5px solid border. Perfectly pairs with primary CTAs.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("Pairing Matrix", variant="outline", size="md", pill=true, icon="ph-bold ph-table") }}
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-500 dark:text-kwuo-sage text-center">Class: <code>kwuo-btn-outline kwuo-btn-pill</code></span>
+                    </div>
+                </div>
+
+                <!-- 4. Surface Outlined (Secondary) -->
+                <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-theme-heading font-heading">4. Surface Outlined</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-theme-surface-subtle text-slate-700 dark:text-kwuo-sand">Card Neutral</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Surface background with refined border tone. Ideal for in-card table tools.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("View Standings", variant="secondary", size="md", pill=true, icon="ph-bold ph-chart-bar") }}
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-500 dark:text-kwuo-sage text-center">Class: <code>kwuo-btn-secondary kwuo-btn-pill</code></span>
+                    </div>
+                </div>
+
+                <!-- 5. Ghost Action -->
+                <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-theme-heading font-heading">5. Ghost Action</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono text-slate-500">Border-Free</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Zero border at rest, highlighting only upon hover. Excellent for dismissals and secondary links.
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("Read Docs", variant="ghost", size="md", pill=true, icon="ph-bold ph-book-open") }}
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-500 dark:text-kwuo-sage text-center">Class: <code>kwuo-btn-ghost kwuo-btn-pill</code></span>
+                    </div>
+                </div>
+
+                <!-- 6. Destructive (Danger) -->
+                <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface space-y-4 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-rose-800 dark:text-rose-400 font-heading">6. Destructive</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-300">Caution</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-kwuo-sage leading-relaxed">
+                            Crimson tone for irreversible actions (e.g. drop participant, discard round ballots).
+                        </p>
+                    </div>
+                    <div class="pt-2 flex flex-col gap-2.5">
+                        <div class="p-4 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle flex items-center justify-center">
+                            {{ ui.button("Discard Draw", variant="danger", size="md", pill=true, icon="ph-bold ph-trash") }}
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-500 dark:text-kwuo-sage text-center">Class: <code>kwuo-btn-danger kwuo-btn-pill</code></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- FOOTER / TOKEN REFERENCE                                                  -->
+        <!-- ========================================================================= -->
+        <div class="p-6 rounded-2xl border border-theme-border bg-theme-surface flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+            <div class="text-slate-600 dark:text-kwuo-sage">
+                <span class="font-bold text-theme-heading">Theme Tokens Applied:</span>
+                Espresso Mahogany <code>#622B14</code> &bull; Warm Parchment <code>#FAF7F0</code> &bull; Sand Border <code>#E4D6A9</code> &bull; Dark Canvas <code>#16110F</code>
+            </div>
+            <a href="/" class="kwuo-btn kwuo-btn-outline kwuo-btn-sm">
+                <i class="ph-bold ph-arrow-left"></i>
+                <span>Return to Home</span>
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock content %}

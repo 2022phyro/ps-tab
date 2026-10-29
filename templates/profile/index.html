@@ -1,0 +1,621 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings &amp; Security — Kwuo{% endblock %}
+
+{% block head %}
+<!-- Structured JSON catalogs for robust client-side filtering without HTML attribute escaping issues -->
+<script id="kwuo-countries-data" type="application/json">{{ country_calling_codes | tojson | safe }}</script>
+<script id="kwuo-timezones-data" type="application/json">{{ grouped_timezones | tojson | safe }}</script>
+
+<script>
+window.phoneCountryDropdown = function(initialCode) {
+    let countries = [];
+    try {
+        countries = JSON.parse(document.getElementById("kwuo-countries-data")?.textContent || "[]");
+    } catch(e) { countries = []; }
+
+    const initCode = initialCode || "+234";
+    const found = countries.find(c => c.code === initCode);
+
+    return {
+        selectedCode: initCode,
+        selectedFlag: found ? found.flag : "🇳🇬",
+        countries: countries,
+        open: false,
+        search: "",
+
+        get filteredCountries() {
+            const q = this.search.trim().toLowerCase();
+            if (!q) return this.countries;
+            return this.countries.filter(c => 
+                c.name.toLowerCase().includes(q) || 
+                c.code.toLowerCase().includes(q)
+            );
+        },
+
+        toggle() {
+            this.open = !this.open;
+            if (this.open) {
+                this.search = "";
+                this.$nextTick(() => {
+                    this.$refs.countrySearch?.focus();
+                });
+            }
+        },
+
+        select(c) {
+            this.selectedCode = c.code;
+            this.selectedFlag = c.flag;
+            this.open = false;
+            document.getElementById("phone_number_local")?.focus();
+        },
+
+        selectFirst() {
+            if (this.filteredCountries.length > 0) {
+                this.select(this.filteredCountries[0]);
+            }
+        }
+    };
+};
+
+window.timezoneSearchableDropdown = function(initialId) {
+    let timezones = {};
+    try {
+        timezones = JSON.parse(document.getElementById("kwuo-timezones-data")?.textContent || "{}");
+    } catch(e) { timezones = {}; }
+
+    const initId = initialId || "Africa/Lagos";
+    let initLabel = `(GMT) ${initId}`;
+    for (const region in timezones) {
+        for (const tz of timezones[region]) {
+            if (tz.id === initId) {
+                initLabel = tz.label;
+                break;
+            }
+        }
+    }
+
+    return {
+        selectedId: initId,
+        selectedLabel: initLabel,
+        timezones: timezones,
+        open: false,
+        search: "",
+
+        get filteredGroups() {
+            const q = this.search.trim().toLowerCase();
+            const result = {};
+            for (const region in this.timezones) {
+                const list = this.timezones[region];
+                if (!q) {
+                    result[region] = list;
+                } else {
+                    const matched = list.filter(tz => 
+                        tz.label.toLowerCase().includes(q) || 
+                        tz.id.toLowerCase().includes(q)
+                    );
+                    if (matched.length > 0) {
+                        result[region] = matched;
+                    }
+                }
+            }
+            return result;
+        },
+
+        get totalFilteredCount() {
+            let count = 0;
+            for (const region in this.filteredGroups) {
+                count += this.filteredGroups[region].length;
+            }
+            return count;
+        },
+
+        toggle() {
+            this.open = !this.open;
+            if (this.open) {
+                this.search = "";
+                this.$nextTick(() => {
+                    this.$refs.tzSearch?.focus();
+                });
+            }
+        },
+
+        select(tz) {
+            this.selectedId = tz.id;
+            this.selectedLabel = tz.label;
+            this.open = false;
+        },
+
+        selectFirst() {
+            for (const region in this.filteredGroups) {
+                if (this.filteredGroups[region].length > 0) {
+                    this.select(this.filteredGroups[region][0]);
+                    return;
+                }
+            }
+        },
+
+        detect() {
+            try {
+                const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if (!detectedTz) return;
+
+                let found = null;
+                for (const region in this.timezones) {
+                    for (const tz of this.timezones[region]) {
+                        if (tz.id === detectedTz) {
+                            found = tz;
+                            break;
+                        }
+                    }
+                    if (found) break;
+                }
+
+                if (found) {
+                    this.select(found);
+                } else {
+                    const customTz = { id: detectedTz, label: `(Detected) ${detectedTz}` };
+                    this.select(customTz);
+                }
+
+                if (window.showToast) {
+                    window.showToast(`Detected timezone: ${detectedTz}`, "success");
+                }
+            } catch (err) {
+                console.warn("Could not detect browser timezone", err);
+            }
+        }
+    };
+};
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div
+        class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-theme-border-subtle">
+        <div>
+            <h1 class="text-3xl font-heading font-extrabold text-theme-heading">
+                Account Settings &amp; Security
+            </h1>
+            <p class="text-sm text-slate-600 dark:text-kwuo-sage mt-1">
+                Manage your oratorical identity, credentials, active sessions, and security posture.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            {% if user.status.value == 'active' %}
+            <span
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-body bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                ACTIVE ACCOUNT
+            </span>
+            {% else %}
+            <span
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-body bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-300">
+                {{ user.status.value.upper() }}
+            </span>
+            {% endif %}
+            {% if user.is_admin %}
+            <span
+                class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold font-body bg-kwuo-mahogany text-kwuo-sand">
+                <i class="ph-bold ph-shield-check"></i>
+                <span>ADMIN</span>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Col 1 & 2: Main Profile & Password Cards -->
+        <div class="lg:col-span-2 space-y-8">
+
+            <!-- SECTION 1: PERSONAL INFORMATION -->
+            <div class="rounded-3xl border border-theme-border bg-theme-surface p-6 sm:p-8 shadow-sm">
+                <div class="flex items-center gap-3 pb-4 mb-6 border-b border-theme-border-subtle">
+                    <span
+                        class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-sand/50 text-kwuo-bronze dark:bg-kwuo-dark-accent dark:text-kwuo-gold">
+                        <i class="ph-duotone ph-user text-xl"></i>
+                    </span>
+                    <div>
+                        <h2 class="text-lg font-heading font-bold text-theme-heading">Personal Information</h2>
+                        <p class="text-xs text-slate-500 dark:text-kwuo-sage">Your basic oratorical profile and contact
+                            details.</p>
+                    </div>
+                </div>
+
+                <div id="toast-sink" class="hidden"></div>
+
+                <form action="/profile" method="POST" hx-post="/profile" hx-target="#toast-sink"
+                    hx-swap="innerHTML" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold mb-1">
+                                First Name <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text" name="first_name" required value="{{ user.first_name }}"
+                                class="w-full rounded-xl border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3.5 py-2.5 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold mb-1">
+                                Last Name <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text" name="last_name" required value="{{ user.last_name }}"
+                                class="w-full rounded-xl border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3.5 py-2.5 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold mb-1">
+                                Email Address (Locked)
+                            </label>
+                            <input type="email" disabled value="{{ user.email }}"
+                                class="w-full rounded-xl border border-slate-200 dark:border-kwuo-dark-border-subtle bg-slate-50 dark:bg-kwuo-dark-canvas px-3.5 py-2.5 text-xs text-slate-500 dark:text-kwuo-sage cursor-not-allowed">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold mb-1">
+                                Phone Number
+                            </label>
+                            <div class="relative flex rounded-xl shadow-sm border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface focus-within:ring-1 focus-within:ring-kwuo-bronze focus-within:border-kwuo-bronze"
+                                x-data="phoneCountryDropdown('{{ current_country_code or "+234" }}')">
+
+                                <!-- Compact Country Code Trigger (Flag + Code ONLY, no country name) -->
+                                <button type="button" @click="toggle()" @click.outside="open = false"
+                                    class="w-24 sm:w-28 shrink-0 flex items-center justify-between px-2.5 py-2.5 text-xs text-slate-800 dark:text-kwuo-sand bg-slate-50 dark:bg-kwuo-dark-canvas/60 border-r border-slate-200 dark:border-kwuo-dark-border rounded-l-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-kwuo-dark-accent transition">
+                                    <span class="flex items-center gap-1.5 truncate">
+                                        <span x-text="selectedFlag" class="text-sm"></span>
+                                        <span x-text="selectedCode" class="font-mono font-bold"></span>
+                                    </span>
+                                    <i class="ph-bold ph-caret-down text-[10px] text-slate-400"></i>
+                                </button>
+
+                                <!-- Hidden input for phone_country_code -->
+                                <input type="hidden" name="phone_country_code" :value="selectedCode">
+
+                                <!-- Searchable Country Dropdown Popup -->
+                                <div x-show="open" x-cloak
+                                    class="absolute top-full left-0 mt-1.5 w-64 sm:w-72 max-h-72 bg-white dark:bg-kwuo-dark-surface rounded-2xl shadow-2xl border border-slate-200 dark:border-kwuo-dark-border z-50 flex flex-col overflow-hidden">
+                                    <div class="p-2 border-b border-slate-100 dark:border-kwuo-dark-border-subtle bg-slate-50 dark:bg-kwuo-dark-canvas/60">
+                                        <div class="relative">
+                                            <i class="ph-bold ph-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                                            <input type="text" x-model="search" x-ref="countrySearch"
+                                                @keydown.enter.prevent.stop="selectFirst()"
+                                                placeholder="Search country or code..."
+                                                class="w-full rounded-lg border border-slate-200 dark:border-kwuo-dark-border bg-white dark:bg-kwuo-dark-surface pl-7 pr-2.5 py-1.5 text-xs text-slate-800 dark:text-kwuo-sand placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze">
+                                        </div>
+                                    </div>
+                                    <div class="overflow-y-auto max-h-56 divide-y divide-slate-100 dark:divide-kwuo-dark-border-subtle">
+                                        <template x-for="c in filteredCountries" :key="c.code + c.name">
+                                            <button type="button" @click="select(c)"
+                                                class="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent transition text-xs">
+                                                <div class="flex items-center gap-2 truncate">
+                                                    <span x-text="c.flag" class="text-sm shrink-0"></span>
+                                                    <span x-text="c.name" class="truncate font-medium text-slate-800 dark:text-kwuo-sand"></span>
+                                                </div>
+                                                <span x-text="c.code" class="font-mono text-slate-500 dark:text-kwuo-sage shrink-0 ml-2"></span>
+                                            </button>
+                                        </template>
+                                        <div x-show="filteredCountries.length === 0" class="p-3 text-center text-xs text-slate-400">
+                                            No matching country
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Subscriber Phone Digits (Bounded to max 15 digits) -->
+                                <input type="tel" name="phone_number_local" id="phone_number_local" maxlength="15"
+                                    value="{{ current_local_phone }}"
+                                    placeholder="e.g. 801 234 5678"
+                                    class="flex-1 border-0 bg-transparent px-3.5 py-2.5 text-xs text-slate-900 dark:text-kwuo-sand placeholder:text-slate-400 dark:placeholder:text-kwuo-sage/50 focus:ring-0 focus:outline-none"
+                                    @input="$event.target.value = $event.target.value.replace(/[^0-9\s\-]/g, '').slice(0, 15)">
+                            </div>
+                            <p class="mt-1 text-[11px] text-slate-500 dark:text-kwuo-sage">
+                                Country calling code and subscriber digits (maximum 15 digits per ITU E.164).
+                            </p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold">
+                                Timezone
+                            </label>
+                            <button type="button" @click="$dispatch('detect-timezone')"
+                                class="inline-flex items-center gap-1 text-[11px] font-semibold text-kwuo-bronze dark:text-kwuo-gold hover:underline">
+                                <i class="ph-bold ph-crosshair"></i>
+                                <span id="detect-tz-label">Detect my timezone</span>
+                            </button>
+                        </div>
+
+                        <div class="relative"
+                            x-data="timezoneSearchableDropdown('{{ user.timezone or "Africa/Lagos" }}')"
+                            @detect-timezone.window="detect()">
+
+                            <!-- Trigger Button -->
+                            <button type="button" @click="toggle()" @click.outside="open = false"
+                                class="w-full rounded-xl border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3.5 py-2.5 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm flex items-center justify-between cursor-pointer focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                                <div class="flex items-center gap-2 truncate">
+                                    <i class="ph-bold ph-globe text-kwuo-bronze dark:text-kwuo-gold shrink-0"></i>
+                                    <span x-text="selectedLabel" class="truncate font-medium"></span>
+                                </div>
+                                <i class="ph-bold ph-caret-down text-slate-400 transition" :class="{ 'rotate-180': open }"></i>
+                            </button>
+
+                            <!-- Hidden input for standard POST form submission -->
+                            <input type="hidden" name="timezone_name" :value="selectedId">
+
+                            <!-- Floating Searchable Dropdown Popup -->
+                            <div x-show="open" x-cloak
+                                class="absolute top-full left-0 right-0 mt-1.5 max-h-80 bg-white dark:bg-kwuo-dark-surface rounded-2xl shadow-2xl border border-slate-200 dark:border-kwuo-dark-border z-50 flex flex-col overflow-hidden">
+                                <div class="p-2.5 border-b border-slate-100 dark:border-kwuo-dark-border-subtle bg-slate-50 dark:bg-kwuo-dark-canvas/60">
+                                    <div class="relative">
+                                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                                        <input type="text" x-model="search" x-ref="tzSearch"
+                                            @keydown.enter.prevent.stop="selectFirst()"
+                                            placeholder="Search timezones (e.g. Lagos, Accra, Nairobi, London, GMT+1, New York)..."
+                                            class="w-full rounded-lg border border-slate-200 dark:border-kwuo-dark-border bg-white dark:bg-kwuo-dark-surface pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-kwuo-sand placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze">
+                                    </div>
+                                </div>
+
+                                <div class="overflow-y-auto max-h-64 p-2 space-y-3">
+                                    <template x-for="(tzs, region) in filteredGroups" :key="region">
+                                        <div x-show="tzs.length > 0">
+                                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-kwuo-sage px-2 py-1"
+                                                x-text="'—— ' + region + ' ——'"></div>
+                                            <div class="space-y-0.5 mt-0.5">
+                                                <template x-for="tz in tzs" :key="tz.id">
+                                                    <button type="button" @click="select(tz)"
+                                                        class="w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-left text-xs transition"
+                                                        :class="tz.id === selectedId ? 'bg-kwuo-bronze text-white font-semibold' : 'text-slate-800 dark:text-kwuo-sand hover:bg-slate-100 dark:hover:bg-kwuo-dark-accent'">
+                                                        <span x-text="tz.label" class="truncate"></span>
+                                                        <i x-show="tz.id === selectedId" class="ph-bold ph-check shrink-0 ml-2"></i>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <div x-show="totalFilteredCount === 0" class="p-4 text-center text-xs text-slate-400">
+                                        No matching timezone found
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="mt-1 text-[11px] text-slate-500 dark:text-kwuo-sage">
+                            All tournament rounds, ballots, check-ins, and schedule matrices reflect your selected timezone.
+                        </p>
+                    </div>
+
+                    <!-- Hidden catalog for accessibility & full DOM indexing -->
+                    <div style="display:none" aria-hidden="true">
+                        {% for c in country_calling_codes %}{{ c.code }} {{ c.name }} {% endfor %}
+                        {% for region, tzs in grouped_timezones.items() %}
+                            {% for tz in tzs %}{{ tz.id }} {{ tz.label }} {% endfor %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button type="submit"
+                            class="kwuo-btn kwuo-btn-primary kwuo-btn-md bg-kwuo-bronze px-6 py-2.5 text-xs font-bold text-white shadow hover:bg-kwuo-mahogany transition flex items-center gap-1.5">
+                            <i class="ph-bold ph-floppy-disk"></i>
+                            <span>Save Profile</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- SECTION 2: PASSWORD CHANGE -->
+            <div id="password-section"
+                class="rounded-3xl border border-theme-border bg-theme-surface p-6 sm:p-8 shadow-sm">
+                <div class="flex items-center gap-3 pb-4 mb-6 border-b border-theme-border-subtle">
+                    <span
+                        class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-sand/50 text-kwuo-bronze dark:bg-kwuo-dark-accent dark:text-kwuo-gold">
+                        <i class="ph-duotone ph-key text-xl"></i>
+                    </span>
+                    <div>
+                        <h2 class="text-lg font-heading font-bold text-theme-heading">Change Password</h2>
+                        <p class="text-xs text-slate-500 dark:text-kwuo-sage">Updating your password invalidates all
+                            other active sessions.</p>
+                    </div>
+                </div>
+
+                <div id="password-response" class="mb-4"></div>
+
+                <form action="/profile/change-password" method="POST" hx-post="/profile/change-password"
+                    hx-target="#password-response" hx-swap="innerHTML" class="space-y-4">
+                    <div>
+                        <label
+                            class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold mb-1">
+                            Current Password <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="password" name="current_password" required placeholder="••••••••"
+                            class="w-full rounded-xl border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3.5 py-2.5 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold mb-1">
+                                New Password <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="password" name="new_password" minlength="8" required
+                                placeholder="Min. 8 characters"
+                                class="w-full rounded-xl border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3.5 py-2.5 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold mb-1">
+                                Confirm New Password <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="password" name="confirm_password" minlength="8" required
+                                placeholder="Repeat new password"
+                                class="w-full rounded-xl border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3.5 py-2.5 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button type="submit"
+                            class="kwuo-btn kwuo-btn-primary kwuo-btn-md bg-kwuo-bronze px-6 py-2.5 text-xs font-bold text-white shadow hover:bg-kwuo-mahogany transition flex items-center gap-1.5">
+                            <i class="ph-bold ph-shield-check"></i>
+                            <span>Update Password</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Col 3: Account Security & Danger Zone -->
+        <div class="space-y-8">
+
+            <!-- ACCOUNT SECURITY CARD -->
+            <div
+                class="rounded-3xl border border-theme-border bg-theme-surface p-6 sm:p-7 shadow-sm divide-y divide-theme-border-subtle space-y-6">
+                <!-- Card Header -->
+                <div
+                    class="flex items-center gap-2.5 pb-2 text-kwuo-bronze  dark:text-kwuo-gold">
+                    <i class="ph-duotone ph-shield text-xl"></i>
+                    <h3 class="text-base font-heading font-bold text-theme-heading">
+                        Account Security
+                    </h3>
+                </div>
+
+                <!-- 1. Two-Factor Authentication (2FA) -->
+                <div class="pt-6 space-y-3">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-900 dark:text-kwuo-gold">
+                                Two-Factor Authentication (2FA)
+                            </h4>
+                            <p class="text-xs text-slate-600 dark:text-kwuo-sage mt-1 leading-relaxed">
+                                Add an extra layer of security to your account using an authenticator app (Google
+                                Authenticator, Authy, etc.).
+                            </p>
+                        </div>
+                        <span
+                            class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded text-[10px] font-bold font-mono tracking-wider {% if user.mfa_enabled %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800{% else %}bg-slate-100 text-slate-700 dark:bg-kwuo-dark-accent dark:text-kwuo-sage border border-slate-300 dark:border-kwuo-dark-border{% endif %} uppercase">
+                            {% if user.mfa_enabled %}ENABLED{% else %}DISABLED{% endif %}
+                        </span>
+                    </div>
+
+                    <div class="pt-1">
+                        <button type="button" disabled
+                            class="inline-flex items-center gap-1.5 text-xs font-semibold text-kwuo-bronze dark:text-kwuo-gold opacity-60 cursor-not-allowed transition"
+                            title="Two-factor authentication is currently not enabled.">
+                            <span>( Enable 2FA &rarr; )</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Password -->
+                <div class="pt-6 space-y-3">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-900 dark:text-kwuo-gold">
+                            Password
+                        </h4>
+                        <p class="text-xs text-slate-500 dark:text-kwuo-sage mt-0.5">
+                            Last changed {{ password_last_changed }}
+                        </p>
+                    </div>
+
+                    <div class="pt-1">
+                        <a href="#password-section"
+                            onclick="document.querySelector('input[name=current_password]')?.focus();"
+                            class="inline-flex items-center gap-1.5 rounded-xl border border-theme-border bg-theme-surface-subtle px-3.5 py-2 text-xs font-semibold text-theme-heading hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent transition shadow-sm">
+                            <i class="ph-bold ph-key"></i>
+                            <span>Change Password</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 3. Active Sessions -->
+                <div class="pt-6 space-y-3">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-900 dark:text-kwuo-gold">
+                            Active Sessions
+                        </h4>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                            <p class="text-xs text-slate-700 dark:text-kwuo-sand font-medium">
+                                {{ session_device_label }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                        <form action="/auth/logout" method="post" class="inline">
+                            <button type="submit" class="inline-flex items-center rounded-xl kwuo-btn-outline kwuo-btn-md w-full">Sign Out</button>
+                        </form>
+                    </div>
+                    <div class="pt-2">
+                        <form action="/profile/revoke-other-sessions" method="POST">
+                            <button type="submit"
+                                class="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 w-full dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 px-3.5 py-2 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition shadow-sm">
+                                <i class="ph-bold ph-sign-out"></i>
+                                <span>Sign Out All Other Devices</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DANGER ZONE CARD -->
+            <div
+                class="rounded-3xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/20 p-6 shadow-sm space-y-4">
+                <h3 class="text-base font-heading font-bold text-rose-800 dark:text-rose-300 flex items-center gap-2">
+                    <i class="ph-bold ph-warning-octagon text-rose-600"></i>
+                    <span>Danger Zone</span>
+                </h3>
+                <p class="text-xs text-rose-700 dark:text-rose-400">
+                    Deactivating your account disables access and revokes active tournament roles.
+                </p>
+
+                <div x-data="{ open: false }">
+                    <button @click="open = !open" type="button"
+                        class="text-xs font-bold text-rose-700 dark:text-rose-300 hover:underline flex items-center gap-1">
+                        <span>Request Account Deactivation</span>
+                        <i class="ph-bold ph-caret-down" :class="{ 'rotate-180': open }"></i>
+                    </button>
+
+                    <form x-show="open" x-cloak action="/profile/deactivate" method="POST"
+                        class="mt-4 space-y-3 pt-3 border-t border-rose-200 dark:border-rose-900/40">
+                        <div>
+                            <label
+                                class="block text-[11px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 mb-1">
+                                Enter Password to Confirm
+                            </label>
+                            <input type="password" name="password" required placeholder="••••••••"
+                                class="w-full rounded-xl border border-rose-300 dark:border-rose-900/60 bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand">
+                        </div>
+                        <button type="submit"
+                            class="w-full rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 transition">
+                            Confirm Permanent Deactivation
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if success_msg %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        if (window.showToast) {
+            window.showToast({{ success_msg | tojson }}, "success");
+        }
+    });
+</script>
+{% endif %}
+
+{% if error %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        if (window.showToast) {
+            window.showToast({{ error | tojson }}, "error");
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}
