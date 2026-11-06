@@ -1,0 +1,1256 @@
+{% extends "tenant/admin/layout.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Institutions & Delegations — Tab Room{% endblock %}
+
+{% block admin_content %}
+<script>
+    function institutionManager() {
+        return {
+            addModal: false,
+            mergeModal: false,
+            importModal: false,
+            deleteModal: false,
+            deleteInstId: '',
+            deleteInstName: '',
+            searchQuery: '',
+            selectedIds: [],
+            editingId: null,
+            saving: false,
+            merging: false,
+            colsDropdownOpen: false,
+            actionsDropdownOpen: false,
+            viewMode: 'table',
+            visibleCols: {
+                code: true,
+                country: true,
+                region: true,
+                speakers: true,
+                judges: true,
+                ias: true,
+                total: true
+            },
+            bulkDeleteModal: false,
+            bulkDeleting: false,
+            toggleStats() {
+                const newState = !(this.visibleCols.speakers && this.visibleCols.judges);
+                this.visibleCols.speakers = newState;
+                this.visibleCols.judges = newState;
+            },
+            editRow: {
+                id: '',
+                name: '',
+                code: '',
+                country: '',
+                region: ''
+            },
+            newInst: {
+                name: '',
+                code: '',
+                country: '',
+                region: ''
+            },
+            mergeData: {
+                target_name: '',
+                target_code: '',
+                target_country: '',
+                target_region: ''
+            },
+            nameSuggestions: [],
+            isSearchingSuggestions: false,
+            debounceTimer: null,
+
+            // Select all / Deselect all
+            toggleSelectAll(event, allIds) {
+                if (event.target.checked) {
+                    this.selectedIds = [...allIds];
+                } else {
+                    this.selectedIds = [];
+                }
+            },
+            isAllSelected(allIds) {
+                return allIds.length > 0 && this.selectedIds.length === allIds.length;
+            },
+
+            // Filter
+            matchesFilter(name, code, country, region) {
+                const q = this.searchQuery.toLowerCase().trim();
+                if (!q) return true;
+                return (
+                    name.toLowerCase().includes(q) ||
+                    (code && code.toLowerCase().includes(q)) ||
+                    (country && country.toLowerCase().includes(q)) ||
+                    (region && region.toLowerCase().includes(q))
+                );
+            },
+
+            // Live autocomplete while typing institution name
+            onNameInput() {
+                clearTimeout(this.debounceTimer);
+                const q = this.newInst.name.trim();
+                if (q.length < 2) {
+                    this.nameSuggestions = [];
+                    return;
+                }
+                this.debounceTimer = setTimeout(async () => {
+                    this.isSearchingSuggestions = true;
+                    try {
+                        const res = await fetch('/admin/institutions/search?q=' + encodeURIComponent(q));
+                        if (res.ok) {
+                            this.nameSuggestions = await res.json();
+                        }
+                    } catch (e) {
+                        this.nameSuggestions = [];
+                    } finally {
+                        this.isSearchingSuggestions = false;
+                    }
+                }, 250);
+            },
+            selectSuggestion(item) {
+                this.newInst.name = item.name;
+                this.newInst.code = item.code || '';
+                this.newInst.country = item.country || '';
+                this.newInst.region = item.region || '';
+                this.nameSuggestions = [];
+            },
+
+            // Inline edit controls
+            startEdit(id, name, code, country, region) {
+                this.editingId = id;
+                this.editRow = {
+                    id: id,
+                    name: name,
+                    code: code || '',
+                    country: country || '',
+                    region: region || ''
+                };
+            },
+            cancelEdit() {
+                this.editingId = null;
+            },
+            async saveEdit() {
+                if (!this.editRow.id || !this.editRow.name.trim()) return;
+                this.saving = true;
+                const formData = new FormData();
+                formData.append('name', this.editRow.name.trim());
+                formData.append('code', this.editRow.code.trim());
+                formData.append('country', this.editRow.country.trim());
+                formData.append('region', this.editRow.region.trim());
+
+                try {
+                    const res = await fetch('/admin/institutions/' + this.editRow.id + '/update', {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        const inst = data.institution;
+                        const nameEl = document.getElementById('inst-name-' + inst.id);
+                        if (nameEl) nameEl.textContent = inst.name;
+                        const cardNameEl = document.getElementById('card-name-' + inst.id);
+                        if (cardNameEl) cardNameEl.textContent = inst.name;
+
+                        const codeEl = document.getElementById('inst-code-' + inst.id);
+                        if (codeEl) {
+                            codeEl.innerHTML = inst.code
+                                ? `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold font-body bg-theme-base border border-theme-border text-kwuo-bronze">${inst.code}</span>`
+                                : `<span class="text-theme-body/40 text-xs font-body">—</span>`;
+                        }
+                        const cardCodeEl = document.getElementById('card-code-' + inst.id);
+                        if (cardCodeEl) {
+                            cardCodeEl.innerHTML = inst.code
+                                ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-theme-base border border-theme-border text-kwuo-bronze shrink-0">${inst.code}</span>`
+                                : '';
+                        }
+
+                        const countryEl = document.getElementById('inst-country-' + inst.id);
+                        if (countryEl) {
+                            countryEl.innerHTML = inst.country
+                                ? `<div class="inline-flex items-center gap-1.5 text-xs text-theme-heading font-body font-medium"><span>${inst.flag}</span><span>${inst.country_name || inst.country.toUpperCase()}</span></div>`
+                                : `<span class="text-theme-body/40 text-xs font-body">—</span>`;
+                        }
+                        const cardCountryEl = document.getElementById('card-country-' + inst.id);
+                        if (cardCountryEl) {
+                            cardCountryEl.innerHTML = inst.country
+                                ? `<span class="inline-flex items-center gap-1"><span>${inst.flag}</span><span>${inst.country_name || inst.country.toUpperCase()}</span></span>`
+                                : '';
+                        }
+
+                        const regionEl = document.getElementById('inst-region-' + inst.id);
+                        if (regionEl) {
+                            regionEl.innerHTML = inst.region_display
+                                ? `<span>${inst.region_display}</span>`
+                                : `<span class="text-theme-body/40">—</span>`;
+                        }
+                        const cardRegionEl = document.getElementById('card-region-' + inst.id);
+                        if (cardRegionEl) {
+                            cardRegionEl.innerHTML = inst.region_display
+                                ? `<span class="text-theme-body/80">${inst.region_display}</span>`
+                                : '';
+                        }
+
+                        this.editingId = null;
+                        if (window.showToast) window.showToast('Institution updated successfully.', 'success');
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Failed to update institution.', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Error updating institution.', 'error');
+                } finally {
+                    this.saving = false;
+                }
+            },
+
+            // Delete controls
+            openDelete(id, name) {
+                this.deleteInstId = id;
+                this.deleteInstName = name;
+                this.deleteModal = true;
+            },
+            async confirmDelete() {
+                if (!this.deleteInstId) return;
+                try {
+                    const res = await fetch('/admin/institutions/' + this.deleteInstId + '/delete', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (res.ok) {
+                        const row = document.getElementById('inst-row-' + this.deleteInstId);
+                        if (row) row.remove();
+                        this.selectedIds = this.selectedIds.filter(id => id !== this.deleteInstId);
+                        this.deleteModal = false;
+                        this.deleteInstId = '';
+                        this.deleteInstName = '';
+                        if (window.showToast) window.showToast('Institution deleted successfully.', 'success');
+                    } else {
+                        if (window.showToast) window.showToast('Failed to delete institution.', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Error deleting institution.', 'error');
+                }
+            },
+
+            // Merge controls
+            openMergeModal(institutions) {
+                if (this.selectedIds.length < 2) return;
+                const selectedObjs = institutions.filter(i => this.selectedIds.includes(i.id));
+                if (selectedObjs.length > 0) {
+                    const first = selectedObjs[0];
+                    this.mergeData = {
+                        target_name: first.name,
+                        target_code: first.code || '',
+                        target_country: first.country || '',
+                        target_region: first.region || ''
+                    };
+                }
+                this.mergeModal = true;
+            },
+            async confirmMerge() {
+                if (this.selectedIds.length < 2 || !this.mergeData.target_name.trim()) return;
+                this.merging = true;
+                try {
+                    const res = await fetch('/admin/institutions/merge', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            source_ids: this.selectedIds,
+                            target_name: this.mergeData.target_name.trim(),
+                            target_code: this.mergeData.target_code.trim(),
+                            target_country: this.mergeData.target_country.trim(),
+                            target_region: this.mergeData.target_region.trim()
+                        })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        if (window.showToast) window.showToast(data.message, 'success');
+                        // Reload or dynamically update table
+                        setTimeout(() => { window.location.reload(); }, 600);
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Merge failed.', 'error');
+                        this.merging = false;
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Error processing merge.', 'error');
+                    this.merging = false;
+                }
+            },
+            async confirmBulkDelete() {
+                if (this.selectedIds.length === 0) return;
+                this.bulkDeleting = true;
+                try {
+                    const res = await fetch('/admin/institutions/bulk-delete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ institution_ids: this.selectedIds })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        this.selectedIds.forEach(id => {
+                            const row = document.getElementById('inst-row-' + id);
+                            if (row) row.remove();
+                            const card = document.getElementById('inst-card-' + id);
+                            if (card) card.remove();
+                        });
+                        this.selectedIds = [];
+                        this.bulkDeleteModal = false;
+                        if (window.showToast) window.showToast(data.message, 'success');
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Failed to delete institutions.', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Error deleting selected institutions.', 'error');
+                } finally {
+                    this.bulkDeleting = false;
+                }
+            }
+        };
+    }
+</script>
+
+{% set all_ids = institutions|map(attribute='id')|list %}
+
+<div x-data="institutionManager()" class="max-w-6xl mx-auto space-y-6">
+    <!-- Breadcrumb & Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1">
+                <a href="/admin" class="hover:text-kwuo-bronze transition font-body">Tab Room</a>
+                <span>/</span>
+                <span class="font-body">Organization</span>
+                <span>/</span>
+                <span class="text-kwuo-bronze font-body">Institutions</span>
+            </div>
+            <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
+                Institutions &amp; Delegations
+            </h1>
+            <p class="text-xs text-theme-body/70 mt-0.5 font-body">
+                Member schools, universities, independent clubs, and clash affiliation boundaries.
+            </p>
+        </div>
+
+        <div>
+            <a href="/institutions" target="_blank"
+               class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body"
+               title="Preview public attendee documentation portal">
+                <i class="ph-bold ph-arrow-square-out text-sm"></i>
+                <span>Public Directory</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Sticky Action & Search Toolbar -->
+    <div class="sticky top-16 z-30 bg-theme-surface/95 backdrop-blur-md -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 border-y border-theme-border shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <!-- Left: Search, Multi-select indicator & Column Visibility Picker -->
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-1 min-w-0">
+            <!-- Search Bar -->
+            <div class="relative flex-1 min-w-[160px] sm:max-w-sm">
+                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-theme-body/50 text-xs"></i>
+                <input type="text" x-model="searchQuery" placeholder="Filter institutions by name, code, country..."
+                       class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+            </div>
+
+            <!-- Selection Count Pill -->
+            <span x-show="selectedIds.length > 0" x-cloak
+                  class="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-body">
+                <span x-text="selectedIds.length"></span> selected
+            </span>
+
+            <!-- View Switcher Toggle (Table vs Cards) -->
+            <div class="inline-flex items-center rounded-xl border border-theme-border bg-theme-base p-0.5 text-xs font-semibold shadow-xs shrink-0">
+                <button type="button" @click="viewMode = 'table'"
+                        :class="viewMode === 'table' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
+                        class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body"
+                        title="Table view">
+                    <i class="ph-bold ph-table text-xs"></i>
+                    <span class="hidden sm:inline">Table</span>
+                </button>
+                <button type="button" @click="viewMode = 'cards'"
+                        :class="viewMode === 'cards' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
+                        class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body"
+                        title="Cards view">
+                    <i class="ph-bold ph-squares-four text-xs"></i>
+                    <span class="hidden sm:inline">Cards</span>
+                </button>
+            </div>
+
+            <!-- Column Visibility & Compact Mode Picker -->
+            <div class="relative shrink-0" @click.outside="colsDropdownOpen = false">
+                <button type="button" @click="colsDropdownOpen = !colsDropdownOpen"
+                        class="px-2.5 py-1.5 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface text-theme-heading text-xs font-semibold flex items-center gap-1.5 transition font-body shadow-sm">
+                    <i class="ph-bold ph-columns text-sm text-kwuo-bronze"></i>
+                    <span class="hidden sm:inline">Columns</span>
+                    <i class="ph-bold ph-caret-down text-[10px] text-theme-body/60 transition-transform" :class="colsDropdownOpen ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="colsDropdownOpen" x-cloak
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     class="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-56 rounded-xl border border-theme-border bg-theme-surface shadow-xl z-50 p-2.5 space-y-1 text-xs font-body">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-theme-body/60 px-2 py-1">Visible Fields</div>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg text-theme-body/40 cursor-not-allowed">
+                        <input type="checkbox" checked disabled class="rounded text-kwuo-bronze h-3.5 w-3.5">
+                        <span>Institution (Pinned)</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.code" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Code</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.country" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Country</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.region" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Region / Circuit</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.speakers" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Speakers</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.judges" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Judges</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.ias" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>IAs (Independent Adjudicators)</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.total" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Total</span>
+                    </label>
+                    <div class="pt-1.5 border-t border-theme-border">
+                        <button type="button" @click="toggleStats()"
+                                class="w-full text-left px-2 py-1.5 rounded-lg bg-theme-base hover:bg-kwuo-bronze/10 text-kwuo-bronze font-semibold text-[11px] transition flex items-center justify-between">
+                            <span x-text="(!visibleCols.speakers && !visibleCols.judges && !visibleCols.ias) ? 'Show Non-editable Stats' : 'Compact (Hide Stats)'"></span>
+                            <i class="ph-bold" :class="(!visibleCols.speakers && !visibleCols.judges && !visibleCols.ias) ? 'ph-eye' : 'ph-eye-slash'"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Actions Dropdown & Primary Add Button -->
+        <div class="flex items-center gap-2 shrink-0">
+            <!-- Unified Actions Dropdown -->
+            <div class="relative shrink-0" @click.outside="actionsDropdownOpen = false">
+                <button type="button" @click="actionsDropdownOpen = !actionsDropdownOpen"
+                        :class="selectedIds.length > 0 ? 'border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200 ring-1 ring-amber-500/30' : 'border-theme-border bg-theme-base hover:bg-theme-surface text-theme-heading'"
+                        class="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition font-body shadow-sm">
+                    <i class="ph-bold ph-lightning text-sm text-kwuo-bronze"></i>
+                    <span>Actions</span>
+                    <span x-show="selectedIds.length > 0" x-cloak
+                          x-text="'(' + selectedIds.length + ')'"
+                          class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+                    </span>
+                    <i class="ph-bold ph-caret-down text-[10px] text-theme-body/60 transition-transform" :class="actionsDropdownOpen ? 'rotate-180' : ''"></i>
+                </button>
+
+                <!-- Actions Menu Dropdown -->
+                <div x-show="actionsDropdownOpen" x-cloak
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     class="absolute right-0 mt-1.5 w-60 rounded-xl border border-theme-border bg-theme-surface shadow-xl z-50 p-1.5 space-y-1 text-xs font-body">
+
+                    <!-- Section: Batch Selection Operations -->
+                    <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-theme-body/50 flex items-center justify-between">
+                        <span>Batch Selection</span>
+                        <span x-show="selectedIds.length > 0" x-text="selectedIds.length + ' selected'" class="text-amber-600 dark:text-amber-400 font-semibold"></span>
+                    </div>
+
+                    <!-- Merge Option -->
+                    <button type="button"
+                            :disabled="selectedIds.length < 2"
+                            @click="actionsDropdownOpen = false; openMergeModal({{ institutions|tojson|forceescape }})"
+                            :class="selectedIds.length >= 2 ? 'text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 cursor-pointer' : 'text-theme-body/40 cursor-not-allowed'"
+                            class="w-full text-left px-2.5 py-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-git-merge text-sm" :class="selectedIds.length >= 2 ? 'text-amber-600' : 'text-theme-body/30'"></i>
+                            <span class="font-semibold">Merge Delegations</span>
+                        </div>
+                        <span x-show="selectedIds.length >= 2" x-text="'(' + selectedIds.length + ')'" class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300"></span>
+                        <span x-show="selectedIds.length < 2" class="text-[10px] text-theme-body/40">Select 2+</span>
+                    </button>
+
+                    <!-- Delete Option -->
+                    <button type="button"
+                            :disabled="selectedIds.length === 0"
+                            @click="actionsDropdownOpen = false; bulkDeleteModal = true"
+                            :class="selectedIds.length > 0 ? 'text-rose-600 hover:bg-rose-500/10 cursor-pointer' : 'text-theme-body/40 cursor-not-allowed'"
+                            class="w-full text-left px-2.5 py-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-trash text-sm" :class="selectedIds.length > 0 ? 'text-rose-600' : 'text-theme-body/30'"></i>
+                            <span class="font-semibold">Delete Delegations</span>
+                        </div>
+                        <span x-show="selectedIds.length > 0" x-text="'(' + selectedIds.length + ')'" class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-600"></span>
+                        <span x-show="selectedIds.length === 0" class="text-[10px] text-theme-body/40">Select 1+</span>
+                    </button>
+
+                    <div class="border-t border-theme-border my-1"></div>
+
+                    <!-- Section: Spreadsheet / Data Tools -->
+                    <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-theme-body/50">
+                        Spreadsheets &amp; Files
+                    </div>
+
+                    <!-- Download Excel -->
+                    <a href="/admin/institutions/export.xlsx" download="{{ tournament.slug }}-institutions.xlsx"
+                       hx-boost="false"
+                       @click="actionsDropdownOpen = false"
+                       class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-theme-base text-theme-heading transition flex items-center justify-between group">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-file-xls text-sm text-emerald-600"></i>
+                            <span class="font-medium">Download Excel</span>
+                        </div>
+                        <span class="text-[10px] text-theme-body/50">.xlsx</span>
+                    </a>
+
+                    <!-- Upload Excel -->
+                    <button type="button"
+                            @click="actionsDropdownOpen = false; importModal = true"
+                            class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-theme-base text-theme-heading transition flex items-center justify-between group">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-upload-simple text-sm text-kwuo-bronze"></i>
+                            <span class="font-medium">Upload Excel</span>
+                        </div>
+                        <span class="text-[10px] text-theme-body/50">Import</span>
+                    </button>
+
+                    <div class="border-t border-theme-border my-1"></div>
+
+                    <!-- Section: Quick Create -->
+                    <button type="button"
+                            @click="actionsDropdownOpen = false; addModal = true"
+                            class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-kwuo-bronze/10 text-kwuo-bronze transition flex items-center gap-2 font-semibold">
+                        <i class="ph-bold ph-plus-circle text-sm text-kwuo-bronze"></i>
+                        <span>Add Institution</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Primary Add Button -->
+            <button type="button" @click="addModal = true"
+                    class="px-3.5 py-1.5 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center gap-1.5 shadow-sm font-body shrink-0"
+                    title="Add Institution">
+                <i class="ph-bold ph-plus text-sm"></i>
+                <span class="hidden sm:inline">Add Institution</span>
+                <span class="sm:hidden">Add</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Institutions Roster Container in Torn-Docket Styling -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-5 sm:!p-7 space-y-4">
+            <!-- Header Summary Row -->
+            <div class="flex items-center justify-between pb-3 border-b border-theme-border text-xs">
+                <div class="flex items-center gap-2">
+                    <span class="font-heading font-bold text-base text-theme-heading">
+                        Tournament Delegations
+                    </span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                        {{ institutions|length }}
+                    </span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button type="button" @click="toggleSelectAll($event, {{ all_ids|tojson|forceescape }})"
+                            class="text-xs font-semibold text-kwuo-bronze hover:underline font-body sm:hidden">
+                        <span x-text="isAllSelected({{ all_ids|tojson|forceescape }}) ? 'Deselect All' : 'Select All'"></span>
+                    </button>
+                    <div class="text-[11px] text-theme-body/60 font-body hidden sm:block">
+                        Showing delegations roster
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 1: Ultra-Compact Tabbycat-Style Table (Zero Bulky Icons, Pure Text & Numeric Precision) -->
+            <div x-show="viewMode === 'table'" class="overflow-x-auto rounded-xl border border-theme-border bg-theme-surface">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-theme-border bg-theme-base/40 text-theme-body/70 text-[11px] font-bold">
+                            <!-- 1. Checkbox -->
+                            <th class="py-2.5 px-3 w-10 text-center">
+                                <input type="checkbox"
+                                       @change="toggleSelectAll($event, {{ all_ids|tojson|forceescape }})"
+                                       :checked="isAllSelected({{ all_ids|tojson|forceescape }})"
+                                       class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5 cursor-pointer">
+                            </th>
+                            <!-- 2. Institution Name -->
+                            <th class="py-2.5 px-3 min-w-[170px] sm:min-w-[220px]">
+                                Full name
+                            </th>
+                            <!-- 3. Code -->
+                            <th x-show="visibleCols.code" class="py-2.5 px-2.5 whitespace-nowrap text-center">Code</th>
+                            <!-- 4. Country -->
+                            <th x-show="visibleCols.country" class="py-2.5 px-2.5 whitespace-nowrap">Country</th>
+                            <!-- 5. Region -->
+                            <th x-show="visibleCols.region" class="py-2.5 px-2.5 whitespace-nowrap">Region</th>
+                            <!-- 6. Speakers -->
+                            <th x-show="visibleCols.speakers" class="py-2.5 px-2.5 text-center whitespace-nowrap">Speakers</th>
+                            <!-- 7. Judges -->
+                            <th x-show="visibleCols.judges" class="py-2.5 px-2.5 text-center whitespace-nowrap">Judges</th>
+                            <!-- 8. IAs -->
+                            <th x-show="visibleCols.ias" class="py-2.5 px-2.5 text-center whitespace-nowrap font-bold text-kwuo-bronze">IAs</th>
+                            <!-- 9. Total -->
+                            <th x-show="visibleCols.total" class="py-2.5 px-3 text-center whitespace-nowrap font-bold">Total</th>
+                            <!-- 10. Actions -->
+                            <th class="py-2.5 px-3 text-right whitespace-nowrap">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-theme-border">
+                        {% for inst in institutions %}
+                        <tr id="inst-row-{{ inst.id }}"
+                            x-show="matchesFilter('{{ inst.name|replace('\'', '\\\'') }}', '{{ inst.code|replace('\'', '\\\'') }}', '{{ (inst.country_name or inst.country)|replace('\'', '\\\'') }}', '{{ inst.region|replace('\'', '\\\'') }}')"
+                            :class="editingId === '{{ inst.id }}' ? 'bg-kwuo-bronze/5 dark:bg-kwuo-bronze/10' : (selectedIds.includes('{{ inst.id }}') ? 'bg-amber-500/5 dark:bg-amber-500/10' : 'hover:bg-theme-base/60')"
+                            class="transition group font-body">
+                            <!-- 1. CHECKBOX -->
+                            <td class="py-2.5 px-3 w-10 text-center">
+                                <input type="checkbox" value="{{ inst.id }}" x-model="selectedIds"
+                                       class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5 cursor-pointer">
+                            </td>
+
+                            <!-- 2. NAME (Clean text, no bulky icon, wraps gracefully) -->
+                            <td class="py-2.5 px-3 max-w-[260px]">
+                                <template x-if="editingId !== '{{ inst.id }}'">
+                                    <span id="inst-name-{{ inst.id }}" class="font-heading font-bold text-xs sm:text-sm text-theme-heading break-words leading-tight">
+                                        {{ inst.name }}
+                                    </span>
+                                </template>
+
+                                <template x-if="editingId === '{{ inst.id }}'">
+                                    <input type="text" x-model="editRow.name" placeholder="Institution Name *"
+                                           class="w-full px-2.5 py-1.5 rounded-lg border border-kwuo-bronze bg-theme-surface text-theme-heading text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                </template>
+                            </td>
+
+                            <!-- 3. CODE -->
+                            <td x-show="visibleCols.code" class="py-2.5 px-2.5 whitespace-nowrap text-center">
+                                <template x-if="editingId !== '{{ inst.id }}'">
+                                    <div id="inst-code-{{ inst.id }}">
+                                        {% if inst.code %}
+                                        <span class="text-[11px] font-bold text-kwuo-bronze font-body">
+                                            {{ inst.code }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-theme-body/40 text-xs font-body">—</span>
+                                        {% endif %}
+                                    </div>
+                                </template>
+
+                                <template x-if="editingId === '{{ inst.id }}'">
+                                    <input type="text" x-model="editRow.code" placeholder="Code" maxlength="10"
+                                           class="w-20 px-2 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-theme-heading text-xs font-body uppercase focus:ring-1 focus:ring-kwuo-bronze text-center">
+                                </template>
+                            </td>
+
+                            <!-- 4. COUNTRY -->
+                            <td x-show="visibleCols.country" class="py-2.5 px-2.5 whitespace-nowrap">
+                                <template x-if="editingId !== '{{ inst.id }}'">
+                                    <div id="inst-country-{{ inst.id }}">
+                                        {% if inst.country %}
+                                        <div class="inline-flex items-center gap-1.5 text-xs text-theme-heading font-medium">
+                                            <span>{{ inst.flag }}</span>
+                                            <span>{{ inst.country_name or inst.country|upper }}</span>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-theme-body/40 text-xs font-body">—</span>
+                                        {% endif %}
+                                    </div>
+                                </template>
+
+                                <template x-if="editingId === '{{ inst.id }}'">
+                                    <input type="text" list="country-catalog-datalist" x-model="editRow.country" placeholder="Select country..."
+                                           class="w-36 px-2 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-theme-heading text-xs font-body focus:ring-1 focus:ring-kwuo-bronze">
+                                </template>
+                            </td>
+
+                            <!-- 5. REGION -->
+                            <td x-show="visibleCols.region" class="py-2.5 px-2.5 whitespace-nowrap text-theme-body/80 font-body text-xs">
+                                <template x-if="editingId !== '{{ inst.id }}'">
+                                    <div id="inst-region-{{ inst.id }}">
+                                        {% if inst.region_display %}
+                                        <span>{{ inst.region_display }}</span>
+                                        {% else %}
+                                        <span class="text-theme-body/40">—</span>
+                                        {% endif %}
+                                    </div>
+                                </template>
+
+                                <template x-if="editingId === '{{ inst.id }}'">
+                                    <input type="text" list="region-catalog-datalist" x-model="editRow.region" placeholder="Select or type region..."
+                                           class="w-32 px-2 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-theme-heading text-xs font-body focus:ring-1 focus:ring-kwuo-bronze">
+                                </template>
+                            </td>
+
+                            <!-- 6. SPEAKERS COUNT (Pure clean text number) -->
+                            <td x-show="visibleCols.speakers" class="py-2.5 px-2.5 text-center whitespace-nowrap text-xs font-semibold text-theme-heading">
+                                {{ inst.speakers_count }}
+                            </td>
+
+                            <!-- 7. JUDGES COUNT (Pure clean text number) -->
+                            <td x-show="visibleCols.judges" class="py-2.5 px-2.5 text-center whitespace-nowrap text-xs font-semibold text-theme-heading">
+                                {{ inst.judges_count }}
+                            </td>
+
+                            <!-- 8. IAs COUNT (Independent Adjudicators, pure clean number) -->
+                            <td x-show="visibleCols.ias" class="py-2.5 px-2.5 text-center whitespace-nowrap text-xs font-bold text-kwuo-bronze">
+                                {{ inst.ias_count }}
+                            </td>
+
+                            <!-- 9. TOTAL COUNT (Pure clean number, no 'entries' text) -->
+                            <td x-show="visibleCols.total" class="py-2.5 px-3 text-center whitespace-nowrap text-xs font-bold text-theme-heading">
+                                {{ inst.total_count }}
+                            </td>
+
+                            <!-- 10. ACTIONS -->
+                            <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                                <!-- Normal Mode Controls -->
+                                <template x-if="editingId !== '{{ inst.id }}'">
+                                    <div class="inline-flex items-center gap-1.5">
+                                        <!-- Edit Row Trigger -->
+                                        <button type="button"
+                                                @click='startEdit("{{ inst.id }}", {{ inst.name|tojson|forceescape }}, {{ (inst.code or "")|tojson|forceescape }}, {{ (inst.country or "")|tojson|forceescape }}, {{ (inst.region or "")|tojson|forceescape }})'
+                                                class="p-1.5 rounded-lg border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze transition text-xs"
+                                                title="Edit institution properties">
+                                            <i class="ph-bold ph-pencil-simple"></i>
+                                        </button>
+
+                                        <!-- Delete Trigger -->
+                                        <button type="button"
+                                                @click='openDelete("{{ inst.id }}", {{ inst.name|tojson|forceescape }})'
+                                                class="p-1.5 rounded-lg border border-rose-300/40 dark:border-rose-900/40 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 transition text-xs"
+                                                title="Delete institution">
+                                            <i class="ph-bold ph-trash"></i>
+                                        </button>
+                                    </div>
+                                </template>
+
+                                <!-- Editing Mode Controls -->
+                                <template x-if="editingId === '{{ inst.id }}'">
+                                    <div class="inline-flex items-center gap-1.5">
+                                        <!-- Save Button -->
+                                        <button type="button" @click="saveEdit()" :disabled="saving"
+                                                class="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold text-xs hover:bg-emerald-700 disabled:opacity-50 transition flex items-center gap-1 shadow-sm font-body">
+                                            <i class="ph-bold ph-check"></i>
+                                            <span x-text="saving ? 'Saving...' : 'Save'"></span>
+                                        </button>
+
+                                        <!-- Cancel Button -->
+                                        <button type="button" @click="cancelEdit()"
+                                                class="px-2.5 py-1.5 rounded-lg border border-theme-border text-theme-body text-xs hover:bg-theme-base transition font-body">
+                                            <i class="ph-bold ph-x"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        {% if not institutions %}
+                        <tr>
+                            <td colspan="10" class="py-10 text-center text-theme-body/60 space-y-1 font-body">
+                                <div class="text-xs font-semibold">No institutions registered in this tournament yet.</div>
+                                <button type="button" @click="addModal = true" class="text-xs font-bold text-kwuo-bronze hover:underline inline-flex items-center gap-1 font-body">
+                                    <i class="ph-bold ph-plus"></i>
+                                    <span>Register your first delegation</span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- VIEW 2: Collapsed Cards Mode (Optimized for Mobile Screens & Compact Reading) -->
+            <div x-show="viewMode === 'cards'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for inst in institutions %}
+                <article id="inst-card-{{ inst.id }}"
+                         x-show="matchesFilter('{{ inst.name|replace('\'', '\\\'') }}', '{{ inst.code|replace('\'', '\\\'') }}', '{{ (inst.country_name or inst.country)|replace('\'', '\\\'') }}', '{{ inst.region|replace('\'', '\\\'') }}')"
+                         :class="editingId === '{{ inst.id }}' ? 'border-kwuo-bronze bg-kwuo-bronze/5 ring-1 ring-kwuo-bronze/30' : (selectedIds.includes('{{ inst.id }}') ? 'border-amber-500/60 bg-amber-500/5 ring-1 ring-amber-500/30' : 'border-theme-border bg-theme-surface hover:border-kwuo-bronze/30')"
+                         class="p-3.5 rounded-xl border transition shadow-xs flex flex-col justify-between gap-2.5 font-body">
+                    
+                    <!-- When NOT Editing: Compact Card Layout -->
+                    <template x-if="editingId !== '{{ inst.id }}'">
+                        <div class="space-y-2.5">
+                            <!-- Top: Checkbox, Name, Code Badge & Quick Actions (Zero bulky icon square) -->
+                            <div class="flex items-start gap-2">
+                                <input type="checkbox" value="{{ inst.id }}" x-model="selectedIds"
+                                       class="mt-1 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5 cursor-pointer shrink-0">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <h3 id="card-name-{{ inst.id }}" class="font-heading font-bold text-sm text-theme-heading break-words leading-tight">
+                                            {{ inst.name }}
+                                        </h3>
+                                        <span id="card-code-{{ inst.id }}">
+                                            {% if inst.code %}
+                                            <span x-show="visibleCols.code" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-theme-base border border-theme-border text-kwuo-bronze shrink-0">
+                                                {{ inst.code }}
+                                            </span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+
+                                    <!-- Country & Region Line -->
+                                    <div class="flex items-center gap-1.5 mt-1 text-xs text-theme-body/70 flex-wrap">
+                                        <span id="card-country-{{ inst.id }}" x-show="visibleCols.country">
+                                            {% if inst.country %}
+                                            <span class="inline-flex items-center gap-1">
+                                                <span>{{ inst.flag }}</span>
+                                                <span>{{ inst.country_name or inst.country|upper }}</span>
+                                            </span>
+                                            {% endif %}
+                                        </span>
+
+                                        {% if inst.country and inst.region_display %}
+                                        <span class="text-theme-body/30">&bull;</span>
+                                        {% endif %}
+
+                                        <span id="card-region-{{ inst.id }}" x-show="visibleCols.region">
+                                            {% if inst.region_display %}
+                                            <span class="text-theme-body/80">
+                                                {{ inst.region_display }}
+                                            </span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="inline-flex items-center gap-1 shrink-0">
+                                    <button type="button"
+                                            @click='startEdit("{{ inst.id }}", {{ inst.name|tojson|forceescape }}, {{ (inst.code or "")|tojson|forceescape }}, {{ (inst.country or "")|tojson|forceescape }}, {{ (inst.region or "")|tojson|forceescape }})'
+                                            class="p-1.5 rounded-lg border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze transition text-xs"
+                                            title="Edit institution">
+                                        <i class="ph-bold ph-pencil-simple"></i>
+                                    </button>
+                                    <button type="button"
+                                            @click='openDelete("{{ inst.id }}", {{ inst.name|tojson|forceescape }})'
+                                            class="p-1.5 rounded-lg border border-rose-300/40 dark:border-rose-900/40 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 transition text-xs"
+                                            title="Delete institution">
+                                        <i class="ph-bold ph-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Bottom: Metrics Row (Text numbers) -->
+                            <div class="pt-2 border-t border-theme-border/60 flex items-center justify-between text-xs text-theme-body/80">
+                                <div class="flex items-center gap-3">
+                                    <span x-show="visibleCols.speakers">
+                                        <span class="text-theme-body/50 text-[10px] uppercase font-bold">Spkrs:</span>
+                                        <span class="font-bold text-theme-heading ml-0.5">{{ inst.speakers_count }}</span>
+                                    </span>
+                                    <span x-show="visibleCols.judges">
+                                        <span class="text-theme-body/50 text-[10px] uppercase font-bold">Adjs:</span>
+                                        <span class="font-bold text-theme-heading ml-0.5">{{ inst.judges_count }}</span>
+                                    </span>
+                                    <span x-show="visibleCols.ias">
+                                        <span class="text-kwuo-bronze text-[10px] uppercase font-bold">IAs:</span>
+                                        <span class="font-bold text-kwuo-bronze ml-0.5">{{ inst.ias_count }}</span>
+                                    </span>
+                                </div>
+                                <div x-show="visibleCols.total" class="text-right shrink-0">
+                                    <span class="text-theme-body/50 text-[10px] uppercase font-bold">Total:</span>
+                                    <span class="font-extrabold text-theme-heading ml-0.5">{{ inst.total_count }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- When EDITING in Card: Vertical In-Place Mobile Form -->
+                    <template x-if="editingId === '{{ inst.id }}'">
+                        <div class="space-y-2.5">
+                            <div class="text-[11px] font-bold text-kwuo-bronze uppercase tracking-wider">Editing Institution</div>
+                            <div>
+                                <label class="text-[10px] uppercase font-bold text-theme-body/70 font-body">Name *</label>
+                                <input type="text" x-model="editRow.name" placeholder="Institution Name *"
+                                       class="w-full px-2.5 py-1.5 rounded-lg border border-kwuo-bronze bg-theme-surface text-theme-heading text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-[10px] uppercase font-bold text-theme-body/70 font-body">Code</label>
+                                    <input type="text" x-model="editRow.code" placeholder="Code" maxlength="10"
+                                           class="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-theme-heading text-xs uppercase font-body">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] uppercase font-bold text-theme-body/70 font-body">Country</label>
+                                    <input type="text" list="country-catalog-datalist" x-model="editRow.country" placeholder="Country"
+                                           class="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-theme-heading text-xs font-body">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] uppercase font-bold text-theme-body/70 font-body">Region / Circuit</label>
+                                <input type="text" list="region-catalog-datalist" x-model="editRow.region" placeholder="Region / Circuit"
+                                       class="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-theme-heading text-xs font-body">
+                            </div>
+                            <div class="flex items-center gap-2 pt-2 border-t border-theme-border">
+                                <button type="button" @click="saveEdit()" :disabled="saving"
+                                        class="flex-1 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold text-xs hover:bg-emerald-700 disabled:opacity-50 transition flex items-center justify-center gap-1 shadow-sm font-body">
+                                    <i class="ph-bold ph-check"></i>
+                                    <span x-text="saving ? 'Saving...' : 'Save'"></span>
+                                </button>
+                                <button type="button" @click="cancelEdit()"
+                                        class="px-3 py-1.5 rounded-lg border border-theme-border text-theme-body text-xs hover:bg-theme-base transition font-body">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </article>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+    <!-- Country Catalog Datalist (Only full country names, no duplicate raw codes) -->
+    <datalist id="country-catalog-datalist">
+        {% for c in countries %}
+        <option value="{{ c.name }}">{{ c.flag }} {{ c.name }}</option>
+        {% endfor %}
+    </datalist>
+
+    <!-- Region Catalog Datalist (Existing circuit regions for fast selection or custom typing) -->
+    <datalist id="region-catalog-datalist">
+        {% for r in regions %}
+        <option value="{{ r }}">{{ r }}</option>
+        {% endfor %}
+    </datalist>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 1: Add Institution Modal with Combobox Live Search     -->
+    <!-- ============================================================= -->
+    <div x-show="addModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div @click="addModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Dialog -->
+        <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10" @keydown.escape.window="addModal = false">
+            {% call edit.torn_docket(wrapper_class="h-full", class="h-full space-y-4") %}
+            <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
+                        <i class="ph-bold ph-buildings"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-bold text-base text-theme-heading">Add Institution</h3>
+                        <p class="text-[11px] text-theme-body/60 font-body">Register a new university, school, or forensic club</p>
+                    </div>
+                </div>
+                <button type="button" @click="addModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <form method="POST" action="/admin/institutions" class="space-y-4">
+                <!-- Name with live autocomplete search -->
+                <div class="relative">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                        Institution Name *
+                    </label>
+                    <input type="text" name="name" required x-model="newInst.name" @input="onNameInput()"
+                           placeholder="e.g. University of Oxford or Lincoln High School"
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-2 focus:ring-kwuo-bronze/40">
+
+                    <!-- Live autocomplete popup suggestions -->
+                    <div x-show="nameSuggestions.length > 0" x-cloak
+                         @click.outside="nameSuggestions = []"
+                         class="absolute z-20 top-full left-0 right-0 mt-1 rounded-xl border border-theme-border bg-theme-surface shadow-2xl overflow-hidden py-1 max-h-48 overflow-y-auto">
+                        <div class="px-3 py-1 text-[10px] font-bold text-theme-body/50 uppercase tracking-wider font-body border-b border-theme-border">
+                            Existing Matches (Click to auto-populate)
+                        </div>
+                        <template x-for="item in nameSuggestions" :key="item.id || item.name">
+                            <button type="button" @click="selectSuggestion(item)"
+                                    class="w-full text-left px-3.5 py-2 hover:bg-kwuo-bronze/10 transition flex items-center justify-between text-xs font-body">
+                                <div>
+                                    <span class="font-heading font-bold text-theme-heading" x-text="item.name"></span>
+                                    <span x-show="item.code" class="text-[10px] font-body text-theme-body/60 ml-1.5" x-text="'(' + item.code + ')'"></span>
+                                </div>
+                                <div class="text-[11px] text-theme-body/60 flex items-center gap-1">
+                                    <span x-text="item.flag"></span>
+                                    <span x-text="item.country_name || item.country"></span>
+                                </div>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Code & Country in single responsive row -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Delegation Code
+                        </label>
+                        <input type="text" name="code" x-model="newInst.code" maxlength="10" placeholder="e.g. OXF or LHS"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body uppercase focus:ring-2 focus:ring-kwuo-bronze/40">
+                        <p class="text-[10px] text-theme-body/50 mt-1 font-body">Auto-generated from name if left empty.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Country
+                        </label>
+                        <input type="text" name="country" list="country-catalog-datalist" x-model="newInst.country"
+                               placeholder="e.g. NG or Nigeria"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-2 focus:ring-kwuo-bronze/40">
+                        <p class="text-[10px] text-theme-body/50 mt-1 font-body">Normalized to lowercase ISO / name.</p>
+                    </div>
+                </div>
+
+                <!-- Region -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                        Region / Circuit (Optional)
+                    </label>
+                    <input type="text" name="region" list="region-catalog-datalist" x-model="newInst.region" placeholder="Select or type circuit region..."
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-2 focus:ring-kwuo-bronze/40">
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
+                    <button type="button" @click="addModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm flex items-center gap-2 font-body">
+                        <i class="ph-bold ph-plus"></i>
+                        <span>Register Institution</span>
+                    </button>
+                </div>
+            </form>
+            {% endcall %}
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 2: Merge Institutions Modal                             -->
+    <!-- ============================================================= -->
+    <div x-show="mergeModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div @click="mergeModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Dialog -->
+        <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10" @keydown.escape.window="mergeModal = false">
+            {% call edit.torn_docket(wrapper_class="h-full", class="h-full space-y-4") %}
+            <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg">
+                        <i class="ph-bold ph-git-merge"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-bold text-base text-theme-heading">Merge Institutions</h3>
+                        <p class="text-[11px] text-theme-body/60 font-body">Unify duplicate spellings and consolidate participants</p>
+                    </div>
+                </div>
+                <button type="button" @click="mergeModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-200 leading-relaxed font-body">
+                    <strong class="font-bold">Merging <span x-text="selectedIds.length"></span> institutions:</strong>
+                    All speakers, judges, and clash affiliations linked to these entries will be reassigned to the consolidated institution below, and older variations will be deleted.
+                </div>
+
+                <!-- Consolidated Target Name -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                        Consolidated Institution Name *
+                    </label>
+                    <input type="text" x-model="mergeData.target_name" required
+                           placeholder="e.g. Harvard University"
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-2 focus:ring-kwuo-bronze/40">
+                </div>
+
+                <!-- Consolidated Code & Country in single responsive row -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Consolidated Code
+                        </label>
+                        <input type="text" x-model="mergeData.target_code" maxlength="10" placeholder="e.g. HARV"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body uppercase focus:ring-2 focus:ring-kwuo-bronze/40">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Consolidated Country
+                        </label>
+                        <input type="text" list="country-catalog-datalist" x-model="mergeData.target_country" placeholder="e.g. US or United States"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-2 focus:ring-kwuo-bronze/40">
+                    </div>
+                </div>
+
+                <!-- Consolidated Region -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                        Consolidated Region (Optional)
+                    </label>
+                    <input type="text" list="region-catalog-datalist" x-model="mergeData.target_region" placeholder="Select or type consolidated region..."
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-2 focus:ring-kwuo-bronze/40">
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
+                    <button type="button" @click="mergeModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="button" @click="confirmMerge()" :disabled="merging"
+                            class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 font-body disabled:opacity-50">
+                        <i class="ph-bold ph-git-merge"></i>
+                        <span x-text="merging ? 'Merging...' : 'Confirm & Unify'"></span>
+                    </button>
+                </div>
+            </div>
+            {% endcall %}
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 3: Bulk Import Spreadsheet Modal (Excel / CSV)          -->
+    <!-- ============================================================= -->
+    <div x-show="importModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div @click="importModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Dialog -->
+        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="importModal = false">
+            {% call edit.torn_docket(wrapper_class="h-full", class="h-full space-y-4") %}
+            <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-lg">
+                        <i class="ph-bold ph-file-xls"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-bold text-base text-theme-heading">Upload Spreadsheet</h3>
+                        <p class="text-[11px] text-theme-body/60 font-body">Import delegations via Excel (.xlsx) or CSV</p>
+                    </div>
+                </div>
+                <button type="button" @click="importModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <form method="POST" action="/admin/institutions/import" enctype="multipart/form-data" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                        Select Spreadsheet File *
+                    </label>
+                    <input type="file" name="file" required accept=".xlsx,.csv"
+                           class="w-full text-xs text-theme-body font-body file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-kwuo-bronze file:text-white hover:file:bg-kwuo-mahogany cursor-pointer border border-theme-border rounded-xl bg-theme-base p-1.5">
+                    <p class="text-[11px] text-theme-body/60 mt-1 font-body">
+                        Spreadsheet should contain columns: <strong>Name</strong>, <strong>Code</strong>, <strong>Country</strong>, and <strong>Region</strong>.
+                    </p>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
+                    <button type="button" @click="importModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition flex items-center gap-2 font-body">
+                        <i class="ph-bold ph-upload"></i>
+                        <span>Upload &amp; Import</span>
+                    </button>
+                </div>
+            </form>
+            {% endcall %}
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 4: Delete Confirmation Modal                            -->
+    <!-- ============================================================= -->
+    <div x-show="deleteModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div @click="deleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Dialog -->
+        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="deleteModal = false">
+            <article class="kwuo-torn-docket !p-6 sm:!p-7 space-y-4">
+                <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
+                    <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0">
+                        <i class="ph-bold ph-warning"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-extrabold text-base text-theme-heading">Delete Institution</h3>
+                        <p class="text-[11px] text-rose-600 dark:text-rose-400 font-body">Roster Decoupling Confirmation</p>
+                    </div>
+                </div>
+
+                <p class="text-xs text-theme-body leading-relaxed font-body">
+                    Are you sure you want to delete <strong class="text-theme-heading font-semibold" x-text="deleteInstName"></strong>? Affiliated participants in this tournament will be detached to independent status.
+                </p>
+
+                <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
+                    <button type="button" @click="deleteModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="button" @click="confirmDelete()"
+                            class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 font-body">
+                        <i class="ph-bold ph-trash"></i>
+                        <span>Confirm Delete</span>
+                    </button>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 5: Bulk Delete Confirmation Modal                       -->
+    <!-- ============================================================= -->
+    <div x-show="bulkDeleteModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div @click="bulkDeleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Dialog -->
+        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="bulkDeleteModal = false">
+            <article class="kwuo-torn-docket !p-6 sm:!p-7 space-y-4">
+                <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
+                    <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0">
+                        <i class="ph-bold ph-trash"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-extrabold text-base text-theme-heading">Delete Selected Institutions</h3>
+                        <p class="text-[11px] text-rose-600 dark:text-rose-400 font-body">Bulk Roster Decoupling Confirmation</p>
+                    </div>
+                </div>
+
+                <p class="text-xs text-theme-body leading-relaxed font-body">
+                    Are you sure you want to delete <span class="font-bold text-rose-600" x-text="selectedIds.length"></span> selected institution(s)? All affiliated speakers and adjudicators in this tournament will be detached to independent status.
+                </p>
+
+                <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
+                    <button type="button" @click="bulkDeleteModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="button" @click="confirmBulkDelete()" :disabled="bulkDeleting"
+                            class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 font-body disabled:opacity-50">
+                        <i class="ph-bold ph-trash"></i>
+                        <span x-text="bulkDeleting ? 'Deleting...' : 'Delete (' + selectedIds.length + ')'"></span>
+                    </button>
+                </div>
+            </article>
+        </div>
+    </div>
+</div>
+{% endblock %}

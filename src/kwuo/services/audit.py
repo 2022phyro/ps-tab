@@ -5,6 +5,8 @@ from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from kwuo.models.audit import AuditLog, AuditSeverity
 from kwuo.models.user import User
+from kwuo.core.queue import enqueue_job
+from kwuo.core.database import async_session_factory
 
 
 def extract_request_context(request: Optional[Request]) -> Dict[str, Optional[str]]:
@@ -42,8 +44,8 @@ def extract_request_context(request: Optional[Request]) -> Dict[str, Optional[st
 
 
 async def record_audit_log(
-    db: AsyncSession,
-    action: str,
+    db: Optional[AsyncSession] = None,
+    action: str = "",
     actor: Optional[User] = None,
     request: Optional[Request] = None,
     resource_type: Optional[str] = None,
@@ -55,35 +57,53 @@ async def record_audit_log(
     error_message: Optional[str] = None,
     extra_data: Optional[Dict[str, Any]] = None,
     description: Optional[str] = None,
-) -> AuditLog:
-    """Record an immutable AuditLog entry in the database."""
+) -> Optional[AuditLog]:
+    """Record an immutable AuditLog entry in the database.
+    
+    Dispatches to the ARQ background worker queue when running in development/production.
+    Falls back to direct DB persistence when testing or when the worker queue is offline.
+    """
     req_ctx = extract_request_context(request)
 
     user_id = str(actor.id) if actor and actor.id else None
     user_email = actor.email if actor and actor.email else None
     user_type = "admin" if (actor and actor.is_admin) else ("user" if actor else "anonymous")
 
-    log_entry = AuditLog(
-        user_id=user_id,
-        user_email=user_email,
-        user_type=user_type,
-        action=action,
-        action_description=description or f"Action {action} performed",
-        resource_type=resource_type,
-        resource_id=str(resource_id) if resource_id else None,
-        resource_name=resource_name,
-        ip_address=req_ctx["ip_address"],
-        user_agent=req_ctx["user_agent"],
-        request_method=req_ctx["request_method"],
-        request_path=req_ctx["request_path"],
-        request_id=req_ctx["request_id"],
-        changes=changes or {},
-        extra_data=extra_data or {},
-        severity=severity,
-        success=success,
-        error_message=error_message,
-    )
+    payload = {
+        "user_id": user_id,
+        "user_email": user_email,
+        "user_type": user_type,
+        "action": action,
+        "action_description": description or f"Action {action} performed",
+        "resource_type": resource_type,
+        "resource_id": str(resource_id) if resource_id else None,
+        "resource_name": resource_name,
+        "ip_address": req_ctx["ip_address"],
+        "user_agent": req_ctx["user_agent"],
+        "request_method": req_ctx["request_method"],
+        "request_path": req_ctx["request_path"],
+        "request_id": req_ctx["request_id"],
+        "changes": changes or {},
+        "extra_data": extra_data or {},
+        "severity": severity,
+        "success": success,
+        "error_message": error_message,
+    }
 
-    db.add(log_entry)
-    await db.flush()
-    return log_entry
+    # Dispatch to ARQ background worker
+    enqueued = await enqueue_job("write_audit_log_task", payload)
+    if enqueued:
+        return None
+
+    # Fallback to direct database write
+    if db is not None:
+        log_entry = AuditLog(**payload)
+        db.add(log_entry)
+        await db.flush()
+        return log_entry
+    else:
+        async with async_session_factory() as session:
+            log_entry = AuditLog(**payload)
+            session.add(log_entry)
+            await session.commit()
+            return log_entry

@@ -673,3 +673,47 @@ async def test_email_absence_tracking():
         body="Hello Kwuo world",
     )
     assert res is True
+
+
+@pytest.mark.asyncio
+async def test_arq_worker_tasks_execution(db_session):
+    """Verify ARQ background worker tasks process audit logs and email dispatch."""
+    from kwuo.worker.tasks import write_audit_log_task, send_email_task
+    from kwuo.core.queue import enqueue_job
+
+    # 1. Execute ARQ send_email_task
+    EmailProviderRegistry.clear_history()
+    await send_email_task(
+        ctx={},
+        to_email="worker_test@kwuo.org",
+        subject="ARQ Background Dispatch",
+        body="Processed by background worker",
+        otp_code="987654",
+        metadata={"worker": True},
+    )
+    msg = EmailProviderRegistry.get_latest_email_for("worker_test@kwuo.org")
+    assert msg is not None
+    assert msg["subject"] == "ARQ Background Dispatch"
+    assert msg["metadata"]["otp_code"] == "987654"
+
+    # 2. Execute ARQ write_audit_log_task
+    payload = {
+        "user_email": "worker_actor@kwuo.org",
+        "action": "worker.task_completed",
+        "action_description": "Executed inside ARQ worker process",
+        "severity": "INFO",
+        "success": True,
+        "ip_address": "127.0.0.1",
+    }
+    await write_audit_log_task(ctx={"session": db_session}, payload=payload)
+
+    log = (
+        await db_session.execute(
+            select(AuditLog).where(
+                AuditLog.action == "worker.task_completed",
+                AuditLog.user_email == "worker_actor@kwuo.org",
+            )
+        )
+    ).scalar_one_or_none()
+    assert log is not None
+    assert log.action_description == "Executed inside ARQ worker process"

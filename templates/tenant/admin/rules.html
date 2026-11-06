@@ -1,0 +1,146 @@
+{% extends "tenant/admin/layout.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Rules & Draw Configuration — Tab Room{% endblock %}
+
+{% block admin_content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Breadcrumb & Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1">
+                <a href="/admin" class="hover:text-kwuo-bronze">Tab Room</a>
+                <span>/</span>
+                <span>Organization</span>
+                <span>/</span>
+                <span class="text-kwuo-bronze">Rules &amp; Draw Config</span>
+            </div>
+            <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
+                Rules &amp; Draw Configuration
+            </h1>
+            <p class="text-xs text-theme-body/70 mt-0.5">
+                Balloting mechanics, room sizing constraints, panel allocations, and preliminary tie rules.
+            </p>
+        </div>
+    </div>
+
+    <!-- Rules Configuration Form (Torn-Docket) -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <form method="POST" action="/admin/rules" class="space-y-6">
+                <!-- Ballot Scoring Mode & Draw Methodology -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                            Ballot Scoring Mode *
+                        </label>
+                        {{ edit.custom_select(
+                            name="ballot_mode",
+                            value=tournament.ballot_mode.value,
+                            required=true,
+                            options=[
+                                {"value": "democracy", "label": "Democracy (Independent Panels)", "icon": "ph-users-three"},
+                                {"value": "strict", "label": "Strict (Chair Consensus Ballot)", "icon": "ph-shield-check"}
+                            ]
+                        ) }}
+                        <p class="text-[11px] text-theme-body/60 mt-1">Controls individual score card validation and chair override permissions.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                            Draw Seeding Methodology *
+                        </label>
+                        {{ edit.custom_select(
+                            name="draw_method",
+                            value=tournament.draw_method.value,
+                            required=true,
+                            options=[
+                                {"value": "random", "label": "Random Matrix Pairing", "icon": "ph-shuffle"},
+                                {"value": "power_matched", "label": "Power-Matched Pairing", "icon": "ph-trend-up"},
+                                {"value": "equal", "label": "Equal Dispersal", "icon": "ph-equals"}
+                            ]
+                        ) }}
+                        <p class="text-[11px] text-theme-body/60 mt-1">Algorithm used when generating section matrix pairings.</p>
+                    </div>
+                </div>
+
+                <!-- Room Sizing Bounds -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                            Min Room Size *
+                        </label>
+                        <input type="number" min="2" max="12" name="min_room_size" required value="{{ tournament.min_room_size }}"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                        <p class="text-[11px] text-theme-body/60 mt-1">Minimum speakers per room.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                            Max Room Size *
+                        </label>
+                        <input type="number" min="3" max="20" name="max_room_size" required value="{{ tournament.max_room_size }}"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                        <p class="text-[11px] text-theme-body/60 mt-1">Maximum speakers per room.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                            Room Sizing Preference *
+                        </label>
+                        {{ edit.custom_select(
+                            name="room_size_preference",
+                            value=tournament.room_size_preference.value,
+                            required=true,
+                            options=[
+                                {"value": "fewest_rooms", "label": "Fewest Rooms (Pack larger rooms)", "icon": "ph-arrows-in"},
+                                {"value": "smaller_rooms", "label": "Smaller Rooms (Disperse evenly)", "icon": "ph-arrows-out"}
+                            ]
+                        ) }}
+                    </div>
+                </div>
+
+                <!-- Panel Sizing & Preliminary Ties -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                            Standard Panel Size *
+                        </label>
+                        <input type="number" min="1" max="9" name="panel_size" required value="{{ tournament.panel_size }}"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                        <p class="text-[11px] text-theme-body/60 mt-1">Target judge panel count.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                            Minimum Panel Size *
+                        </label>
+                        <input type="number" min="1" max="5" name="minimum_panel_size" required value="{{ tournament.minimum_panel_size }}"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                        <p class="text-[11px] text-theme-body/60 mt-1">Emergency solo-judge floor.</p>
+                    </div>
+
+                    <div class="flex flex-col justify-center pt-2">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" name="allow_prelim_ties" id="allow_prelim_ties" value="true"
+                                   {% if tournament.allow_prelim_ties %}checked{% endif %}
+                                   class="rounded text-kwuo-bronze focus:ring-kwuo-bronze">
+                            <label for="allow_prelim_ties" class="text-xs font-semibold text-theme-heading">
+                                Allow Preliminary Ties
+                            </label>
+                        </div>
+                        <p class="text-[11px] text-theme-body/60 mt-1">If unchecked, requires ballot tie-breaks.</p>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-theme-border flex items-center justify-end">
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-kwuo-bronze text-white font-semibold text-xs shadow-sm hover:bg-kwuo-mahogany transition flex items-center gap-2">
+                        <i class="ph-bold ph-floppy-disk"></i>
+                        <span>Save Rules &amp; Draw Configuration</span>
+                    </button>
+                </div>
+            </form>
+        </article>
+    </div>
+</div>
+{% endblock %}

@@ -60,3 +60,69 @@ def decode_session_token(token: str) -> Optional[Dict[str, Any]]:
         return payload
     except (jwt.PyJWTError, Exception):
         return None
+
+
+def create_participant_token(
+    participant_id: str,
+    tournament_id: str,
+    role: str = "participant",
+    expires_delta: Optional[timedelta] = None,
+) -> str:
+    """Generate a signed JWT token for participant zero-auth session."""
+    expire = datetime.now(timezone.utc) + (
+        expires_delta if expires_delta else timedelta(days=30)
+    )
+    payload = {
+        "sub": participant_id,
+        "tourn": tournament_id,
+        "role": role,
+        "typ": "participant",
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_participant_token(token: str) -> Optional[Dict[str, Any]]:
+    """Decode and validate a participant session token."""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("typ") != "participant":
+            return None
+        return payload
+    except (jwt.PyJWTError, Exception):
+        return None
+
+
+def create_official_token(
+    official_id: str,
+    participant_id: str,
+    tournament_id: str,
+    role: str = "tab",
+    expires_delta: Optional[timedelta] = None,
+) -> str:
+    """Generate a signed JWT token for an authenticated tournament official."""
+    expire = datetime.now(timezone.utc) + (
+        expires_delta if expires_delta else timedelta(days=7)
+    )
+    payload = {
+        "sub": official_id,
+        "part": participant_id,
+        "tourn": tournament_id,
+        "role": role,
+        "typ": "official",
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_official_token(token: str) -> Optional[Dict[str, Any]]:
+    """Decode and validate a tournament official session token."""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("typ") != "official":
+            return None
+        return payload
+    except (jwt.PyJWTError, Exception):
+        return None

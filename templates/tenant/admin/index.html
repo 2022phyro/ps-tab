@@ -1,0 +1,214 @@
+{% extends "tenant/admin/layout.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Tab Room Control Center — {{ tournament.name }}{% endblock %}
+
+{% block admin_content %}
+<div class="max-w-6xl mx-auto space-y-8">
+    <!-- Breadcrumb & Welcome -->
+    <div>
+        <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1">
+            <span>Tab Room</span>
+            <span>/</span>
+            <span class="text-kwuo-bronze">Control Center Hub</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
+            Tournament Cockpit
+        </h1>
+        <p class="text-xs sm:text-sm text-theme-body/70 mt-1">
+            Real-time operations, participant readiness, section draw matrices, and round advancing.
+        </p>
+    </div>
+
+    <!-- Live Readiness Metric Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="kwuo-torn-docket-wrapper">
+            <article class="kwuo-torn-docket !p-5 text-center flex flex-col items-center justify-center h-full">
+                <span class="text-xs font-bold uppercase tracking-wider text-theme-body/60">Speakers Checked In</span>
+                <span class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading mt-1">
+                    {{ tournament.speakers|selectattr('status.value', 'equalto', 'checked_in')|list|length }} / {{ tournament.total_speakers_count }}
+                </span>
+                <span class="text-[10px] text-theme-body/60 mt-1 uppercase font-semibold">Registered Speakers</span>
+            </article>
+        </div>
+
+        <div class="kwuo-torn-docket-wrapper">
+            <article class="kwuo-torn-docket !p-5 text-center flex flex-col items-center justify-center h-full">
+                <span class="text-xs font-bold uppercase tracking-wider text-theme-body/60">Judges Checked In</span>
+                <span class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading mt-1">
+                    {{ tournament.judges|selectattr('status.value', 'equalto', 'checked_in')|list|length }} / {{ tournament.total_judges_count }}
+                </span>
+                <span class="text-[10px] text-theme-body/60 mt-1 uppercase font-semibold">Accredited Panelists</span>
+            </article>
+        </div>
+
+        <div class="kwuo-torn-docket-wrapper">
+            <article class="kwuo-torn-docket !p-5 text-center flex flex-col items-center justify-center h-full">
+                <span class="text-xs font-bold uppercase tracking-wider text-theme-body/60">Competition Divisions</span>
+                <span class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading mt-1">
+                    {{ tournament.divisions|length }}
+                </span>
+                <span class="text-[10px] text-theme-body/60 mt-1 uppercase font-semibold">Active Tiers</span>
+            </article>
+        </div>
+
+        <div class="kwuo-torn-docket-wrapper">
+            <article class="kwuo-torn-docket !p-5 text-center flex flex-col items-center justify-center h-full">
+                <span class="text-xs font-bold uppercase tracking-wider text-theme-body/60">Lifecycle Gate</span>
+                <span class="text-xl sm:text-2xl font-heading font-extrabold uppercase tracking-wider text-kwuo-bronze mt-1">
+                    {{ tournament.status.value }}
+                </span>
+                <span class="text-[10px] text-theme-body/60 mt-1 uppercase font-semibold">Current State</span>
+            </article>
+        </div>
+    </div>
+
+    <!-- Quick Navigation to Organization Modules -->
+    <div class="space-y-4">
+        <div class="flex items-center justify-between pb-2 border-b border-theme-border">
+            <h2 class="text-lg font-heading font-bold text-theme-heading">
+                Organization &amp; Pre-Round Setup Checklist
+            </h2>
+            <span class="text-xs font-bold text-kwuo-bronze uppercase tracking-wider">Phase 1</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Settings -->
+            <a href="/admin/settings" class="kwuo-torn-docket-wrapper block group">
+                <article class="kwuo-torn-docket !p-5 h-full flex flex-col justify-between group-hover:border-kwuo-bronze transition">
+                    <div>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze text-xl mb-3">
+                            <i class="ph-bold ph-gear"></i>
+                        </div>
+                        <h3 class="font-heading font-bold text-sm text-theme-heading group-hover:text-kwuo-bronze transition">Tournament Settings</h3>
+                        <p class="text-xs text-theme-body/70 mt-1">Base details, modality, ghost policy, and draw rules.</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
+                        <span>Configure</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </span>
+                </article>
+            </a>
+
+            <!-- Schedule -->
+            <a href="/admin/settings?tab=schedule" class="kwuo-torn-docket-wrapper block group">
+                <article class="kwuo-torn-docket !p-5 h-full flex flex-col justify-between group-hover:border-kwuo-bronze transition">
+                    <div>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze text-xl mb-3">
+                            <i class="ph-bold ph-calendar"></i>
+                        </div>
+                        <h3 class="font-heading font-bold text-sm text-theme-heading group-hover:text-kwuo-bronze transition">Schedule &amp; Milestones</h3>
+                        <p class="text-xs text-theme-body/70 mt-1">Timetable events, roll calls, and .ics calendar exports.</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
+                        <span>Manage Milestones ({{ tournament.schedule_items|length }})</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </span>
+                </article>
+            </a>
+
+            <!-- Documents -->
+            <a href="/admin/documents" class="kwuo-torn-docket-wrapper block group">
+                <article class="kwuo-torn-docket !p-5 h-full flex flex-col justify-between group-hover:border-kwuo-bronze transition">
+                    <div>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze text-xl mb-3">
+                            <i class="ph-bold ph-files"></i>
+                        </div>
+                        <h3 class="font-heading font-bold text-sm text-theme-heading group-hover:text-kwuo-bronze transition">Documents &amp; Files</h3>
+                        <p class="text-xs text-theme-body/70 mt-1">Briefing packets, equity rules, task motion releases.</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
+                        <span>Manage Docs ({{ tournament.attachments|length }})</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </span>
+                </article>
+            </a>
+
+            <!-- Scoring Criteria -->
+            <a href="/admin/rubric" class="kwuo-torn-docket-wrapper block group">
+                <article class="kwuo-torn-docket !p-5 h-full flex flex-col justify-between group-hover:border-kwuo-bronze transition">
+                    <div>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze text-xl mb-3">
+                            <i class="ph-bold ph-sliders"></i>
+                        </div>
+                        <h3 class="font-heading font-bold text-sm text-theme-heading group-hover:text-kwuo-bronze transition">Scoring Criteria</h3>
+                        <p class="text-xs text-theme-body/70 mt-1">Base {{ tournament.base_score|int }} pts, Cap {{ tournament.ceiling_score|int }} pts, Dimensions.</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
+                        <span>Edit Scale</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </span>
+                </article>
+            </a>
+
+            <!-- Speakers -->
+            <a href="/admin/speakers" class="kwuo-torn-docket-wrapper block group">
+                <article class="kwuo-torn-docket !p-5 h-full flex flex-col justify-between group-hover:border-kwuo-bronze transition">
+                    <div>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze text-xl mb-3">
+                            <i class="ph-bold ph-microphone"></i>
+                        </div>
+                        <h3 class="font-heading font-bold text-sm text-theme-heading group-hover:text-kwuo-bronze transition">Speakers Roster</h3>
+                        <p class="text-xs text-theme-body/70 mt-1">Single names, magic links, check-in attendance.</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
+                        <span>View {{ tournament.total_speakers_count }} Speakers</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </span>
+                </article>
+            </a>
+
+            <!-- Judges -->
+            <a href="/admin/judges" class="kwuo-torn-docket-wrapper block group">
+                <article class="kwuo-torn-docket !p-5 h-full flex flex-col justify-between group-hover:border-kwuo-bronze transition">
+                    <div>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze text-xl mb-3">
+                            <i class="ph-bold ph-scales"></i>
+                        </div>
+                        <h3 class="font-heading font-bold text-sm text-theme-heading group-hover:text-kwuo-bronze transition">Judges &amp; Panels</h3>
+                        <p class="text-xs text-theme-body/70 mt-1">Chair eligibility, conflict tracking, magic links.</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
+                        <span>View {{ tournament.total_judges_count }} Judges</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </span>
+                </article>
+            </a>
+
+            <!-- Officials -->
+            <a href="/admin/officials" class="kwuo-torn-docket-wrapper block group">
+                <article class="kwuo-torn-docket !p-5 h-full flex flex-col justify-between group-hover:border-kwuo-bronze transition">
+                    <div>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze text-xl mb-3">
+                            <i class="ph-bold ph-shield-check"></i>
+                        </div>
+                        <h3 class="font-heading font-bold text-sm text-theme-heading group-hover:text-kwuo-bronze transition">Rooms &amp; Officials</h3>
+                        <p class="text-xs text-theme-body/70 mt-1">Directors, CAP, DCAs, Equity, tab passwords.</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
+                        <span>View {{ tournament.total_officials_count }} Officials</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </span>
+                </article>
+            </a>
+
+            <!-- Institutions -->
+            <a href="/admin/institutions" class="kwuo-torn-docket-wrapper block group">
+                <article class="kwuo-torn-docket !p-5 h-full flex flex-col justify-between group-hover:border-kwuo-bronze transition">
+                    <div>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze text-xl mb-3">
+                            <i class="ph-bold ph-buildings"></i>
+                        </div>
+                        <h3 class="font-heading font-bold text-sm text-theme-heading group-hover:text-kwuo-bronze transition">Institutions</h3>
+                        <p class="text-xs text-theme-body/70 mt-1">Member schools, delegation attendee stats.</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
+                        <span>View {{ tournament.total_institutions_count }} Institutions</span>
+                        <i class="ph-bold ph-arrow-right"></i>
+                    </span>
+                </article>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

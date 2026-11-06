@@ -15,6 +15,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "markdown>=3.11.2",
     "msgpack>=1.2.4",
+    "openpyxl>=3.1.5",
     "pydantic>=2.14.1",
     "pydantic-settings>=2.16.1",
     "pygments>=2.21.0",

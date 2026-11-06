@@ -3,6 +3,26 @@
 from kwuo.models.base import Base
 from kwuo.models.user import User, UserStatus, Group, GroupPermission, GroupMembership
 from kwuo.models.audit import AuditLog, AuditSeverity, AuditAction
+from kwuo.models.tournament import (
+    Tournament,
+    TournamentStatus,
+    LocationType,
+    Division,
+    BallotMode,
+    DrawMethod,
+    RoomSizePreference,
+    Institution,
+    ParticipantInstitution,
+    Participant,
+    ParticipantStatus,
+    SpeakerProfile,
+    JudgeProfile,
+    OfficialProfile,
+    OfficialRole,
+    RubricCriterion,
+    ScheduleItem,
+)
+from kwuo.models.attachment import FileAttachment, AttachmentCategory
 
 __all__ = [
     "Base",
@@ -14,4 +34,23 @@ __all__ = [
     "AuditLog",
     "AuditSeverity",
     "AuditAction",
+    "Tournament",
+    "TournamentStatus",
+    "LocationType",
+    "Division",
+    "BallotMode",
+    "DrawMethod",
+    "RoomSizePreference",
+    "Institution",
+    "ParticipantInstitution",
+    "Participant",
+    "ParticipantStatus",
+    "SpeakerProfile",
+    "JudgeProfile",
+    "OfficialProfile",
+    "OfficialRole",
+    "RubricCriterion",
+    "ScheduleItem",
+    "FileAttachment",
+    "AttachmentCategory",
 ]

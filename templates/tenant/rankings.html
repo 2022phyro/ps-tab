@@ -1,0 +1,67 @@
+{% extends "tenant/base.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Rankings & Standings — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <!-- Header Banner -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <div class="flex items-center gap-3">
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
+                    <i class="ph-bold ph-chart-line-up text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
+                        Tournament Rankings & Standings
+                    </h1>
+                    <p class="text-xs sm:text-sm text-theme-body/70 mt-1">
+                        Cumulative speaker ranks, total points, break cutoff thresholds, and round advances.
+                    </p>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <!-- Standings Embargo Notice (When not published or in preliminary state) -->
+    <div class="flex justify-center py-6">
+        {% call edit.post_it(title="Standings Under Tabulation", tag="Results Embargo", size="md", curl="right") %}
+        <p class="text-sm leading-relaxed text-theme-body/90 mt-1">
+            Official cumulative standings and breaker thresholds are released in phases by the Tabulation Directorate in accordance with publication gates.
+        </p>
+        <div class="mt-4 pt-3 border-t border-theme-border/40 text-[11px] font-body opacity-70 space-y-1">
+            <div class="flex items-center gap-2">
+                <span class="h-1.5 w-1.5 rounded-full bg-kwuo-bronze animate-pulse"></span>
+                <span>Preliminary rounds in active progress</span>
+            </div>
+            <div>Preliminary ballots remain sealed until round verification completes.</div>
+        </div>
+        {% endcall %}
+    </div>
+
+    <!-- Tie-Breaking Hierarchy Info (Torn-Docket) -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <h3 class="font-heading font-bold text-base text-theme-heading mb-4 flex items-center gap-2">
+                <i class="ph-bold ph-info text-kwuo-bronze"></i>
+                <span>Official Forensic Tie-Breaking Hierarchy</span>
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div class="p-3.5 rounded-xl bg-theme-base border border-theme-border">
+                    <span class="font-bold text-theme-heading block mb-1">1. Total Section Ranks</span>
+                    <p class="text-theme-body/70">Lowest cumulative rank sum across all preliminary section ballots.</p>
+                </div>
+                <div class="p-3.5 rounded-xl bg-theme-base border border-theme-border">
+                    <span class="font-bold text-theme-heading block mb-1">2. Cumulative Speaker Points</span>
+                    <p class="text-theme-body/70">Highest total evaluated points across all judging rubrics.</p>
+                </div>
+                <div class="p-3.5 rounded-xl bg-theme-base border border-theme-border">
+                    <span class="font-bold text-theme-heading block mb-1">3. Head-to-Head / Judge Variance</span>
+                    <p class="text-theme-body/70">Statistical median comparison against panel baseline averages.</p>
+                </div>
+            </div>
+        </article>
+    </div>
+</div>
+{% endblock %}

@@ -369,3 +369,80 @@ def get_all_timezones_grouped() -> Dict[str, List[Dict[str, str]]]:
 
     _grouped_timezones_cache = result
     return result
+
+
+def flag_to_alpha2(flag: str) -> str:
+    """Extract 2-letter ISO 3166-1 alpha-2 country code from unicode flag emoji."""
+    if not flag:
+        return ""
+    code_chars = [chr(ord(c) - 0x1F1E6 + ord('A')) for c in flag if 0x1F1E6 <= ord(c) <= 0x1F1FF]
+    return "".join(code_chars)
+
+
+# Precomputed comprehensive country catalog
+COUNTRY_CATALOG: List[Dict[str, str]] = []
+_COUNTRY_LOOKUP: Dict[str, Dict[str, str]] = {}
+
+for _entry in COUNTRY_CALLING_CODES:
+    _flag = _entry.get("flag", "")
+    _code = flag_to_alpha2(_flag).lower()
+    _name = _entry.get("name", "")
+    if _code and _name:
+        _item = {"code": _code, "name": _name, "flag": _flag}
+        COUNTRY_CATALOG.append(_item)
+        _COUNTRY_LOOKUP[_code] = _item
+        _COUNTRY_LOOKUP[_name.lower()] = _item
+
+# Common aliases / mappings
+_US_ITEM = {"code": "us", "name": "United States", "flag": "🇺🇸"}
+_CA_ITEM = {"code": "ca", "name": "Canada", "flag": "🇨🇦"}
+_GB_ITEM = {"code": "gb", "name": "United Kingdom", "flag": "🇬🇧"}
+
+COUNTRY_CATALOG.insert(0, _US_ITEM)
+COUNTRY_CATALOG.insert(1, _GB_ITEM)
+COUNTRY_CATALOG.insert(2, _CA_ITEM)
+
+_COUNTRY_LOOKUP["us"] = _US_ITEM
+_COUNTRY_LOOKUP["usa"] = _US_ITEM
+_COUNTRY_LOOKUP["united states"] = _US_ITEM
+_COUNTRY_LOOKUP["united states of america"] = _US_ITEM
+
+_COUNTRY_LOOKUP["ca"] = _CA_ITEM
+_COUNTRY_LOOKUP["canada"] = _CA_ITEM
+
+_COUNTRY_LOOKUP["gb"] = _GB_ITEM
+_COUNTRY_LOOKUP["uk"] = _GB_ITEM
+_COUNTRY_LOOKUP["united kingdom"] = _GB_ITEM
+_COUNTRY_LOOKUP["great britain"] = _GB_ITEM
+_COUNTRY_LOOKUP["britain"] = _GB_ITEM
+
+
+def get_country_info(val: Optional[str]) -> Dict[str, str]:
+    """Retrieve normalized country dictionary: {code, name, flag}."""
+    if not val:
+        return {"code": "", "name": "", "flag": ""}
+    clean = val.strip().lower()
+    if clean in _COUNTRY_LOOKUP:
+        return _COUNTRY_LOOKUP[clean]
+    # Fallback for custom or unrecognized countries
+    return {
+        "code": clean[:4] if len(clean) <= 4 else clean[:2],
+        "name": val.strip().title(),
+        "flag": "🌐",
+    }
+
+
+def normalize_country(val: Optional[str]) -> Optional[str]:
+    """Normalize country input into lowercase code or name."""
+    if not val or not val.strip():
+        return None
+    info = get_country_info(val)
+    return info["code"] if info["code"] else val.strip().lower()
+
+
+def normalize_region(val: Optional[str]) -> Optional[str]:
+    """Normalize region input to lowercase trimmed string."""
+    if not val or not val.strip():
+        return None
+    return val.strip().lower()
+

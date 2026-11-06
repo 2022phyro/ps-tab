@@ -44,6 +44,9 @@ class AdminSite:
                 "admin_url": f"/admin/{model_admin.slug}",
                 "add_url": f"/admin/{model_admin.slug}/add",
                 "count": count,
+                "icon": getattr(model_admin, "icon", "ph-squares-four"),
+                "can_add": getattr(model_admin, "can_add", True),
+                "is_read_only": getattr(model_admin, "is_read_only", False),
             }
             if cat not in categories:
                 categories[cat] = []

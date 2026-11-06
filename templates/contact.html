@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "macros/editorial.html" as edit %}
 
 {% block title %}Contact &amp; Support — Kwuo Tabulation{% endblock %}
 
@@ -114,13 +115,17 @@
                                 <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                                     Topic / Inquiry Type
                                 </label>
-                                <select name="subject" class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
-                                    <option value="Tournament Onboarding">Hosting a Tournament with Kwuo</option>
-                                    <option value="Custom Rubric Request">Custom Adjudication Rubric Request</option>
-                                    <option value="Technical Issue or Bug">Technical Issue or Bug Report</option>
-                                    <option value="Feature Suggestion">Feature Suggestion / Open Source</option>
-                                    <option value="General Inquiry">General Question / Say Hello</option>
-                                </select>
+                                {{ edit.custom_select(
+                                    name="subject",
+                                    value="Tournament Onboarding",
+                                    options=[
+                                        {"value": "Tournament Onboarding", "label": "Hosting a Tournament with Kwuo", "icon": "ph-trophy"},
+                                        {"value": "Custom Rubric Request", "label": "Custom Adjudication Rubric Request", "icon": "ph-sliders"},
+                                        {"value": "Technical Issue or Bug", "label": "Technical Issue or Bug Report", "icon": "ph-bug"},
+                                        {"value": "Feature Suggestion", "label": "Feature Suggestion / Open Source", "icon": "ph-lightbulb"},
+                                        {"value": "General Inquiry", "label": "General Question / Say Hello", "icon": "ph-chat-circle-dots"}
+                                    ]
+                                ) }}
                             </div>
                         </div>
 

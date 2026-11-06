@@ -15,7 +15,11 @@ async def home_page(
     request: Request,
     user: Optional[User] = Depends(get_optional_current_user),
 ):
-    """Render public landing page with features showcase and contact form."""
+    """Render public landing page on apex domain, or tournament portal on tenant subdomain."""
+    if getattr(request.state, "is_tenant_domain", False):
+        from kwuo.web.routes.tenant import render_tenant_home
+        return await render_tenant_home(request, user)
+
     msg = request.query_params.get("msg")
     msg_type = request.query_params.get("msg_type", "success")
     return templates.TemplateResponse(

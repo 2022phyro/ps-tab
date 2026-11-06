@@ -37,6 +37,64 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
+    # Multi-Tenant Domain Configuration
+    BASE_DOMAIN: str = Field(
+        default="kwuo.com",
+        description="Apex domain name for multi-tenant tournament subdomain routing.",
+    )
+    RESERVED_SLUGS: set[str] = {
+        "www",
+        "app",
+        "api",
+        "admin",
+        "auth",
+        "static",
+        "media",
+        "mail",
+        "dev",
+        "test",
+        "localhost",
+        "staging",
+        "dashboard",
+        "tournaments",
+        "profile",
+        "docs",
+        "files",
+    }
+
+    # Storage & Upload Configuration
+    UPLOAD_DIR: str = Field(
+        default="uploads",
+        description="Base filesystem directory for uploaded files and documents.",
+    )
+    MAX_UPLOAD_SIZE_BYTES: int = Field(
+        default=75 * 1024 * 1024,  # 75 MB
+        description="Maximum allowed file upload size in bytes (default: 75MB to accommodate break slides and decks).",
+    )
+    ALLOWED_UPLOAD_EXTENSIONS: set[str] = {
+        "pdf",
+        "pptx",
+        "ppt",
+        "key",
+        "ppsx",
+        "odp",
+        "docx",
+        "doc",
+        "txt",
+        "md",
+        "rtf",
+        "odt",
+        "csv",
+        "xlsx",
+        "xls",
+        "png",
+        "jpg",
+        "jpeg",
+        "webp",
+        "gif",
+        "zip",
+    }
+
     @field_validator("SECRET_KEY", mode="after")
     @classmethod
     def validate_secret_key(cls, v: str) -> str:

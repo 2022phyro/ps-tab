@@ -18,9 +18,23 @@ class UserAdmin(ModelAdmin):
     slug = "users"
     verbose_name = "User"
     verbose_name_plural = "Users"
+    icon = "ph-users"
     list_display = ("id", "full_name", "email", "status_badge",
                     "is_super_admin", "groups_list", "last_login", "created_at")
     list_filter = ("status", "is_admin")
+    filter_choices = {
+        "status": [
+            ("active", "Active"),
+            ("unverified", "Unverified"),
+            ("suspended", "Suspended"),
+            ("banned", "Banned"),
+            ("deleted", "Deleted"),
+        ],
+        "is_admin": [
+            ("true", "Super Admin"),
+            ("false", "Regular User"),
+        ],
+    }
     search_fields = ("first_name", "last_name", "email", "id")
     ordering = ("-created_at",)
     readonly_fields = ("id", "created_at", "updated_at", "auth_updated_at",
@@ -78,6 +92,7 @@ class GroupAdmin(ModelAdmin):
     slug = "groups"
     verbose_name = "Group"
     verbose_name_plural = "Groups"
+    icon = "ph-shield-check"
     list_display = ("id", "name", "scope_badge",
                     "permissions_count", "members_count", "created_at")
     search_fields = ("name", "description", "id", "tournament_id")
@@ -119,6 +134,7 @@ class GroupPermissionAdmin(ModelAdmin):
     slug = "group-permissions"
     verbose_name = "Group Permission"
     verbose_name_plural = "Group Permissions"
+    icon = "ph-key"
     list_display = ("id", "permission", "group_name", "group_id")
     search_fields = ("permission", "group_id")
     ordering = ("permission",)
@@ -143,6 +159,7 @@ class GroupMembershipAdmin(ModelAdmin):
     slug = "group-memberships"
     verbose_name = "Group Membership"
     verbose_name_plural = "Group Memberships"
+    icon = "ph-user-switch"
     list_display = ("id", "user_display", "group_display", "created_at")
     search_fields = ("user_id", "group_id")
     ordering = ("-created_at",)
@@ -180,9 +197,26 @@ class AuditLogAdmin(ModelAdmin):
     slug = "audit-logs"
     verbose_name = "Audit Log"
     verbose_name_plural = "Audit Logs"
+    icon = "ph-clipboard-text"
+    can_add = False
+    can_change = False
+    can_delete = False
+    is_read_only = True
     list_display = ("id", "severity_badge", "action", "user_email",
                     "resource_type", "resource_id", "ip_address", "created_at")
     list_filter = ("severity", "action", "success")
+    filter_choices = {
+        "severity": [
+            ("INFO", "Info"),
+            ("WARNING", "Warning"),
+            ("ERROR", "Error"),
+            ("CRITICAL", "Critical"),
+        ],
+        "success": [
+            ("true", "Success"),
+            ("false", "Failed"),
+        ],
+    }
     search_fields = ("action", "user_email", "resource_id", "ip_address")
     ordering = ("-created_at",)
     readonly_fields = (
@@ -191,7 +225,7 @@ class AuditLogAdmin(ModelAdmin):
         "request_method", "request_path", "request_id", "changes", "extra_data",
         "severity", "success", "error_message", "created_at",
     )
-    actions = []
+    actions = ["export_json"]
 
     def severity_badge(self, log: AuditLog) -> str:
         colors = {
@@ -204,8 +238,10 @@ class AuditLogAdmin(ModelAdmin):
         return Markup(f'<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold font-body {badge_cls}">{log.severity}</span>')
 
     def get_available_actions(self) -> List[ActionItem]:
-        # Audit logs are immutable and cannot be deleted or bulk-manipulated
-        return []
+        # Audit logs are immutable: bulk export is supported, deletion/edits are prevented
+        return [
+            ActionItem(name="export_json", description="Export selected audit logs as JSON"),
+        ]
 
 
 # Register all models with the AdminSite

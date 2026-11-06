@@ -1,0 +1,642 @@
+{% extends "tenant/admin/layout.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Documents & Files — Tab Room{% endblock %}
+
+{% block admin_content %}
+<script>
+    function documentManager() {
+        return {
+            addDocModal: false,
+            deleteDocModal: false,
+            deleteDocId: '',
+            deleteDocTitle: '',
+            searchQuery: '',
+            categoryFilter: 'all',
+            editingId: null,
+            saving: false,
+            editRow: {
+                id: '',
+                title: '',
+                category: 'general',
+                task_id: '',
+                is_public: true,
+                display_order: 1
+            },
+            docState: {},
+            initDoc(id, title, category, taskId, isPublic, displayOrder) {
+                if (!this.docState[id]) {
+                    this.docState[id] = {
+                        title: title,
+                        category: category,
+                        task_id: taskId || '',
+                        is_public: Boolean(isPublic),
+                        display_order: displayOrder || 1
+                    };
+                }
+            },
+            startEdit(id, title, category, taskId, isPublic, displayOrder) {
+                this.initDoc(id, title, category, taskId, isPublic, displayOrder);
+                const live = this.docState[id];
+                this.editingId = id;
+                this.editRow = {
+                    id: id,
+                    title: live.title,
+                    category: live.category,
+                    task_id: live.task_id,
+                    is_public: live.is_public,
+                    display_order: live.display_order
+                };
+            },
+            openDelete(id, title) {
+                this.deleteDocId = id;
+                this.deleteDocTitle = title;
+                this.deleteDocModal = true;
+            },
+            cancelEdit() {
+                this.editingId = null;
+            },
+            async saveEdit() {
+                if (!this.editRow.id) return;
+                this.saving = true;
+                const formData = new FormData();
+                formData.append('title', this.editRow.title);
+                formData.append('category', this.editRow.category);
+                formData.append('task_id', this.editRow.task_id || '');
+                formData.append('is_public', this.editRow.is_public ? 'true' : 'false');
+                formData.append('display_order', this.editRow.display_order || '1');
+
+                try {
+                    const res = await fetch('/admin/documents/' + this.editRow.id + '/update', {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const isPub = (data && data.is_public !== undefined) ? Boolean(data.is_public) : Boolean(this.editRow.is_public);
+
+                        if (this.docState[this.editRow.id]) {
+                            this.docState[this.editRow.id].title = this.editRow.title;
+                            this.docState[this.editRow.id].category = this.editRow.category;
+                            this.docState[this.editRow.id].task_id = this.editRow.task_id;
+                            this.docState[this.editRow.id].is_public = isPub;
+                            this.docState[this.editRow.id].display_order = this.editRow.display_order;
+                        }
+
+                        const editBtn = document.getElementById('edit-btn-' + this.editRow.id);
+                        if (editBtn) {
+                            editBtn.setAttribute('data-is-public', isPub ? 'true' : 'false');
+                        }
+
+                        this.editingId = null;
+                        if (window.showToast) window.showToast('Document updated successfully.', 'success');
+                    } else {
+                        if (window.showToast) window.showToast('Failed to update document.', 'error');
+                    }
+                } catch(err) {
+                    if (window.showToast) window.showToast('Error updating document.', 'error');
+                } finally {
+                    this.saving = false;
+                }
+            },
+            getCategoryBadgeHtml(cat) {
+                const map = {
+                    'briefing': '<i class="ph-bold ph-users text-xs"></i><span>Briefing</span>',
+                    'equity': '<i class="ph-bold ph-scales text-xs"></i><span>Equity</span>',
+                    'rules': '<i class="ph-bold ph-gavel text-xs"></i><span>Rules</span>',
+                    'schedule': '<i class="ph-bold ph-calendar text-xs"></i><span>Schedule</span>',
+                    'task_material': '<i class="ph-bold ph-lightning text-xs"></i><span>Task Prompt</span>',
+                    'awards_breaks': '<i class="ph-bold ph-trophy text-xs"></i><span>Awards & Breaks</span>',
+                    'general': '<i class="ph-bold ph-file-text text-xs"></i><span>General</span>'
+                };
+                return map[cat] || map['general'];
+            },
+            async confirmDelete() {
+                if (!this.deleteDocId) return;
+                const formData = new FormData();
+                formData.append('attachment_id', this.deleteDocId);
+
+                try {
+                    const res = await fetch('/admin/documents/' + this.deleteDocId + '/delete', {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (res.ok) {
+                        const row = document.getElementById('doc-row-' + this.deleteDocId);
+                        if (row) row.remove();
+                        this.deleteDocModal = false;
+                        this.deleteDocId = '';
+                        this.deleteDocTitle = '';
+                        if (window.showToast) window.showToast('Document deleted successfully.', 'success');
+                    } else {
+                        if (window.showToast) window.showToast('Failed to delete document.', 'error');
+                    }
+                } catch(err) {
+                    if (window.showToast) window.showToast('Error deleting document.', 'error');
+                }
+            },
+            matchesFilter(docTitle, docCategory, docTask) {
+                const q = this.searchQuery.toLowerCase().trim();
+                const matchesQuery = !q || docTitle.toLowerCase().includes(q) || (docTask && docTask.toLowerCase().includes(q));
+                const matchesCat = this.categoryFilter === 'all' || docCategory === this.categoryFilter;
+                return matchesQuery && matchesCat;
+            }
+        };
+    }
+</script>
+
+<div x-data="documentManager()" class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Breadcrumb & Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1">
+                <a href="/admin" class="hover:text-kwuo-bronze">Tab Room</a>
+                <span>/</span>
+                <span>Organization</span>
+                <span>/</span>
+                <span class="text-kwuo-bronze">Documents &amp; Files</span>
+            </div>
+            <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
+                Documents &amp; Setup Repository
+            </h1>
+            <p class="text-xs text-theme-body/70 mt-0.5 font-body">
+                Centralized archive for briefing packets, equity guidelines, scoring rubrics, task prompts, and award/break slides.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+            <a href="/documents" target="_blank"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body"
+                title="Preview public attendee documentation portal">
+                <i class="ph-bold ph-arrow-square-out text-sm"></i>
+                <span class="hidden sm:inline">Public Portal</span>
+            </a>
+
+            <button type="button" @click="addDocModal = true"
+                class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center gap-2 shadow-sm font-body">
+                <i class="ph-bold ph-plus-circle text-base"></i>
+                <span>Add Document</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Repository Container in Torn-Docket Styling -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-5">
+            <!-- Table Header Controls: Search & Category Filter -->
+            <div
+                class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-4 border-b border-theme-border">
+                <div class="flex items-center gap-2">
+                    <span class="font-heading font-bold text-base text-theme-heading">
+                        All Attached Files
+                    </span>
+                    <span
+                        class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                        {{ tournament.attachments|length }}
+                    </span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <!-- Search Input -->
+                    <div class="relative min-w-[200px] flex-1 sm:flex-none">
+                        <i
+                            class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-theme-body/50 text-xs"></i>
+                        <input type="text" x-model="searchQuery" placeholder="Filter documents..."
+                            class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+                    </div>
+
+                    <!-- Category Filter dropdown using Modern Teleported Custom Select -->
+                    <div class="w-52" @change="categoryFilter = $event.detail">
+                        {{ edit.custom_select(
+                            name="filter_category",
+                            value="all",
+                            placeholder="Filter Category",
+                            options=[
+                                {"value": "all", "label": "All Categories", "icon": "ph-folder"},
+                                {"value": "briefing", "label": "Briefings", "icon": "ph-users"},
+                                {"value": "equity", "label": "Equity Policies", "icon": "ph-scales"},
+                                {"value": "rules", "label": "Rules & Rubrics", "icon": "ph-gavel"},
+                                {"value": "schedule", "label": "Schedules", "icon": "ph-calendar"},
+                                {"value": "task_material", "label": "Task Materials", "icon": "ph-lightning"},
+                                {"value": "awards_breaks", "label": "Awards & Breaks", "icon": "ph-trophy"},
+                                {"value": "general", "label": "General Files", "icon": "ph-file-text"}
+                            ]
+                        ) }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Editable Table -->
+            <div class="overflow-x-auto -mx-6 sm:-mx-8 px-6 sm:px-8">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr
+                            class="border-b border-theme-border text-theme-body/60 uppercase tracking-wider text-[10px] font-bold">
+                            <th class="py-3 px-3">Document Title &amp; File</th>
+                            <th class="py-3 px-3">Category</th>
+                            <th class="py-3 px-3">Task / Round</th>
+                            <th class="py-3 px-3">Access Scope</th>
+                            <th class="py-3 px-3">Size</th>
+                            <th class="py-3 px-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-theme-border">
+                        {% for doc in attachments %}
+                        <tr id="doc-row-{{ doc.id }}"
+                            x-init="initDoc('{{ doc.id }}', {{ doc.title|tojson }}, '{{ doc.category.value }}', '{{ doc.task_id or '' }}', {{ 'true' if doc.is_public else 'false' }}, {{ doc.display_order }})"
+                            x-show="matchesFilter('{{ doc.title|replace('\'', '\\\'') }}', '{{ doc.category.value }}', '{{ doc.task_id or '' }}')"
+                            :class="editingId === '{{ doc.id }}' ? 'bg-kwuo-bronze/5 dark:bg-kwuo-bronze/10' : 'hover:bg-theme-base/60'"
+                            class="transition group">
+
+                            <!-- 1. TITLE & FILE INFO -->
+                            <td class="py-3.5 px-3 max-w-[280px]">
+                                <div x-show="editingId !== '{{ doc.id }}'" class="flex items-start gap-2.5">
+                                    <div
+                                        class="w-7 h-7 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center shrink-0 mt-0.5 text-sm">
+                                        {% if doc.extension in ['pdf'] %}
+                                        <i class="ph-bold ph-file-pdf"></i>
+                                        {% elif doc.extension in ['pptx', 'ppt', 'key', 'odp'] %}
+                                        <i class="ph-bold ph-presentation"></i>
+                                        {% elif doc.extension in ['doc', 'docx'] %}
+                                        <i class="ph-bold ph-file-doc"></i>
+                                        {% elif doc.extension in ['xls', 'xlsx', 'csv'] %}
+                                        <i class="ph-bold ph-file-xls"></i>
+                                        {% elif doc.extension in ['png', 'jpg', 'jpeg', 'webp'] %}
+                                        <i class="ph-bold ph-file-image"></i>
+                                        {% else %}
+                                        <i class="ph-bold ph-file-text"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div id="doc-title-{{ doc.id }}"
+                                            class="font-heading font-bold text-theme-heading text-sm truncate"
+                                            :title="docState['{{ doc.id }}'] ? docState['{{ doc.id }}'].title : {{ doc.title|tojson }}"
+                                            x-text="docState['{{ doc.id }}'] ? docState['{{ doc.id }}'].title : {{ doc.title|tojson }}">
+                                            {{ doc.title }}
+                                        </div>
+                                        <div
+                                            class="text-[11px] text-theme-body/60 truncate flex items-center gap-1.5 mt-0.5 font-body">
+                                            <span>{{ doc.filename }}</span>
+                                            <span>&bull;</span>
+                                            <span class="uppercase font-semibold text-[10px]">{{ doc.extension }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Editing Form for Title -->
+                                <div x-show="editingId === '{{ doc.id }}'" class="space-y-1.5">
+                                    <label
+                                        class="text-[10px] uppercase font-bold text-kwuo-bronze tracking-wider font-body">Edit
+                                        Title *</label>
+                                    <input type="text" x-model="editRow.title"
+                                        class="w-full px-2.5 py-1.5 rounded-lg border border-kwuo-bronze bg-theme-surface text-theme-heading text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                    <div class="text-[10px] text-theme-body/50 font-body truncate">{{ doc.filename }}</div>
+                                </div>
+                            </td>
+
+                            <!-- 2. CATEGORY -->
+                            <td class="py-3.5 px-3 whitespace-nowrap">
+                                <div x-show="editingId !== '{{ doc.id }}'">
+                                    <span id="doc-cat-{{ doc.id }}"
+                                        :data-category="docState['{{ doc.id }}'] ? docState['{{ doc.id }}'].category : '{{ doc.category.value }}'"
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body"
+                                        x-html="getCategoryBadgeHtml(docState['{{ doc.id }}'] ? docState['{{ doc.id }}'].category : '{{ doc.category.value }}')">
+                                        {% if doc.category.value == 'briefing' %}
+                                        <i class="ph-bold ph-users text-xs"></i>
+                                        <span>Briefing</span>
+                                        {% elif doc.category.value == 'equity' %}
+                                        <i class="ph-bold ph-scales text-xs"></i>
+                                        <span>Equity</span>
+                                        {% elif doc.category.value == 'rules' %}
+                                        <i class="ph-bold ph-gavel text-xs"></i>
+                                        <span>Rules</span>
+                                        {% elif doc.category.value == 'schedule' %}
+                                        <i class="ph-bold ph-calendar text-xs"></i>
+                                        <span>Schedule</span>
+                                        {% elif doc.category.value == 'task_material' %}
+                                        <i class="ph-bold ph-lightning text-xs"></i>
+                                        <span>Task Prompt</span>
+                                        {% elif doc.category.value == 'awards_breaks' %}
+                                        <i class="ph-bold ph-trophy text-xs"></i>
+                                        <span>Awards &amp; Breaks</span>
+                                        {% else %}
+                                        <i class="ph-bold ph-file-text text-xs"></i>
+                                        <span>General</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+
+                                <div x-show="editingId === '{{ doc.id }}'">
+                                    <div class="w-48" @change="editRow.category = $event.detail">
+                                        {{ edit.custom_select(
+                                            name="inline_cat_" + doc.id,
+                                            value=doc.category.value,
+                                            placeholder="Category",
+                                            class="w-full",
+                                            button_class="!py-1.5 !px-2.5 !text-[11px]",
+                                            options=[
+                                                {"value": "briefing", "label": "Briefing", "icon": "ph-users"},
+                                                {"value": "equity", "label": "Equity Policy", "icon": "ph-scales"},
+                                                {"value": "rules", "label": "Rules & Rubrics", "icon": "ph-gavel"},
+                                                {"value": "schedule", "label": "Schedule", "icon": "ph-calendar"},
+                                                {"value": "task_material", "label": "Task Material", "icon": "ph-lightning"},
+                                                {"value": "awards_breaks", "label": "Awards & Breaks", "icon": "ph-trophy"},
+                                                {"value": "general", "label": "General", "icon": "ph-file-text"}
+                                            ]
+                                        ) }}
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- 3. TASK / ROUND CODE -->
+                            <td class="py-3.5 px-3 whitespace-nowrap">
+                                <div x-show="editingId !== '{{ doc.id }}'" id="doc-task-{{ doc.id }}">
+                                    <span x-show="docState['{{ doc.id }}'] ? docState['{{ doc.id }}'].task_id : '{{ doc.task_id or '' }}'"
+                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold font-body bg-theme-base border border-theme-border text-kwuo-bronze">
+                                        <i class="ph-bold ph-tag text-[10px]"></i>
+                                        <span x-text="docState['{{ doc.id }}'] ? docState['{{ doc.id }}'].task_id : '{{ doc.task_id or '' }}'">{{ doc.task_id }}</span>
+                                    </span>
+                                    <span x-show="!(docState['{{ doc.id }}'] ? docState['{{ doc.id }}'].task_id : '{{ doc.task_id or '' }}')"
+                                        class="text-theme-body/40 text-xs font-body">—</span>
+                                </div>
+
+                                <div x-show="editingId === '{{ doc.id }}'">
+                                    <input type="text" x-model="editRow.task_id" placeholder="e.g. R1-MOTION"
+                                        class="w-28 px-2 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-theme-heading text-xs font-body focus:ring-1 focus:ring-kwuo-bronze">
+                                </div>
+                            </td>
+
+                            <!-- 4. ACCESS SCOPE (Synchronized in real-time without reload) -->
+                            <td class="py-3.5 px-3 whitespace-nowrap">
+                                <div x-show="editingId !== '{{ doc.id }}'" id="doc-scope-{{ doc.id }}">
+                                    <span x-show="docState['{{ doc.id }}'] ? docState['{{ doc.id }}'].is_public : {{ 'true' if doc.is_public else 'false' }}"
+                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-body">
+                                        <i class="ph-bold ph-globe"></i>
+                                        <span>Public</span>
+                                    </span>
+                                    <span x-show="docState['{{ doc.id }}'] ? !docState['{{ doc.id }}'].is_public : {{ 'false' if doc.is_public else 'true' }}"
+                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-body">
+                                        <i class="ph-bold ph-lock-key"></i>
+                                        <span>Staff Only</span>
+                                    </span>
+                                </div>
+
+                                <div x-show="editingId === '{{ doc.id }}'">
+                                    <label
+                                        class="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                        <input type="checkbox" x-model="editRow.is_public"
+                                            class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-4 w-4">
+                                        <span x-text="editRow.is_public ? 'Public' : 'Staff Only'"
+                                            :class="editRow.is_public ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'"
+                                            class="text-[11px] font-body"></span>
+                                    </label>
+                                </div>
+                            </td>
+
+                            <!-- 5. FILE SIZE -->
+                            <td class="py-3.5 px-3 whitespace-nowrap text-theme-body/70 font-body text-xs">
+                                {{ doc.formatted_size }}
+                            </td>
+
+                            <!-- 6. ACTIONS (View / Inline Edit Controls) -->
+                            <td class="py-3.5 px-3 text-right whitespace-nowrap">
+                                <!-- Normal Mode Actions -->
+                                <div x-show="editingId !== '{{ doc.id }}'" class="inline-flex items-center gap-1.5">
+                                    <!-- Download Button -->
+                                    <a href="/files/{{ doc.id }}/download" download="{{ doc.filename }}"
+                                        hx-boost="false"
+                                        class="p-1.5 rounded-lg border border-theme-border hover:bg-theme-base text-theme-heading transition text-xs"
+                                        title="Download file">
+                                        <i class="ph-bold ph-download-simple"></i>
+                                    </a>
+
+                                    <!-- Edit Row Trigger -->
+                                    <button type="button"
+                                        id="edit-btn-{{ doc.id }}"
+                                        :data-is-public="docState['{{ doc.id }}'] ? (docState['{{ doc.id }}'].is_public ? 'true' : 'false') : '{{ 'true' if doc.is_public else 'false' }}'"
+                                        @click='startEdit("{{ doc.id }}", {{ doc.title|tojson }}, "{{ doc.category.value }}", "{{ doc.task_id or "" }}", {{ "true" if doc.is_public else "false" }}, {{ doc.display_order }})'
+                                        class="p-1.5 rounded-lg border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze transition text-xs"
+                                        title="Edit document properties">
+                                        <i class="ph-bold ph-pencil-simple"></i>
+                                    </button>
+
+                                    <!-- Delete Trigger -->
+                                    <button type="button"
+                                        @click='openDelete("{{ doc.id }}", {{ doc.title|tojson }})'
+                                        class="p-1.5 rounded-lg border border-rose-300/40 dark:border-rose-900/40 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 transition text-xs"
+                                        title="Delete document">
+                                        <i class="ph-bold ph-trash"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Editing Mode Controls -->
+                                <div x-show="editingId === '{{ doc.id }}'" class="inline-flex items-center gap-1.5">
+                                    <!-- Save Button (AJAX In-place Update without reload) -->
+                                    <button type="button" @click="saveEdit()" :disabled="saving"
+                                        class="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold text-xs hover:bg-emerald-700 disabled:opacity-50 transition flex items-center gap-1 shadow-sm font-body">
+                                        <i class="ph-bold ph-check"></i>
+                                        <span x-text="saving ? 'Saving...' : 'Save'"></span>
+                                    </button>
+
+                                    <!-- Cancel Button -->
+                                    <button type="button" @click="cancelEdit()"
+                                        class="px-2.5 py-1.5 rounded-lg border border-theme-border text-theme-body text-xs hover:bg-theme-base transition font-body">
+                                        <i class="ph-bold ph-x"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        {% if not attachments %}
+                        <tr>
+                            <td colspan="6" class="py-12 text-center text-theme-body/60 space-y-2 font-body">
+                                <i class="ph-bold ph-folder-open text-3xl text-kwuo-bronze/60"></i>
+                                <div class="text-xs font-semibold">No documents uploaded to this repository yet.</div>
+                                <button type="button" @click="addDocModal = true" class="text-xs font-bold text-kwuo-bronze hover:underline inline-flex items-center gap-1">
+                                    <i class="ph-bold ph-plus"></i>
+                                    <span>Upload your first tournament document</span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 1: Upload Document (Archival Docket Aesthetic)          -->
+    <!-- ============================================================= -->
+    <div x-show="addDocModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div @click="addDocModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Dialog -->
+        <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10" @keydown.escape.window="addDocModal = false">
+            {% call edit.torn_docket(wrapper_class="h-full", class="h-full space-y-4") %}
+            <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
+                        <i class="ph-bold ph-upload-simple"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-bold text-base text-theme-heading">Upload New Document</h3>
+                        <p class="text-[11px] text-theme-body/60 font-body">Attach PDF, Slide Deck, Word, Sheet, or Prompt file</p>
+                    </div>
+                </div>
+                <button type="button" @click="addDocModal = false"
+                    class="text-theme-body/60 hover:text-theme-heading p-1">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <form method="POST" action="/admin/documents/upload" enctype="multipart/form-data" class="space-y-4">
+                <!-- File input -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                        File Attachment *
+                    </label>
+                    <input type="file" name="file" required
+                        class="w-full text-xs text-theme-body font-body file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-kwuo-bronze file:text-white hover:file:bg-kwuo-mahogany cursor-pointer border border-theme-border rounded-xl bg-theme-base p-1.5">
+                    <p class="text-[11px] text-theme-body/60 mt-1 font-body">Supports PDF, PPTX, DOCX, XLSX, TXT, PNG, and JPG
+                        (max 75MB to accommodate slide decks and breaks).</p>
+                </div>
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                        Document Title *
+                    </label>
+                    <input type="text" name="title" required placeholder="e.g. Adjudicator Briefing Packet or Break Announcement Slides"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-2 focus:ring-kwuo-bronze/40">
+                </div>
+
+                <!-- Modernistic Select for Category -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                        Category *
+                    </label>
+                    {{ edit.custom_select(
+                    name="category",
+                    value="briefing",
+                    placeholder="Choose category...",
+                    options=[
+                        {"value": "briefing", "label": "Judge / Competitor Briefing", "icon": "ph-users"},
+                        {"value": "equity", "label": "Equity Policy & Code of Conduct", "icon": "ph-scales"},
+                        {"value": "rules", "label": "Rules & Rubric Guidelines", "icon": "ph-gavel"},
+                        {"value": "schedule", "label": "Timetable & Schedule Sheet", "icon": "ph-calendar"},
+                        {"value": "task_material", "label": "Task Material / Motion Prompt", "icon": "ph-lightning"},
+                        {"value": "awards_breaks", "label": "Awards & Breaks Announcement", "icon": "ph-trophy"},
+                        {"value": "general", "label": "General Documentation", "icon": "ph-file-text"}
+                    ]
+                    ) }}
+                </div>
+
+                <!-- Task / Round Code -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                        Optional Task / Round Code
+                    </label>
+                    <input type="text" name="task_id" placeholder="e.g. R1-MOTION or TASK-01"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-2 focus:ring-kwuo-bronze/40">
+                    <p class="text-[11px] text-theme-body/60 mt-1 font-body">Links this document directly to a specific
+                        speech motion or competitive round.</p>
+                </div>
+
+                <!-- Access Scope Selection (Public vs Staff Only) -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                        Access Scope *
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="relative flex items-center gap-2.5 p-3 rounded-xl border border-theme-border bg-theme-base cursor-pointer hover:border-kwuo-bronze transition">
+                            <input type="radio" name="is_public" value="true" checked class="text-kwuo-bronze focus:ring-kwuo-bronze h-4 w-4">
+                            <div>
+                                <div class="text-xs font-bold text-theme-heading flex items-center gap-1.5 font-body">
+                                    <i class="ph-bold ph-globe text-emerald-600"></i>
+                                    <span>Public</span>
+                                </div>
+                                <div class="text-[10px] text-theme-body/60 font-body">Visible to all attendees &amp; public portal</div>
+                            </div>
+                        </label>
+                        <label class="relative flex items-center gap-2.5 p-3 rounded-xl border border-theme-border bg-theme-base cursor-pointer hover:border-kwuo-bronze transition">
+                            <input type="radio" name="is_public" value="false" class="text-kwuo-bronze focus:ring-kwuo-bronze h-4 w-4">
+                            <div>
+                                <div class="text-xs font-bold text-theme-heading flex items-center gap-1.5 font-body">
+                                    <i class="ph-bold ph-lock-key text-amber-600"></i>
+                                    <span>Staff Only</span>
+                                </div>
+                                <div class="text-[10px] text-theme-body/60 font-body">Restricted to tab room officials</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
+                    <button type="button" @click="addDocModal = false"
+                        class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm flex items-center gap-2 font-body">
+                        <i class="ph-bold ph-upload"></i>
+                        <span>Upload Document</span>
+                    </button>
+                </div>
+            </form>
+            {% endcall %}
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 2: Delete Confirmation Modal                            -->
+    <!-- ============================================================= -->
+    <div x-show="deleteDocModal" x-cloak
+        class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div @click="deleteDocModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity">
+        </div>
+
+        <!-- Dialog -->
+        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10"
+            @keydown.escape.window="deleteDocModal = false">
+            <article class="kwuo-torn-docket !p-6 sm:!p-7 space-y-4">
+                <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
+                    <div
+                        class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0">
+                        <i class="ph-bold ph-warning"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-extrabold text-base text-theme-heading">Delete Document</h3>
+                        <p class="text-[11px] text-rose-600 dark:text-rose-400 font-body">Irreversible Repository Removal</p>
+                    </div>
+                </div>
+
+                <p class="text-xs text-theme-body leading-relaxed font-body">
+                    Are you sure you want to permanently delete <strong class="text-theme-heading font-semibold"
+                        x-text="deleteDocTitle"></strong>? The physical file will be removed from tournament storage.
+                </p>
+
+                <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
+                    <button type="button" @click="deleteDocModal = false"
+                        class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="button" @click="confirmDelete()"
+                        class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 font-body">
+                        <i class="ph-bold ph-trash"></i>
+                        <span>Confirm Delete</span>
+                    </button>
+                </div>
+            </article>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "tenant/base.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Schedule & Timetable — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <!-- Header Banner -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
+                        <i class="ph-bold ph-calendar text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
+                            Master Schedule &amp; Timetable
+                        </h1>
+                        <p class="text-xs sm:text-sm text-theme-body/70 mt-1">
+                            Timeline of registration check-in windows, rounds, deliberations, and awards ceremonies.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Export .ics Calendar Button -->
+                <a href="/schedule/download.ics"
+                   download="{{ tournament.slug }}-schedule.ics"
+                   hx-boost="false"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm"
+                   title="Download calendar event file (.ics) for Google Calendar, Apple Calendar, and Outlook">
+                    <i class="ph-bold ph-calendar-plus text-base"></i>
+                    <span>Add to Calendar (.ics)</span>
+                </a>
+            </div>
+        </article>
+    </div>
+
+    <!-- Timeline Container (Torn-Docket) -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            {% if tournament.schedule_items %}
+            <div class="space-y-6 divide-y divide-theme-border">
+                {% for item in tournament.schedule_items %}
+                <div class="pt-6 first:pt-0 flex items-start gap-4 sm:gap-6">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/30 font-heading font-extrabold text-sm">
+                        {{ loop.index if loop.index >= 10 else '0' ~ loop.index }}
+                    </div>
+                    <div class="flex-grow space-y-1">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h3 class="font-heading font-bold text-base sm:text-lg text-theme-heading">{{ item.title }}</h3>
+                            <span class="text-xs font-heading font-bold text-kwuo-bronze">
+                                {{ item.start_time.strftime('%b %d, %H:%M') }}{% if item.end_time %} – {{ item.end_time.strftime('%H:%M') }}{% endif %}
+                            </span>
+                        </div>
+                        {% if item.location %}
+                        <div class="text-xs text-theme-body/70 flex items-center gap-1.5">
+                            <i class="ph-bold ph-map-pin text-kwuo-bronze text-xs"></i>
+                            <span>{{ item.location }}</span>
+                        </div>
+                        {% endif %}
+                        {% if item.description %}
+                        <p class="mt-1 text-xs sm:text-sm text-theme-body/80 leading-relaxed">{{ item.description }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </article>
+    </div>
+</div>
+{% endblock %}

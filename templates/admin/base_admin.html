@@ -1,23 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="min-h-[calc(100vh-140px)] bg-theme-canvas">
+<div class="min-h-[calc(100vh-140px)] bg-theme-canvas" x-data="{ adminMobileSidebar: false }">
     <!-- Admin Sub-header & Breadcrumb Strip -->
-    <div class="border-b border-theme-border bg-theme-surface">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <!-- Branding & Breadcrumbs -->
-                <div class="flex items-center gap-3">
+    <div class="border-b border-theme-border bg-theme-surface sticky top-0 z-20">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2.5">
+            <div class="flex items-center justify-between gap-3">
+                <!-- Branding, Mobile Toggle & Breadcrumbs -->
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <!-- Mobile Navigation Toggle -->
+                    <button type="button" @click="adminMobileSidebar = !adminMobileSidebar"
+                        class="md:hidden inline-flex items-center justify-center p-1.5 rounded-lg border border-theme-border text-slate-600 dark:text-kwuo-sage hover:bg-kwuo-sand/30 transition"
+                        title="Toggle Admin Navigation">
+                        <i class="ph-bold ph-list text-base" x-show="!adminMobileSidebar"></i>
+                        <i class="ph-bold ph-x text-base" x-show="adminMobileSidebar" x-cloak></i>
+                    </button>
+
                     <a href="/admin"
-                        class="flex items-center gap-1.5 font-heading font-extrabold text-theme-heading text-base hover:text-kwuo-bronze transition">
-                        <span
-                            class="rounded bg-kwuo-mahogany text-kwuo-sand px-2 py-0.5 text-xs font-bold font-body">ADMIN</span>
-                        <span>Kwuo Administration</span>
+                        class="flex items-center gap-1.5 font-heading font-extrabold text-theme-heading text-sm hover:text-kwuo-bronze transition shrink-0">
+                        <span class="rounded bg-kwuo-mahogany text-kwuo-sand px-1.5 py-0.5 text-[10px] font-bold font-body">ADMIN</span>
+                        <span class="hidden sm:inline">Kwuo Admin</span>
                     </a>
 
-                    <i class="ph-bold ph-caret-right text-xs text-kwuo-sage"></i>
+                    <i class="ph-bold ph-caret-right text-xs text-kwuo-sage shrink-0"></i>
 
-                    <nav class="flex items-center space-x-1.5 text-xs font-medium text-slate-600 dark:text-kwuo-sage">
+                    <nav class="flex items-center space-x-1.5 text-xs font-medium text-slate-600 dark:text-kwuo-sage truncate">
                         {% block breadcrumbs %}
                         <span>Administration</span>
                         {% endblock %}
@@ -25,38 +32,101 @@
                 </div>
 
                 <!-- Admin Quick Actions & User Greeting -->
-                <div class="flex items-center gap-3 text-xs">
-                    <span class="text-slate-500 dark:text-kwuo-sage">
+                <div class="flex items-center gap-3 text-xs shrink-0">
+                    <span class="hidden lg:inline text-slate-500 dark:text-kwuo-sage">
                         Logged in as <strong class="text-slate-800 dark:text-kwuo-sand">{{ user.full_name }}</strong>
                     </span>
+                    <span class="hidden lg:inline text-theme-border">|</span>
+                    <a href="/" class="text-kwuo-bronze dark:text-kwuo-gold hover:underline font-semibold flex items-center gap-1">
+                        <i class="ph-bold ph-arrow-square-out text-xs"></i>
+                        <span>View Site</span>
+                    </a>
                     <span class="text-theme-border">|</span>
-                    <a href="/" class="text-kwuo-bronze dark:text-kwuo-gold hover:underline font-semibold">View Site</a>
-                    <span class="text-theme-border">|</span>
-                    <a href="/dashboard"
-                        class="text-slate-600 dark:text-kwuo-sage hover:text-kwuo-mahogany dark:hover:text-white transition">Dashboard</a>
+                    <a href="/dashboard" class="text-slate-600 dark:text-kwuo-sage hover:text-kwuo-mahogany dark:hover:text-white transition">Dashboard</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Django-style Flash Messages Strip -->
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
-        {% if msg %}
-        <div
-            class="mb-4 rounded-lg p-3 text-sm flex items-center justify-between border {% if msg_type == 'error' %}bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900/60{% elif msg_type == 'warning' %}bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900/60{% else %}bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60{% endif %}">
-            <div class="flex items-center gap-2">
-                {% if msg_type == 'error' %}
-                <i class="ph-bold ph-warning-circle text-base text-rose-600 dark:text-rose-400"></i>
-                {% else %}
-                <i class="ph-bold ph-check-circle text-base text-emerald-600 dark:text-emerald-400"></i>
-                {% endif %}
-                <span>{{ msg|safe }}</span>
-            </div>
-            <button onclick="this.parentElement.remove()" class="text-xs opacity-60 hover:opacity-100">&times;</button>
-        </div>
-        {% endif %}
+    <!-- Global Toast Notification Integration for Admin -->
+    {% if msg %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.showToast) {
+                window.showToast({{ msg|tojson }}, {{ msg_type|default('success')|tojson }});
+            }
+        });
+    </script>
+    <div id="kwuo-admin-flash-message" class="sr-only" data-message="{{ msg }}" data-type="{{ msg_type|default('success') }}">
+        {{ msg }}
+    </div>
+    {% endif %}
 
-        {% block admin_content %}{% endblock %}
+    <!-- Ergonomic Admin Layout: Aside Navigation + Main Content Area -->
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+        <div class="flex flex-col md:flex-row gap-6 items-start">
+
+            <!-- Sidebar / Aside Navigation (Desktop & Mobile Drawer) -->
+            <aside class="w-full md:w-64 shrink-0"
+                :class="{ 'block': adminMobileSidebar, 'hidden md:block': !adminMobileSidebar }">
+                <div class="sticky top-16 space-y-5 rounded-xl border border-theme-border bg-theme-surface p-4 shadow-sm">
+                    <!-- Home / Index Link -->
+                    <a href="/admin"
+                        class="flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold transition {% if not current_slug %}bg-kwuo-bronze text-white shadow-sm{% else %}text-theme-heading hover:bg-kwuo-sand/30 dark:hover:bg-kwuo-dark-accent{% endif %}">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-gauge text-sm"></i>
+                            <span>Admin Dashboard</span>
+                        </div>
+                    </a>
+
+                    <!-- Registered App Sections & Models -->
+                    {% if app_sections %}
+                    {% for app in app_sections %}
+                    <div class="space-y-1 pt-2 border-t border-theme-border-subtle">
+                        <h4 class="px-3 text-[10px] font-heading font-extrabold uppercase tracking-wider text-slate-500 dark:text-kwuo-sage">
+                            {{ app.name }}
+                        </h4>
+                        <div class="space-y-0.5 mt-1">
+                            {% for model in app.models %}
+                            <div class="group flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition {% if current_slug == model.slug %}bg-kwuo-sand/50 dark:bg-kwuo-dark-accent text-kwuo-mahogany dark:text-kwuo-gold font-bold border-l-2 border-kwuo-bronze{% else %}text-slate-700 dark:text-kwuo-sand hover:bg-kwuo-sand/20 dark:hover:bg-kwuo-dark-surface{% endif %}">
+                                <a href="{{ model.admin_url }}" class="flex items-center gap-2 min-w-0 flex-1">
+                                    <i class="ph-bold {{ model.icon }} text-sm text-kwuo-bronze dark:text-kwuo-gold"></i>
+                                    <span class="truncate">{{ model.name_plural }}</span>
+                                </a>
+                                <div class="flex items-center gap-1 shrink-0 ml-1">
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold {% if current_slug == model.slug %}bg-kwuo-mahogany text-kwuo-sand{% else %}bg-slate-200 dark:bg-kwuo-dark-border text-slate-600 dark:text-kwuo-sage{% endif %}">
+                                        {{ model.count }}
+                                    </span>
+                                    {% if model.can_add %}
+                                    <a href="{{ model.add_url }}" title="Add {{ model.name }}"
+                                        class="opacity-40 group-hover:opacity-100 hover:text-kwuo-bronze dark:hover:text-kwuo-gold p-0.5 transition">
+                                        <i class="ph-bold ph-plus text-[11px]"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+
+                    <!-- Footer Info in Aside -->
+                    <div class="pt-3 border-t border-theme-border-subtle text-[11px] text-slate-500 dark:text-kwuo-sage flex items-center justify-between">
+                        <span class="flex items-center gap-1.5">
+                            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>System Online</span>
+                        </span>
+                        <a href="/admin/audit-logs" class="hover:text-kwuo-bronze dark:hover:text-kwuo-gold underline">Audit Logs</a>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 min-w-0 w-full">
+                {% block admin_content %}{% endblock %}
+            </main>
+        </div>
     </div>
 </div>
 {% endblock %}

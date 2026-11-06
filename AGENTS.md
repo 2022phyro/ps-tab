@@ -19,3 +19,9 @@
 
 ## 3. Core Tabulation Rules & Domain Model
 - Refer to `docs/01-tournament-mechanics.md` through `docs/08-cross-tournament-ecosystem.md` as the single source of truth for tournament mechanics, judging contingencies, RBAC, zero-auth access, and state publishing gates.
+
+## 4. UI/UX & Design System Rules
+- **Typography**: Never use `font-mono`. Always use `font-sans` / `font-body` (Onest) for body text, numbers, codes, and badges, or `font-heading` (Bricolage Grotesque) for titles and display metrics.
+- **Alerts & Feedback**: Always use the system Toast notification system (`window.showToast(message, type)` or URL `?msg=...` toast detection). Never render static banner alerts that push or shift page content down.
+- **Creation Forms & Modals**: For adding or configuring new records (criteria, speakers, judges, schedule items, files), use responsive modals / dialogs (`x-data="{ modalOpen: false }"`) triggered by action buttons, avoiding static stacked forms that crowd or block content on mobile.
+- **Responsive Design**: Ensure mobile-first layout with collapsible navigation rails and responsive grid cards.

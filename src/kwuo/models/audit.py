@@ -36,6 +36,11 @@ class AuditAction:
     GROUP_CREATE = "group.create"
     GROUP_ASSIGN = "group.assign"
     GROUP_REMOVE = "group.remove"
+    ADMIN_MODEL_CREATE = "admin.model.create"
+    ADMIN_MODEL_UPDATE = "admin.model.update"
+    ADMIN_MODEL_DELETE = "admin.model.delete"
+    ADMIN_BULK_DELETE = "admin.bulk_delete"
+    AUDIT_EXPORT = "audit.export"
 
 
 class AuditLog(Base):

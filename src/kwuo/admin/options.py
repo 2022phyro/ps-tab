@@ -23,6 +23,7 @@ class ModelAdmin:
     slug: str
     verbose_name: str
     verbose_name_plural: str
+    icon: str = "ph-squares-four"
     list_display: Sequence[str] = ("id",)
     list_filter: Sequence[str] = ()
     search_fields: Sequence[str] = ()
@@ -31,6 +32,11 @@ class ModelAdmin:
     readonly_fields: Sequence[str] = ("id", "created_at", "updated_at")
     fields: Optional[Sequence[str]] = None
     actions: List[str] = ["delete_selected"]
+    can_add: bool = True
+    can_change: bool = True
+    can_delete: bool = True
+    is_read_only: bool = False
+    filter_choices: Dict[str, List[Tuple[str, str]]] = {}
 
     def __init__(self, model: Type[Any]):
         self.model = model
@@ -66,7 +72,16 @@ class ModelAdmin:
     async def get_object(self, db: AsyncSession, object_id: Any) -> Optional[Any]:
         """Fetch a single model instance by primary key with configured query relationships."""
         stmt = await self.get_queryset(db)
-        stmt = stmt.where(self.model.id == object_id)
+        pk_col = getattr(self.model, "id", None)
+        target_val = object_id
+        if pk_col is not None and hasattr(pk_col, "type"):
+            type_str = str(getattr(pk_col.type, "__class__", "")).lower()
+            if "integer" in type_str or "int" in type_str:
+                try:
+                    target_val = int(object_id)
+                except (ValueError, TypeError):
+                    target_val = -1
+        stmt = stmt.where(self.model.id == target_val)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -75,6 +90,52 @@ class ModelAdmin:
         stmt = select(func.count()).select_from(self.model)
         result = await db.execute(stmt)
         return result.scalar() or 0
+
+    async def get_filter_specs(self, db: AsyncSession) -> List[Dict[str, Any]]:
+        """Return structured filter specifications and choices for list_filter fields."""
+        specs = []
+        for field_name in self.list_filter:
+            title = field_name.replace("_", " ").title()
+            choices = []
+
+            # 1. Custom defined choices on the ModelAdmin
+            if field_name in self.filter_choices:
+                choices = [{"value": val, "display": label} for val, label in self.filter_choices[field_name]]
+            elif hasattr(self.model, field_name):
+                col = getattr(self.model, field_name)
+                type_name = str(getattr(getattr(col, "type", None), "__class__", "")).lower()
+                
+                # Check for Boolean
+                if "bool" in type_name:
+                    choices = [
+                        {"value": "true", "display": "Yes"},
+                        {"value": "false", "display": "No"},
+                    ]
+                # Check for Enum
+                elif hasattr(col, "type") and hasattr(col.type, "enum_class") and col.type.enum_class:
+                    enum_cls = col.type.enum_class
+                    choices = [
+                        {"value": e.value if hasattr(e, "value") else str(e), 
+                         "display": (e.name if hasattr(e, "name") else str(e)).replace("_", " ").title()}
+                        for e in enum_cls
+                    ]
+                else:
+                    # Query distinct values from the database
+                    try:
+                        distinct_stmt = select(func.distinct(col)).where(col.isnot(None)).order_by(col).limit(25)
+                        res = await db.execute(distinct_stmt)
+                        raw_vals = [r[0] for r in res.all() if r[0] is not None]
+                        choices = [{"value": str(v), "display": str(v).replace("_", " ").title()} for v in raw_vals]
+                    except Exception:
+                        choices = []
+
+            if choices:
+                specs.append({
+                    "field": field_name,
+                    "title": title,
+                    "choices": choices,
+                })
+        return specs
 
     async def get_paginated_list(
         self,

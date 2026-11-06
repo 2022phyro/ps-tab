@@ -1,0 +1,172 @@
+{% extends "tenant/base.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Participants — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <!-- Header Banner -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
+                        <i class="ph-bold ph-identification-badge text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
+                            Participant Directory
+                        </h1>
+                        <p class="text-xs sm:text-sm text-theme-body/70 mt-1">
+                            Enrolled competitors and accredited adjudicators participating in this tournament.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Live Counts -->
+                <div class="flex items-center gap-2">
+                    <span class="px-3 py-1 rounded-lg bg-theme-base border border-theme-border text-xs font-semibold">
+                        {{ speakers|length }} Speakers
+                    </span>
+                    <span class="px-3 py-1 rounded-lg bg-theme-base border border-theme-border text-xs font-semibold">
+                        {{ judges|length }} Judges
+                    </span>
+                </div>
+            </div>
+
+            <!-- Search & Filters Form -->
+            <form method="GET" action="/participants" class="mt-6 pt-4 border-t border-theme-border flex flex-wrap items-center gap-3 text-xs">
+                <!-- Role Filter -->
+                <div class="flex items-center gap-1 border border-theme-border rounded-lg p-0.5 bg-theme-base">
+                    <a href="/participants?role=all{% if active_division %}&div={{ active_division }}{% endif %}"
+                        class="px-2.5 py-1 rounded-md {% if active_role == 'all' %}bg-kwuo-bronze text-white font-bold{% else %}text-theme-body/80 hover:text-theme-heading{% endif %}">
+                        All
+                    </a>
+                    <a href="/participants?role=speakers{% if active_division %}&div={{ active_division }}{% endif %}"
+                        class="px-2.5 py-1 rounded-md {% if active_role == 'speakers' %}bg-kwuo-bronze text-white font-bold{% else %}text-theme-body/80 hover:text-theme-heading{% endif %}">
+                        Speakers
+                    </a>
+                    <a href="/participants?role=judges{% if active_division %}&div={{ active_division }}{% endif %}"
+                        class="px-2.5 py-1 rounded-md {% if active_role == 'judges' %}bg-kwuo-bronze text-white font-bold{% else %}text-theme-body/80 hover:text-theme-heading{% endif %}">
+                        Judges
+                    </a>
+                </div>
+
+                <!-- Division Filter -->
+                {% if divisions %}
+                <div class="w-48">
+                    {% set div_filter_opts = [{"value": "", "label": "All Divisions", "icon": "ph-users"}] %}
+                    {% for d in divisions %}
+                        {% set _ = div_filter_opts.append({"value": d.name, "label": d.name ~ " Division", "icon": "ph-identification-card"}) %}
+                    {% endfor %}
+                    {{ edit.custom_select(
+                        name="div",
+                        value=active_division or "",
+                        placeholder="All Divisions",
+                        options=div_filter_opts,
+                        button_class="!py-1.5 !px-3 !text-xs",
+                        onchange="this.$el.closest('form').submit()"
+                    ) }}
+                </div>
+                {% endif %}
+
+                <!-- Search Input -->
+                <div class="flex-grow min-w-[200px]">
+                    <input type="text" name="q" value="{{ search_query }}" placeholder="Search by name or institution..."
+                        class="w-full border border-theme-border bg-theme-base text-theme-heading px-3 py-1.5 rounded-lg text-xs focus:border-kwuo-bronze focus:outline-none">
+                </div>
+
+                <input type="hidden" name="role" value="{{ active_role }}">
+
+                <button type="submit" class="px-3.5 py-1.5 rounded-lg bg-kwuo-bronze text-white font-semibold hover:bg-kwuo-mahogany transition">
+                    Search
+                </button>
+                {% if search_query or active_division %}
+                <a href="/participants?role={{ active_role }}" class="text-theme-body/60 hover:text-rose-500 transition py-1.5 px-2">
+                    Reset
+                </a>
+                {% endif %}
+            </form>
+        </article>
+    </div>
+
+    <!-- Participants Listing -->
+    <div class="space-y-8">
+        <!-- Speakers Section -->
+        {% if active_role in ('all', 'speakers') %}
+        <div class="space-y-4">
+            <div class="flex items-center gap-2 pb-2 border-b border-theme-border">
+                <i class="ph-bold ph-microphone-stage text-kwuo-bronze"></i>
+                <h2 class="text-lg font-heading font-bold text-theme-heading">Competitors ({{ speakers|length }})</h2>
+            </div>
+
+            {% if speakers %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for spk in speakers %}
+                <div class="kwuo-torn-docket-wrapper">
+                    <article class="kwuo-torn-docket !p-4 flex items-center justify-between gap-3 h-full">
+                        <div class="min-w-0">
+                            <h3 class="font-heading font-bold text-sm text-theme-heading truncate">{{ spk.name }}</h3>
+                            <p class="text-xs text-theme-body/60 truncate mt-0.5">{{ spk.institution_name }}</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-1 shrink-0">
+                            {% for div_name in spk.division_names %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-theme-base border border-theme-border text-theme-body">
+                                {{ div_name }}
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-theme-base border border-theme-border text-theme-body">
+                                Open
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </article>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-xs text-theme-body/60 italic py-2">No competitors matching the selected criteria.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Judges Section -->
+        {% if active_role in ('all', 'judges') %}
+        <div class="space-y-4">
+            <div class="flex items-center gap-2 pb-2 border-b border-theme-border">
+                <i class="ph-bold ph-scales text-kwuo-bronze"></i>
+                <h2 class="text-lg font-heading font-bold text-theme-heading">Adjudicators ({{ judges|length }})</h2>
+            </div>
+
+            {% if judges %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for j in judges %}
+                <div class="kwuo-torn-docket-wrapper">
+                    <article class="kwuo-torn-docket !p-4 flex items-center justify-between gap-3 h-full">
+                        <div class="min-w-0">
+                            <h3 class="font-heading font-bold text-sm text-theme-heading truncate">{{ j.name }}</h3>
+                            <p class="text-xs text-theme-body/60 truncate mt-0.5">{{ j.institution_name }}</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-1 shrink-0">
+                            {% if j.judge_profile and j.judge_profile.is_chair_eligible %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                Chair
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-theme-base border border-theme-border text-theme-body">
+                                Panelist
+                            </span>
+                            {% endif %}
+                        </div>
+                    </article>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-xs text-theme-body/60 italic py-2">No judges matching the selected criteria.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

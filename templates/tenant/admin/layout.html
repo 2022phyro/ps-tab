@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full antialiased" x-data="{ darkMode: false, drawerOpen: false }" x-init="
+    darkMode = document.documentElement.classList.contains('dark');
+    $watch('darkMode', val => {
+        if (val) {
+            document.documentElement.classList.add('dark');
+            localStorage.theme = 'dark';
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.theme = 'light';
+        }
+    });
+">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Tab Room — {{ tournament.name }}{% endblock %}</title>
+
+    <!-- Instant Dark Mode Detection Script -->
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <!-- Immediate Base Palette CSS to eliminate navigation white flash -->
+    <style>
+        html {
+            background-color: #F7F4EE;
+            color: #4A3A35;
+        }
+        html.dark {
+            background-color: #15100E;
+            color: #C8BEB7;
+            color-scheme: dark;
+        }
+        body {
+            background-color: inherit;
+            color: inherit;
+        }
+    </style>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Onest:wght@300..800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Onest', 'sans-serif'],
+                        heading: ['"Bricolage Grotesque"', 'sans-serif'],
+                    },
+                    colors: {
+                        theme: {
+                            base: 'var(--color-bg-base)',
+                            surface: 'var(--color-bg-surface)',
+                            heading: 'var(--color-text-heading)',
+                            body: 'var(--color-text-body)',
+                            border: 'var(--color-border)',
+                        },
+                        kwuo: {
+                            sand: '#F7F4EE',
+                            sage: '#8A9A86',
+                            bronze: '#C07D53',
+                            mahogany: '#2E150F',
+                            dark: {
+                                base: '#15100E',
+                                surface: '#1E1614',
+                                border: '#332420',
+                                heading: '#FAF8F5',
+                                body: '#C8BEB7',
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --color-bg-base: #F7F4EE;
+            --color-bg-surface: #FFFFFF;
+            --color-text-heading: #2E150F;
+            --color-text-body: #4A3A35;
+            --color-border: #E8E2D8;
+            --color-surface: #FFFFFF;
+        }
+        .dark {
+            --color-bg-base: #15100E;
+            --color-bg-surface: #1E1614;
+            --color-text-heading: #FAF8F5;
+            --color-text-body: #C8BEB7;
+            --color-border: #332420;
+            --color-surface: #231A15;
+        }
+
+        /* Torn-Docket Card */
+        .kwuo-torn-docket-wrapper {
+            filter: drop-shadow(0 4px 6px rgba(98, 43, 20, 0.08)) drop-shadow(0 1px 3px rgba(98, 43, 20, 0.04));
+            transition: filter 250ms ease, transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .kwuo-torn-docket {
+            background-color: var(--color-surface, #FFFFFF);
+            border-left: 1.5px solid var(--color-border, #E4D6A9);
+            border-right: 1.5px solid var(--color-border, #E4D6A9);
+            border-top: none;
+            border-bottom: none;
+            padding: 2rem 1.5rem;
+            position: relative;
+            clip-path: polygon(
+                0% 4px, 4% 2px, 8% 5px, 12% 1px, 16% 4px, 20% 6px, 24% 2px, 28% 5px, 32% 1px, 36% 4px, 40% 6px, 44% 2px, 48% 5px, 52% 1px, 56% 4px, 60% 6px, 64% 2px, 68% 5px, 72% 1px, 76% 4px, 80% 6px, 84% 2px, 88% 5px, 92% 1px, 96% 4px, 100% 3px,
+                100% calc(100% - 3px),
+                96% calc(100% - 5px), 92% calc(100% - 1px), 88% calc(100% - 4px), 84% calc(100% - 6px), 80% calc(100% - 2px), 76% calc(100% - 5px), 72% calc(100% - 1px), 68% calc(100% - 4px), 64% calc(100% - 6px), 60% calc(100% - 2px), 56% calc(100% - 5px), 52% calc(100% - 1px), 48% calc(100% - 4px), 44% calc(100% - 6px), 40% calc(100% - 2px), 36% calc(100% - 5px), 32% calc(100% - 1px), 28% calc(100% - 4px), 24% calc(100% - 6px), 20% calc(100% - 2px), 16% calc(100% - 5px), 12% calc(100% - 1px), 8% calc(100% - 4px), 4% calc(100% - 2px), 0% calc(100% - 4px)
+            );
+        }
+        .dark .kwuo-torn-docket-wrapper {
+            filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+        }
+        .dark .kwuo-torn-docket {
+            background-color: var(--color-surface, #231A15);
+            border-left-color: var(--color-border, #3D2D23);
+            border-right-color: var(--color-border, #3D2D23);
+        }
+
+        /* Post-It Note */
+        .kwuo-post-it {
+            --note: #FAF2DB;
+            --note-ink: #622B14;
+            --tint-a: white 25%;
+            --tint-c: white 50%;
+            --tint-hi: white 70%;
+            --tint-mid: white 25%;
+            --tint-lo: #622B14 14%;
+            --tint-edge: #622B14 30%;
+            --shadow: 98 43 20;
+            --flap-shadow: 0.38;
+            --curl-size: 44px;
+            --curl: var(--curl-size);
+            position: relative;
+            isolation: isolate;
+            padding: 1.25rem 1.25rem calc(1rem + var(--curl-size) * 0.8);
+            color: var(--note-ink);
+            transform: rotate(-0.75deg);
+            transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), --curl 300ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .kwuo-post-it:hover {
+            --curl: 0px;
+            transform: rotate(0deg) translateY(-2px);
+        }
+        .kwuo-post-it::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            border: 1px solid color-mix(in srgb, var(--note), var(--tint-edge));
+            border-radius: 3px;
+            background: linear-gradient(135deg,
+                color-mix(in srgb, var(--note), var(--tint-a)) 0%,
+                var(--note) 68%,
+                color-mix(in srgb, var(--note), var(--tint-c)) 100%);
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--curl)), calc(100% - var(--curl)) 100%, 0 100%);
+        }
+        .kwuo-post-it::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            z-index: 1;
+            width: var(--curl);
+            height: var(--curl);
+            pointer-events: none;
+            border-radius: calc(var(--curl) * 0.18) 0 0 0;
+            background: linear-gradient(135deg,
+                color-mix(in srgb, var(--note), var(--tint-hi)) 0%,
+                color-mix(in srgb, var(--note), var(--tint-mid)) 38%,
+                color-mix(in srgb, var(--note), var(--tint-lo)) 72%,
+                transparent 100%);
+            box-shadow: -2px -2px 6px rgba(var(--shadow) / var(--flap-shadow));
+        }
+        .dark .kwuo-post-it {
+            --note: #2B1F19;
+            --note-ink: #FAF7F0;
+            --tint-a: black 18%;
+            --tint-c: white 12%;
+            --tint-hi: #E4D6A9 18%;
+            --tint-mid: #E4D6A9 8%;
+            --tint-lo: black 45%;
+            --tint-edge: #E4D6A9 28%;
+            --shadow: 0 0 0;
+            --flap-shadow: 0.65;
+        }
+
+        /* Modernistic Kwuo Select System */
+        .kwuo-select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 256 256'%3E%3Cpath fill='%239B4A24' d='M213.66 101.66l-80 80a8 8 0 0 1-11.32 0l-80-80a8 8 0 0 1 11.32-11.32L128 164.69l74.34-74.35a8 8 0 0 1 11.32 11.32Z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.85rem center;
+            background-size: 1rem 1rem;
+            padding-right: 2.5rem !important;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .dark .kwuo-select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 256 256'%3E%3Cpath fill='%23E4D6A9' d='M213.66 101.66l-80 80a8 8 0 0 1-11.32 0l-80-80a8 8 0 0 1 11.32-11.32L128 164.69l74.34-74.35a8 8 0 0 1 11.32 11.32Z'/%3E%3C/svg%3E");
+        }
+        .kwuo-select:hover {
+            border-color: rgba(155, 74, 36, 0.4);
+        }
+        .kwuo-select:focus {
+            outline: none;
+            border-color: #9B4A24;
+            box-shadow: 0 0 0 2px rgba(155, 74, 36, 0.25);
+        }
+        .kwuo-select option {
+            background-color: #FAF7F0;
+            color: #1F1916;
+            padding: 8px 12px;
+        }
+        .dark .kwuo-select option {
+            background-color: #1F1916;
+            color: #FAF7F0;
+            padding: 8px 12px;
+        }
+    </style>
+
+    <!-- Alpine.js & HTMX -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+</head>
+<body hx-boost="true" class="min-h-full flex flex-col bg-theme-base text-theme-body font-sans">
+    <!-- Top Bar Navigation -->
+    <header class="sticky top-0 z-40 bg-theme-surface border-b border-theme-border">
+        <div class="px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Left: Drawer Toggle & Tournament Identity -->
+                <div class="flex items-center gap-3">
+                    <button @click="drawerOpen = !drawerOpen" type="button" class="lg:hidden p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition" aria-label="Toggle Tab Room Drawer">
+                        <i class="ph-bold ph-sidebar-simple text-xl"></i>
+                    </button>
+                    
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-kwuo-bronze text-white font-bold font-heading shadow-sm">
+                            K
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <a href="/admin" class="text-base font-heading font-extrabold text-theme-heading hover:text-kwuo-bronze transition">
+                                    {{ tournament.name }}
+                                </a>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                    {{ tournament.status.value }}
+                                </span>
+                            </div>
+                            <div class="text-[11px] text-theme-body/60">
+                                Tab Room Control Center &bull; {{ tournament.slug }}.kwuo.com
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Public Portal Link & Official Identity -->
+                <div class="flex items-center gap-3">
+                    <a href="/" target="_blank" rel="noopener noreferrer"
+                       class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition"
+                       title="View public attendee facade">
+                        <i class="ph-bold ph-arrow-square-out text-sm"></i>
+                        <span>Public Portal</span>
+                    </a>
+
+                    <!-- Official Badge -->
+                    <div class="hidden md:flex items-center gap-2 pl-3 border-l border-theme-border">
+                        <div class="text-right">
+                            <span class="block text-xs font-bold text-theme-heading leading-tight">{{ official.name }}</span>
+                            <span class="block text-[10px] font-semibold text-kwuo-bronze uppercase tracking-wider">{{ official.role }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Theme Toggle -->
+                    <button @click="darkMode = !darkMode" type="button" class="p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition" aria-label="Toggle theme">
+                        <i x-show="!darkMode" class="ph-bold ph-moon text-lg"></i>
+                        <i x-show="darkMode" class="ph-bold ph-sun text-lg"></i>
+                    </button>
+
+                    <!-- Sign Out -->
+                    <form method="POST" action="/admin/logout">
+                        <button type="submit"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-semibold hover:bg-rose-100 transition"
+                                title="Sign out of Tab Room">
+                            <i class="ph-bold ph-sign-out text-sm"></i>
+                            <span class="hidden sm:inline">Sign Out</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Workspace Container (Side Drawer + Content Area) -->
+    <div class="flex-grow flex">
+        <!-- Backdrop for mobile drawer -->
+        <div x-show="drawerOpen" @click="drawerOpen = false" x-transition.opacity class="fixed inset-0 z-40 bg-black/50 lg:hidden"></div>
+
+        <!-- Left Side Drawer Rail -->
+        <aside :class="drawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+               class="fixed lg:sticky top-16 left-0 z-40 w-72 h-[calc(100vh-4rem)] bg-theme-surface border-r border-theme-border flex flex-col justify-between overflow-y-auto transition-transform duration-200 shrink-0">
+            
+            <div class="p-4 space-y-6">
+                <!-- Cockpit Home Link -->
+                <a href="/admin" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold {% if request.url.path in ('/admin', '/admin/') %}bg-kwuo-bronze text-white shadow-sm{% else %}text-theme-heading hover:bg-theme-base{% endif %} transition">
+                    <i class="ph-bold ph-squares-four text-base"></i>
+                    <span>Control Center Hub</span>
+                </a>
+
+                <!-- SECTION 1: ORGANIZATION -->
+                <div x-data="{ open: true }" class="space-y-1">
+                    <div @click="open = !open" class="flex items-center justify-between px-3 py-1 text-[11px] font-heading font-extrabold uppercase tracking-widest text-kwuo-bronze cursor-pointer select-none">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-kwuo-bronze"></span>
+                            <span>Organization</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-[10px] font-body lowercase text-theme-body/60">7 items</span>
+                            <i :class="open ? 'ph-bold ph-caret-down' : 'ph-bold ph-caret-right'" class="text-xs"></i>
+                        </div>
+                    </div>
+
+                    <div x-show="open" x-transition class="space-y-0.5 pt-1">
+                        <!-- Tournament settings -->
+                        <a href="/admin/settings" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/settings' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-gear text-sm"></i>
+                                <span>Tournament settings</span>
+                            </div>
+                            <i class="ph-bold ph-check text-emerald-600 dark:text-emerald-400 text-xs" title="Configured"></i>
+                        </a>
+
+                        <!-- Documents -->
+                        <a href="/admin/documents" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/documents' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-files text-sm"></i>
+                                <span>Documents &amp; Files</span>
+                            </div>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70">{{ tournament.attachments|length }}</span>
+                        </a>
+
+                        <!-- Scoring Criteria / Rubric -->
+                        <a href="/admin/rubric" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/rubric' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-sliders text-sm"></i>
+                                <span>Scoring criteria</span>
+                            </div>
+                            <i class="ph-bold ph-check text-emerald-600 dark:text-emerald-400 text-xs" title="Rubric Set"></i>
+                        </a>
+
+                        <!-- Speakers -->
+                        <a href="/admin/speakers" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/speakers' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-microphone text-sm"></i>
+                                <span>Speakers roster</span>
+                            </div>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70">{{ tournament.total_speakers_count }}</span>
+                        </a>
+
+                        <!-- Judges -->
+                        <a href="/admin/judges" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/judges' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-scales text-sm"></i>
+                                <span>Judges &amp; Panels</span>
+                            </div>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70">{{ tournament.total_judges_count }}</span>
+                        </a>
+
+                        <!-- Officials -->
+                        <a href="/admin/officials" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/officials' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-shield-check text-sm"></i>
+                                <span>Rooms &amp; Officials</span>
+                            </div>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70">{{ tournament.total_officials_count }}</span>
+                        </a>
+
+                        <!-- Institutions -->
+                        <a href="/admin/institutions" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/institutions' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-buildings text-sm"></i>
+                                <span>Institutions</span>
+                            </div>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70">{{ tournament.total_institutions_count }}</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: ROUNDS -->
+                <div x-data="{ open: true }" class="space-y-1">
+                    <div @click="open = !open" class="flex items-center justify-between px-3 py-1 text-[11px] font-heading font-extrabold uppercase tracking-widest text-theme-body/50 cursor-pointer select-none">
+                        <span>Rounds</span>
+                        <i :class="open ? 'ph-bold ph-caret-down' : 'ph-bold ph-caret-right'" class="text-xs"></i>
+                    </div>
+
+                    <div x-show="open" x-transition class="space-y-0.5 pt-1">
+                        <div class="flex items-center justify-between px-3 py-1.5 text-xs text-theme-body/60">
+                            <span class="flex items-center gap-2"><i class="ph-bold ph-circle text-[10px]"></i> Round 1</span>
+                            <span class="text-[10px] uppercase font-bold text-theme-body/40">Ready</span>
+                        </div>
+                        <div class="flex items-center justify-between px-3 py-1.5 text-xs text-theme-body/40">
+                            <span class="flex items-center gap-2"><i class="ph-bold ph-lock text-[10px]"></i> Round 2</span>
+                            <span class="text-[10px] uppercase font-bold">Locked</span>
+                        </div>
+                        <div class="flex items-center justify-between px-3 py-1.5 text-xs text-theme-body/40">
+                            <span class="flex items-center gap-2"><i class="ph-bold ph-lock text-[10px]"></i> Round 3</span>
+                            <span class="text-[10px] uppercase font-bold">Locked</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: OUTROUNDS -->
+                <div x-data="{ open: false }" class="space-y-1">
+                    <div @click="open = !open" class="flex items-center justify-between px-3 py-1 text-[11px] font-heading font-extrabold uppercase tracking-widest text-theme-body/50 cursor-pointer select-none">
+                        <span>Outrounds</span>
+                        <i :class="open ? 'ph-bold ph-caret-down' : 'ph-bold ph-caret-right'" class="text-xs"></i>
+                    </div>
+                    <div x-show="open" class="space-y-0.5 pt-1 text-xs text-theme-body/40 px-3 py-1">
+                        <div>Decide breaks</div>
+                        <div>Quarters &bull; Semis &bull; Finals</div>
+                        <div>Champion</div>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: CONCLUSION -->
+                <div x-data="{ open: false }" class="space-y-1">
+                    <div @click="open = !open" class="flex items-center justify-between px-3 py-1 text-[11px] font-heading font-extrabold uppercase tracking-widest text-theme-body/50 cursor-pointer select-none">
+                        <span>Conclusion</span>
+                        <i :class="open ? 'ph-bold ph-caret-down' : 'ph-bold ph-caret-right'" class="text-xs"></i>
+                    </div>
+                    <div x-show="open" class="space-y-0.5 pt-1 text-xs text-theme-body/40 px-3 py-1">
+                        <div>Final results &amp; awards</div>
+                        <div>Archive &bull; export</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DOCKED ASIDES (Bottom Rail) -->
+            <div class="p-3 border-t border-theme-border bg-theme-base/50 space-y-1 text-xs font-semibold">
+                <div class="px-3 py-1 text-[10px] font-heading font-bold uppercase tracking-wider text-theme-body/50">
+                    Asides &amp; Compliance
+                </div>
+                <div class="flex items-center justify-between px-3 py-1.5 rounded-lg text-theme-heading hover:bg-theme-surface transition">
+                    <span class="flex items-center gap-2">
+                        <i class="ph-bold ph-warning text-amber-500"></i>
+                        <span>Clashes</span>
+                    </span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">0 open</span>
+                </div>
+                <div class="flex items-center justify-between px-3 py-1.5 rounded-lg text-theme-heading hover:bg-theme-surface transition">
+                    <span class="flex items-center gap-2">
+                        <i class="ph-bold ph-scales text-indigo-500"></i>
+                        <span>Equity Desk</span>
+                    </span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-theme-base text-theme-body/60 font-bold">clear</span>
+                </div>
+                <div class="flex items-center justify-between px-3 py-1.5 rounded-lg text-theme-heading hover:bg-theme-surface transition">
+                    <span class="flex items-center gap-2">
+                        <i class="ph-bold ph-note-pencil text-teal-500"></i>
+                        <span>Judge Feedback</span>
+                    </span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-theme-base text-theme-body/60 font-bold">0</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Main Workspace -->
+        <main class="flex-grow p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+            {% block admin_content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Global Kwuo Toast Notifications Container -->
+    <div x-data="kwuoToastSystem()"
+         @toast.window="add($event.detail)"
+         x-init="
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('msg')) {
+                add({ message: urlParams.get('msg'), type: 'success' });
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            if (urlParams.has('error')) {
+                add({ message: urlParams.get('error'), type: 'error' });
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+         "
+         class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+        <template x-for="t in toasts" :key="t.id">
+            <div x-show="t.visible"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-3 scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="pointer-events-auto rounded-2xl p-4 shadow-xl border flex items-start gap-3 backdrop-blur-md transition"
+                 :class="t.type === 'error' ? 'bg-rose-50/95 dark:bg-rose-950/90 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200' :
+                         t.type === 'warning' ? 'bg-amber-50/95 dark:bg-amber-950/90 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200' :
+                         'bg-emerald-50/95 dark:bg-emerald-950/90 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'">
+                <div class="shrink-0 mt-0.5">
+                    <i :class="t.type === 'error' ? 'ph-bold ph-warning-circle text-lg text-rose-600 dark:text-rose-400' :
+                               t.type === 'warning' ? 'ph-bold ph-warning text-lg text-amber-600 dark:text-amber-400' :
+                               'ph-bold ph-check-circle text-lg text-emerald-600 dark:text-emerald-400'"></i>
+                </div>
+                <div class="flex-1 text-xs font-semibold leading-relaxed" x-text="t.message"></div>
+                <button @click="remove(t.id)" class="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5">
+                    <i class="ph-bold ph-x text-sm"></i>
+                </button>
+            </div>
+        </template>
+    </div>
+
+    <script>
+        function kwuoToastSystem() {
+            return {
+                toasts: [],
+                lastMessage: '',
+                lastTime: 0,
+                add(detail) {
+                    if (!detail) return;
+                    const message = typeof detail === 'string' ? detail : detail.message;
+                    const type = (typeof detail === 'object' && detail.type) ? detail.type : 'success';
+                    const duration = (typeof detail === 'object' && detail.duration) ? detail.duration : 4500;
+                    if (!message) return;
+
+                    const now = Date.now();
+                    if (this.lastMessage === message && (now - this.lastTime < 1000)) return;
+                    this.lastMessage = message;
+                    this.lastTime = now;
+
+                    const id = now + Math.random();
+                    const toast = { id, message, type, visible: true };
+                    this.toasts.push(toast);
+                    setTimeout(() => { this.remove(id); }, duration);
+                },
+                remove(id) {
+                    const idx = this.toasts.findIndex(t => t.id === id);
+                    if (idx !== -1) {
+                        this.toasts[idx].visible = false;
+                        setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 250);
+                    }
+                }
+            };
+        }
+        window.showToast = function (message, type = 'success', duration = 4500) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { message, type, duration } }));
+        };
+    </script>
+
+    {% if msg %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            window.showToast({{ msg|tojson }}, 'success');
+        });
+    </script>
+    {% endif %}
+    {% if error %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            window.showToast({{ error|tojson }}, 'error');
+        });
+    </script>
+    {% endif %}
+</body>
+</html>

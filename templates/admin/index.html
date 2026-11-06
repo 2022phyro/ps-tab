@@ -55,8 +55,9 @@
                                 </a>
                             </td>
 
-                            <!-- Action Shortcuts: + Add / Change (Phosphor Icons) -->
+                            <!-- Action Shortcuts -->
                             <td class="px-6 py-3.5 text-right whitespace-nowrap space-x-2 text-xs">
+                                {% if model.can_add %}
                                 <a href="{{ model.add_url }}" class="inline-flex items-center gap-1 rounded border border-kwuo-sage/50 bg-theme-surface px-2 py-1 text-theme-heading font-semibold hover:bg-kwuo-sand/30 transition">
                                     <i class="ph-bold ph-plus text-xs text-kwuo-bronze dark:text-kwuo-gold"></i>
                                     <span>Add</span>
@@ -64,6 +65,12 @@
                                 <a href="{{ model.admin_url }}" class="inline-flex items-center gap-1 rounded bg-kwuo-bronze px-2.5 py-1 text-white font-semibold hover:bg-kwuo-mahogany transition">
                                     <span>Change</span>
                                 </a>
+                                {% else %}
+                                <a href="{{ model.admin_url }}" class="inline-flex items-center gap-1 rounded bg-theme-surface-subtle border border-theme-border px-2.5 py-1 text-theme-heading font-semibold hover:bg-kwuo-sand/30 transition">
+                                    <i class="ph-bold ph-eye text-xs text-kwuo-bronze dark:text-kwuo-gold"></i>
+                                    <span>View Logs</span>
+                                </a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}

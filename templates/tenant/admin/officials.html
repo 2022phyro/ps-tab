@@ -1,0 +1,147 @@
+{% extends "tenant/admin/layout.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Officials & Staff Directory — Tab Room{% endblock %}
+
+{% block admin_content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <!-- Breadcrumb & Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1">
+                <a href="/admin" class="hover:text-kwuo-bronze">Tab Room</a>
+                <span>/</span>
+                <span>Organization</span>
+                <span>/</span>
+                <span class="text-kwuo-bronze">Officials</span>
+            </div>
+            <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
+                Officials &amp; Staff Directory
+            </h1>
+            <p class="text-xs text-theme-body/70 mt-0.5">
+                Staff roles, Tab room password credentials, and Chief Adjudication Panel governance.
+            </p>
+        </div>
+    </div>
+
+    {% if msg %}
+    <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
+        <i class="ph-bold ph-check-circle text-base"></i>
+        <span>{{ msg }}</span>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Add Official Form (1 col) -->
+        <div>
+            <div class="kwuo-torn-docket-wrapper">
+                <article class="kwuo-torn-docket !p-5">
+                    <h3 class="text-sm font-heading font-bold text-theme-heading mb-3 pb-2 border-b border-theme-border flex items-center gap-2">
+                        <i class="ph-bold ph-shield-check text-kwuo-bronze"></i>
+                        <span>Add Official</span>
+                    </h3>
+
+                    <form method="POST" action="/admin/officials" class="space-y-3">
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Full Name / Mononym *
+                            </label>
+                            <input type="text" name="name" required placeholder="e.g. Chief Tabulator Kwame"
+                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Email Address *
+                            </label>
+                            <input type="email" name="email" required placeholder="official@debatesociety.org"
+                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Staff Role *
+                            </label>
+                            {{ edit.custom_select(
+                                name="role",
+                                value="tab",
+                                required=true,
+                                options=[
+                                    {"value": "tab", "label": "Tabulation Staff (Tab)", "icon": "ph-calculator"},
+                                    {"value": "ca", "label": "Chief Adjudicator (CA)", "icon": "ph-gavel"},
+                                    {"value": "dca", "label": "Deputy Chief Adjudicator (DCA)", "icon": "ph-scales"},
+                                    {"value": "director", "label": "Tournament Director", "icon": "ph-crown"},
+                                    {"value": "equity", "label": "Equity Officer", "icon": "ph-shield-check"},
+                                    {"value": "org_comm", "label": "Organizing Committee", "icon": "ph-users"}
+                                ]
+                            ) }}
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Tab Room Password *
+                            </label>
+                            <input type="password" name="password" required placeholder="Set password for /admin sign-in"
+                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs font-body">
+                        </div>
+
+                        <button type="submit" class="w-full py-2.5 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center justify-center gap-2 mt-2">
+                            <i class="ph-bold ph-user-plus"></i>
+                            <span>Register Official</span>
+                        </button>
+                    </form>
+                </article>
+            </div>
+        </div>
+
+        <!-- Officials Directory (2 cols) -->
+        <div class="lg:col-span-2">
+            <div class="kwuo-torn-docket-wrapper">
+                <article class="kwuo-torn-docket !p-6">
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
+                        <h3 class="text-sm font-heading font-bold text-theme-heading">
+                            Tournament Officials &amp; Staff ({{ tournament.officials|length }})
+                        </h3>
+                        <span class="text-xs text-theme-body/60">Governing Staff</span>
+                    </div>
+
+                    {% if tournament.officials %}
+                    <div class="divide-y divide-theme-border">
+                        {% for off in tournament.officials %}
+                        <div class="py-3 flex items-center justify-between gap-4">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-heading font-bold text-sm text-theme-heading">{{ off.name }}</span>
+                                    {% if off.official_profile %}
+                                    <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-kwuo-bronze/10 text-kwuo-bronze">
+                                        {{ off.official_profile.role.value }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-[11px] text-theme-body/60 mt-0.5">
+                                    {{ off.email }}
+                                    {% if off.official_profile and off.official_profile.last_login_at %}
+                                    &bull; Last login: {{ off.official_profile.last_login_at.strftime('%b %d, %H:%M') }}
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="text-right text-xs">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                    Active Password Set
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="py-8 text-center text-xs text-theme-body/60">
+                        No officials registered yet. Add staff members using the registration form.
+                    </div>
+                    {% endif %}
+                </article>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

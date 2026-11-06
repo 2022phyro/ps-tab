@@ -1,0 +1,324 @@
+{% extends "tenant/base.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Participating Institutions — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<script>
+    function publicInstitutionsDirectory() {
+        return {
+            searchQuery: '',
+            colsDropdownOpen: false,
+            viewMode: 'table',
+            visibleCols: {
+                code: true,
+                country: true,
+                region: true,
+                speakers: true,
+                judges: true,
+                ias: true,
+                total: true
+            },
+            matchesFilter(name, code, country, region) {
+                const q = this.searchQuery.toLowerCase().trim();
+                if (!q) return true;
+                return (
+                    name.toLowerCase().includes(q) ||
+                    (code && code.toLowerCase().includes(q)) ||
+                    (country && country.toLowerCase().includes(q)) ||
+                    (region && region.toLowerCase().includes(q))
+                );
+            }
+        };
+    }
+</script>
+
+<div x-data="publicInstitutionsDirectory()" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+    <!-- Header Banner -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-kwuo-bronze/10 text-kwuo-bronze shrink-0">
+                        <i class="ph-bold ph-buildings text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-0.5">
+                            <a href="/" class="hover:text-kwuo-bronze transition font-body">Overview</a>
+                            <span>/</span>
+                            <span class="text-kwuo-bronze font-body">Institutions</span>
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
+                            Participating Delegations
+                        </h1>
+                        <p class="text-xs sm:text-sm text-theme-body/70 mt-0.5 font-body">
+                            Member academies, universities, and independent speech &amp; debate societies.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    <span class="px-3 py-1.5 rounded-xl bg-theme-base border border-theme-border text-xs font-semibold text-theme-heading font-body flex items-center gap-1.5 shadow-sm">
+                        <i class="ph-bold ph-users-three text-kwuo-bronze"></i>
+                        <span>{{ institutions|length }} Institutions</span>
+                    </span>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <!-- Container in Torn-Docket Styling -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-5 sm:!p-7 space-y-4">
+            <!-- Header Controls Toolbar: Clean, Non-Clipping Search & Toggles -->
+            <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pb-4 border-b border-theme-border">
+                <div class="flex items-center gap-2">
+                    <span class="font-heading font-bold text-base text-theme-heading">
+                        All Delegations
+                    </span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                        {{ institutions|length }}
+                    </span>
+                </div>
+
+                <!-- Controls Group: Search, View Mode & Column Picker -->
+                <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <!-- Instant Search Input -->
+                    <div class="relative min-w-[200px] flex-1 sm:flex-none sm:w-64">
+                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-theme-body/50 text-xs"></i>
+                        <input type="text" x-model="searchQuery" placeholder="Filter delegations..."
+                               class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+                    </div>
+
+                    <!-- View Switcher Toggle (Table vs Cards) -->
+                    <div class="inline-flex items-center rounded-xl border border-theme-border bg-theme-base p-0.5 text-xs font-semibold shadow-xs shrink-0">
+                        <button type="button" @click="viewMode = 'table'"
+                                :class="viewMode === 'table' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
+                                class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body"
+                                title="Table view">
+                            <i class="ph-bold ph-table text-xs"></i>
+                            <span class="hidden sm:inline">Table</span>
+                        </button>
+                        <button type="button" @click="viewMode = 'cards'"
+                                :class="viewMode === 'cards' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
+                                class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body"
+                                title="Cards view">
+                            <i class="ph-bold ph-squares-four text-xs"></i>
+                            <span class="hidden sm:inline">Cards</span>
+                        </button>
+                    </div>
+
+                    <!-- Column Visibility Dropdown -->
+                    <div class="relative shrink-0" @click.outside="colsDropdownOpen = false">
+                        <button type="button" @click="colsDropdownOpen = !colsDropdownOpen"
+                                class="px-2.5 py-1.5 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface text-theme-heading text-xs font-semibold flex items-center gap-1.5 transition font-body shadow-xs">
+                            <i class="ph-bold ph-columns text-sm text-kwuo-bronze"></i>
+                            <span class="hidden sm:inline">Columns</span>
+                            <i class="ph-bold ph-caret-down text-[10px] text-theme-body/60 transition-transform" :class="colsDropdownOpen ? 'rotate-180' : ''"></i>
+                        </button>
+                        <div x-show="colsDropdownOpen" x-cloak
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="opacity-0 scale-95"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             class="absolute right-0 mt-1.5 w-48 rounded-xl border border-theme-border bg-theme-surface shadow-xl z-30 p-2.5 space-y-1 text-xs font-body">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-theme-body/60 px-2 py-1">Visible Fields</div>
+                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg text-theme-body/40 cursor-not-allowed">
+                                <input type="checkbox" checked disabled class="rounded text-kwuo-bronze h-3.5 w-3.5">
+                                <span>Institution (Pinned)</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                                <input type="checkbox" x-model="visibleCols.code" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                <span>Code</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                                <input type="checkbox" x-model="visibleCols.country" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                <span>Country</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                                <input type="checkbox" x-model="visibleCols.region" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                <span>Region</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                                <input type="checkbox" x-model="visibleCols.speakers" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                <span>Speakers</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                                <input type="checkbox" x-model="visibleCols.judges" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                <span>Judges</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                                <input type="checkbox" x-model="visibleCols.ias" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                <span>IAs (Independent Adjudicators)</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                                <input type="checkbox" x-model="visibleCols.total" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                <span>Total</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 1: Ultra-Compact Tabbycat-Style Table (Zero Icons, Pure Text & Numeric Precision) -->
+            <div x-show="viewMode === 'table'" class="overflow-x-auto rounded-xl border border-theme-border bg-theme-surface">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-theme-border bg-theme-base/40 text-theme-body/70 text-[11px] font-bold">
+                            <th class="py-2.5 px-3 min-w-[170px] sm:min-w-[220px]">
+                                Full name
+                            </th>
+                            <th x-show="visibleCols.code" class="py-2.5 px-2.5 whitespace-nowrap text-center">Code</th>
+                            <th x-show="visibleCols.country" class="py-2.5 px-2.5 whitespace-nowrap">Country</th>
+                            <th x-show="visibleCols.region" class="py-2.5 px-2.5 whitespace-nowrap">Region</th>
+                            <th x-show="visibleCols.speakers" class="py-2.5 px-2.5 text-center whitespace-nowrap">Speakers</th>
+                            <th x-show="visibleCols.judges" class="py-2.5 px-2.5 text-center whitespace-nowrap">Judges</th>
+                            <th x-show="visibleCols.ias" class="py-2.5 px-2.5 text-center whitespace-nowrap font-bold text-kwuo-bronze">IAs</th>
+                            <th x-show="visibleCols.total" class="py-2.5 px-3 text-center whitespace-nowrap font-bold">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-theme-border">
+                        {% for inst in institutions %}
+                        <tr x-show="matchesFilter('{{ inst.name|replace('\'', '\\\'') }}', '{{ inst.code|replace('\'', '\\\'') }}', '{{ (inst.country_name or inst.country)|replace('\'', '\\\'') }}', '{{ inst.region|replace('\'', '\\\'') }}')"
+                            class="hover:bg-theme-base/60 transition group font-body">
+                            <!-- 1. FULL NAME (Clean, word-wrapped, no bulky icon) -->
+                            <td class="py-2.5 px-3 max-w-[280px]">
+                                <div class="font-heading font-bold text-xs sm:text-sm text-theme-heading break-words leading-snug">
+                                    {{ inst.name }}
+                                </div>
+                            </td>
+
+                            <!-- 2. CODE -->
+                            <td x-show="visibleCols.code" class="py-2.5 px-2.5 whitespace-nowrap text-center">
+                                {% if inst.code %}
+                                <span class="text-[11px] font-bold text-kwuo-bronze font-body">
+                                    {{ inst.code }}
+                                </span>
+                                {% else %}
+                                <span class="text-theme-body/40 text-xs">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- 3. COUNTRY -->
+                            <td x-show="visibleCols.country" class="py-2.5 px-2.5 whitespace-nowrap">
+                                {% if inst.country %}
+                                <div class="inline-flex items-center gap-1.5 text-xs text-theme-heading font-medium">
+                                    <span>{{ inst.flag }}</span>
+                                    <span>{{ inst.country_name or inst.country|upper }}</span>
+                                </div>
+                                {% else %}
+                                <span class="text-theme-body/40 text-xs">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- 4. REGION -->
+                            <td x-show="visibleCols.region" class="py-2.5 px-2.5 whitespace-nowrap text-theme-body/80 text-xs">
+                                {% if inst.region_display %}
+                                <span>{{ inst.region_display }}</span>
+                                {% else %}
+                                <span class="text-theme-body/40">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- 5. SPEAKERS COUNT (Pure clean number, no icon/pill) -->
+                            <td x-show="visibleCols.speakers" class="py-2.5 px-2.5 text-center whitespace-nowrap text-xs font-semibold text-theme-heading">
+                                {{ inst.speakers_count }}
+                            </td>
+
+                            <!-- 6. JUDGES COUNT (Pure clean number, no icon/pill) -->
+                            <td x-show="visibleCols.judges" class="py-2.5 px-2.5 text-center whitespace-nowrap text-xs font-semibold text-theme-heading">
+                                {{ inst.judges_count }}
+                            </td>
+
+                            <!-- 7. IAs COUNT (Independent Adjudicators, pure clean number) -->
+                            <td x-show="visibleCols.ias" class="py-2.5 px-2.5 text-center whitespace-nowrap text-xs font-bold text-kwuo-bronze">
+                                {{ inst.ias_count }}
+                            </td>
+
+                            <!-- 8. TOTAL COUNT (Pure clean number, no bulky text) -->
+                            <td x-show="visibleCols.total" class="py-2.5 px-3 text-center whitespace-nowrap text-xs font-bold text-theme-heading">
+                                <span>{{ inst.total_count }}</span>
+                                <span class="sr-only">{% if inst.total_count == 1 %}Entry{% else %}Entries{% endif %}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        {% if not institutions %}
+                        <tr>
+                            <td colspan="8" class="py-10 text-center text-theme-body/60 space-y-1 font-body">
+                                <div class="text-xs font-semibold">No institutions registered in this tournament roster yet.</div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- VIEW 2: Collapsed Cards Mode (Optimized for Mobile Screens & Compact Reading) -->
+            <div x-show="viewMode === 'cards'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for inst in institutions %}
+                <article x-show="matchesFilter('{{ inst.name|replace('\'', '\\\'') }}', '{{ inst.code|replace('\'', '\\\'') }}', '{{ (inst.country_name or inst.country)|replace('\'', '\\\'') }}', '{{ inst.region|replace('\'', '\\\'') }}')"
+                         class="p-3.5 rounded-xl border border-theme-border bg-theme-surface hover:border-kwuo-bronze/40 transition shadow-xs flex flex-col justify-between gap-2.5 font-body">
+                    <!-- Top: Name & Code Badge (Clean, no bulky square icon) -->
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-heading font-bold text-sm text-theme-heading break-words leading-tight">
+                                {{ inst.name }}
+                            </h3>
+
+                            <!-- Country & Region Line -->
+                            <div class="flex items-center gap-1.5 mt-1 text-xs text-theme-body/70 flex-wrap">
+                                {% if inst.country %}
+                                <span x-show="visibleCols.country" class="inline-flex items-center gap-1">
+                                    <span>{{ inst.flag }}</span>
+                                    <span>{{ inst.country_name or inst.country|upper }}</span>
+                                </span>
+                                {% endif %}
+
+                                {% if inst.country and inst.region_display %}
+                                <span class="text-theme-body/30">&bull;</span>
+                                {% endif %}
+
+                                {% if inst.region_display %}
+                                <span x-show="visibleCols.region" class="text-theme-body/80">
+                                    {{ inst.region_display }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if inst.code %}
+                        <span x-show="visibleCols.code" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-theme-base border border-theme-border text-kwuo-bronze shrink-0">
+                            {{ inst.code }}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Bottom: Metrics Row (Text numbers) -->
+                    <div class="pt-2 border-t border-theme-border/60 flex items-center justify-between text-xs text-theme-body/80">
+                        <div class="flex items-center gap-3">
+                            <span x-show="visibleCols.speakers">
+                                <span class="text-theme-body/50 text-[10px] uppercase font-bold">Spkrs:</span>
+                                <span class="font-bold text-theme-heading ml-0.5">{{ inst.speakers_count }}</span>
+                            </span>
+                            <span x-show="visibleCols.judges">
+                                <span class="text-theme-body/50 text-[10px] uppercase font-bold">Adjs:</span>
+                                <span class="font-bold text-theme-heading ml-0.5">{{ inst.judges_count }}</span>
+                            </span>
+                            <span x-show="visibleCols.ias">
+                                <span class="text-kwuo-bronze text-[10px] uppercase font-bold">IAs:</span>
+                                <span class="font-bold text-kwuo-bronze ml-0.5">{{ inst.ias_count }}</span>
+                            </span>
+                        </div>
+                        <div x-show="visibleCols.total" class="text-right shrink-0">
+                            <span class="text-theme-body/50 text-[10px] uppercase font-bold">Total:</span>
+                            <span class="font-extrabold text-theme-heading ml-0.5">{{ inst.total_count }}</span>
+                            <span class="text-[10px] text-theme-body/50">{% if inst.total_count == 1 %}Entry{% else %}Entries{% endif %}</span>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+</div>
+{% endblock %}

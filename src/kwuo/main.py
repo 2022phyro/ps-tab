@@ -5,6 +5,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from kwuo.core.config import settings
 from kwuo.core.cache import get_redis_client
+from kwuo.core.queue import close_arq_pool
 from kwuo.core.database import engine, async_session_factory
 from kwuo.core.rbac import seed_system_groups
 from kwuo.models.base import Base
@@ -16,6 +17,10 @@ from kwuo.web.routes.profile import router as profile_router
 from kwuo.web.routes.dashboard import router as dashboard_router
 from kwuo.web.routes.admin import router as admin_router
 from kwuo.web.routes.documentation import router as docs_router
+from kwuo.web.routes.tournaments import router as tournaments_router
+from kwuo.web.routes.attachments import router as attachments_router
+from kwuo.web.routes.tenant import router as tenant_router
+from kwuo.web.middleware.tenant import TenantSubdomainMiddleware
 
 
 @asynccontextmanager
@@ -40,6 +45,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Cleanup on shutdown
     try:
         await redis.aclose()
+        await close_arq_pool()
     except Exception:
         pass
 
@@ -58,8 +64,14 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(profile_router)
     app.include_router(dashboard_router)
+    app.include_router(tournaments_router)
+    app.include_router(attachments_router)
+    app.include_router(tenant_router)
     app.include_router(admin_router)
     app.include_router(docs_router)
+
+    # Register tenant subdomain resolution middleware
+    app.add_middleware(TenantSubdomainMiddleware)
 
     @app.get("/health")
     async def health_check():

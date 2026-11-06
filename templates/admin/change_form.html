@@ -1,8 +1,8 @@
 {% extends "admin/base_admin.html" %}
+{% import "macros/editorial.html" as edit %}
 
 {% block title %}
-{% if is_add %}Add {{ model_admin.verbose_name.lower() }}{% else %}Change {{ model_admin.verbose_name.lower() }}{% endif
-%} — Kwuo Admin
+{% if is_add %}Add {{ model_admin.verbose_name.lower() }}{% elif model_admin.is_read_only %}Inspect {{ model_admin.verbose_name.lower() }}{% else %}Change {{ model_admin.verbose_name.lower() }}{% endif %} — Kwuo Admin
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -24,8 +24,7 @@
         class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-theme-border-subtle pb-4">
         <div>
             <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
-                {% if is_add %}Add {{ model_admin.verbose_name }}{% else %}Change {{ model_admin.verbose_name }}{% endif
-                %}
+                {% if is_add %}Add {{ model_admin.verbose_name }}{% elif model_admin.is_read_only %}Inspect {{ model_admin.verbose_name }}{% else %}Change {{ model_admin.verbose_name }}{% endif %}
             </h1>
             {% if not is_add %}
             <p class="mt-1 font-body text-xs text-slate-500 dark:text-kwuo-sage">
@@ -151,30 +150,38 @@
                 <!-- Permissions & Status Checkboxes -->
                 <div class="sm:col-span-2 border-t border-theme-border-subtle pt-4 space-y-4">
                     <h3 class="text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider">
-                        Permissions & Roles
+                        Permissions & Account State
                     </h3>
-                    <div class="flex flex-col sm:flex-row gap-6">
-                        <label class="relative flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" name="is_super_admin" value="true" {% if instance and
-                                instance.is_super_admin %}checked{% endif %}
-                                class="h-4 w-4 rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze mt-0.5">
-                            <div class="text-xs">
-                                <span class="font-bold text-slate-800 dark:text-kwuo-sand">Superuser status</span>
-                                <p class="text-slate-500 dark:text-kwuo-sage">Designates that this user has all
-                                    permissions without explicitly assigning them.</p>
-                            </div>
-                        </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
+                                Account Lifecycle Status
+                            </label>
+                            {% set status_val = (instance.status.value if instance else 'active') %}
+                            {{ edit.custom_select(
+                                name="status",
+                                value=status_val,
+                                options=[
+                                    {"value": "active", "label": "Active (Full Access)", "icon": "ph-check-circle"},
+                                    {"value": "unverified", "label": "Unverified (Pending OTP/Email)", "icon": "ph-clock"},
+                                    {"value": "suspended", "label": "Suspended (Temporarily Revoked)", "icon": "ph-pause-circle"},
+                                    {"value": "banned", "label": "Banned (Permanently Blocked)", "icon": "ph-prohibit"},
+                                    {"value": "deleted", "label": "Deleted (Soft-Deleted)", "icon": "ph-trash"}
+                                ]
+                            ) }}
+                        </div>
 
-                        <label class="relative flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" name="is_active" value="true" {% if is_add or (instance and
-                                instance.is_active) %}checked{% endif %}
-                                class="h-4 w-4 rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze mt-0.5">
-                            <div class="text-xs">
-                                <span class="font-bold text-slate-800 dark:text-kwuo-sand">Active</span>
-                                <p class="text-slate-500 dark:text-kwuo-sage">Designates whether this user should be
-                                    treated as active. Unselect this instead of deleting accounts.</p>
-                            </div>
-                        </label>
+                        <div class="flex items-center pt-5">
+                            <label class="relative flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" name="is_super_admin" value="true" {% if instance and
+                                    instance.is_super_admin %}checked{% endif %}
+                                    class="h-4 w-4 rounded border-slate-300 dark:border-kwuo-dark-input text-kwuo-bronze focus:ring-kwuo-bronze mt-0.5">
+                                <div class="text-xs">
+                                    <span class="font-bold text-slate-800 dark:text-kwuo-sand">Superuser status</span>
+                                    <p class="text-slate-500 dark:text-kwuo-sage">Grants full unrestricted platform management privileges.</p>
+                                </div>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -231,13 +238,15 @@
                             class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                             Scope
                         </label>
-                        <select name="scope_type"
-                            class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
-                            <option value="global" {% if instance and not instance.tournament_id %}selected{% endif %}>
-                                Platform Global (All Tournaments)</option>
-                            <option value="tournament" {% if instance and instance.tournament_id %}selected{% endif %}>
-                                Tournament-Scoped</option>
-                        </select>
+                        {% set scope_val = 'tournament' if (instance and instance.tournament_id) else 'global' %}
+                        {{ edit.custom_select(
+                            name="scope_type",
+                            value=scope_val,
+                            options=[
+                                {"value": "global", "label": "Platform Global (All Tournaments)", "icon": "ph-globe"},
+                                {"value": "tournament", "label": "Tournament-Scoped", "icon": "ph-trophy"}
+                            ]
+                        ) }}
                     </div>
 
                     <div>
@@ -290,7 +299,9 @@
                         {% for p in group_permissions %}
                         <div
                             class="inline-flex items-center gap-1.5 rounded-lg bg-theme-surface-subtle border border-theme-border px-2.5 py-1 text-xs text-theme-heading font-body">
-                            <span>{{ p.permission }}</span>
+                            <a href="/admin/group-permissions/{{ p.id }}" class="font-semibold text-kwuo-bronze dark:text-kwuo-gold hover:underline" title="Edit permission">
+                                {{ p.permission }}
+                            </a>
                             <form action="/admin/groups/{{ instance.id }}/permissions/{{ p.id }}/delete" method="POST"
                                 class="inline">
                                 <button type="submit" class="text-slate-400 hover:text-rose-600 font-bold ml-1"
@@ -316,13 +327,16 @@
                         class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         Group <span class="text-rose-500">*</span>
                     </label>
-                    <select name="group_id" required
-                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze">
-                        {% for g in groups %}
-                        <option value="{{ g.id }}" {% if instance and instance.group_id==g.id %}selected{% endif %}>{{
-                            g.name }}</option>
-                        {% endfor %}
-                    </select>
+                    {% set group_opts = [] %}
+                    {% for g in groups %}
+                        {% set _ = group_opts.append({"value": g.id, "label": g.name, "icon": "ph-users"}) %}
+                    {% endfor %}
+                    {{ edit.custom_select(
+                        name="group_id",
+                        value=(instance.group_id if instance else (groups[0].id if groups else '')),
+                        required=true,
+                        options=group_opts
+                    ) }}
                 </div>
                 <div>
                     <label
@@ -343,26 +357,32 @@
                         class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         User <span class="text-rose-500">*</span>
                     </label>
-                    <select name="user_id" required
-                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze">
-                        {% for u in users %}
-                        <option value="{{ u.id }}" {% if instance and instance.user_id==u.id %}selected{% endif %}>{{
-                            u.full_name }} ({{ u.email }})</option>
-                        {% endfor %}
-                    </select>
+                    {% set user_opts = [] %}
+                    {% for u in users %}
+                        {% set _ = user_opts.append({"value": u.id, "label": u.full_name ~ " (" ~ u.email ~ ")", "icon": "ph-user"}) %}
+                    {% endfor %}
+                    {{ edit.custom_select(
+                        name="user_id",
+                        value=(instance.user_id if instance else (users[0].id if users else '')),
+                        required=true,
+                        options=user_opts
+                    ) }}
                 </div>
                 <div>
                     <label
                         class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                         Group <span class="text-rose-500">*</span>
                     </label>
-                    <select name="group_id" required
-                        class="w-full rounded-lg border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze">
-                        {% for g in groups %}
-                        <option value="{{ g.id }}" {% if instance and instance.group_id==g.id %}selected{% endif %}>{{
-                            g.name }}</option>
-                        {% endfor %}
-                    </select>
+                    {% set group_opts2 = [] %}
+                    {% for g in groups %}
+                        {% set _ = group_opts2.append({"value": g.id, "label": g.name, "icon": "ph-users"}) %}
+                    {% endfor %}
+                    {{ edit.custom_select(
+                        name="group_id",
+                        value=(instance.group_id if instance else (groups[0].id if groups else '')),
+                        required=true,
+                        options=group_opts2
+                    ) }}
                 </div>
             </div>
 

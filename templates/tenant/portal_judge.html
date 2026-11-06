@@ -1,0 +1,95 @@
+{% extends "tenant/base.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Adjudicator Portal — {{ participant.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <!-- Judge Header Docket -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <div class="flex items-start justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/30 text-2xl">
+                        <i class="ph-bold ph-scales"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                {% if judge and judge.is_chair_eligible %}Chair Adjudicator{% else %}Panel Adjudicator{% endif %}
+                            </span>
+                            <span class="text-xs text-theme-body/60 font-body">{{ participant.id }}</span>
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading mt-1">
+                            {{ participant.name }}
+                        </h1>
+                        <p class="text-xs text-theme-body/70 mt-0.5">
+                            {{ participant.institution_name }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Check-in Status Action -->
+                <div class="flex items-center gap-3">
+                    {% if participant.status.value == 'checked_in' %}
+                    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                        <i class="ph-bold ph-check-circle text-base"></i>
+                        <span>Checked In & Active</span>
+                    </div>
+                    {% else %}
+                    <form method="POST" action="/portal/check-in">
+                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-kwuo-bronze text-white font-bold text-xs shadow-sm hover:bg-kwuo-mahogany transition">
+                            <i class="ph-bold ph-hand-tap text-base"></i>
+                            <span>Confirm Check-in Now</span>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <!-- Panel Allocations & Live Ballots -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <h2 class="text-lg font-heading font-bold text-theme-heading mb-4 flex items-center gap-2">
+                <i class="ph-bold ph-chalkboard-teacher text-kwuo-bronze"></i>
+                <span>Your Panel Allocations & Digital Ballots</span>
+            </h2>
+
+            <div class="p-6 rounded-xl bg-theme-base border border-dashed border-theme-border text-center space-y-2">
+                <i class="ph-bold ph-clock-countdown text-3xl text-theme-body/40"></i>
+                <h3 class="text-sm font-heading font-bold text-theme-heading">Awaiting Draw Release</h3>
+                <p class="text-xs text-theme-body/70 max-w-md mx-auto">
+                    Section assignments and digital scorecards will load here automatically once the tab room finalizes room allocations for the active round.
+                </p>
+            </div>
+        </article>
+    </div>
+
+    <!-- Adjudicator Briefing & Rubric Quick Access -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <h2 class="text-lg font-heading font-bold text-theme-heading mb-4 flex items-center gap-2">
+                <i class="ph-bold ph-book-open text-kwuo-bronze"></i>
+                <span>Scoring Standard Quick Reference</span>
+            </h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div class="p-3.5 rounded-xl bg-theme-base border border-theme-border">
+                    <span class="font-bold text-theme-heading block mb-1">Base Floor: {{ tournament.base_score|int }} pts</span>
+                    <p class="text-theme-body/70">Start every complete presentation at the base score floor.</p>
+                </div>
+                <div class="p-3.5 rounded-xl bg-theme-base border border-theme-border">
+                    <span class="font-bold text-theme-heading block mb-1">Standard Cap: {{ tournament.ceiling_score|int }} pts</span>
+                    <p class="text-theme-body/70">Reserve scores between {{ tournament.ceiling_score|int }} and 100 for exceptional speeches.</p>
+                </div>
+                <div class="p-3.5 rounded-xl bg-theme-base border border-theme-border">
+                    <span class="font-bold text-theme-heading block mb-1">Time Penalty: {% if tournament.max_time_penalty %}-{{ tournament.max_time_penalty|int }} pts max{% else %}None{% endif %}</span>
+                    <p class="text-theme-body/70">Computed automatically based on digital stopwatch readings.</p>
+                </div>
+            </div>
+        </article>
+    </div>
+</div>
+{% endblock %}

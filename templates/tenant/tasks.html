@@ -1,0 +1,82 @@
+{% extends "tenant/base.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Tasks & Motions — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <!-- Header Banner -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <div class="flex items-center gap-3">
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
+                    <i class="ph-bold ph-newspaper text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
+                        Tasks, Motions & Speech Prompts
+                    </h1>
+                    <p class="text-xs sm:text-sm text-theme-body/70 mt-1">
+                        Round release sheets, impromptu topics, reading excerpts, and motion materials.
+                    </p>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <!-- Task Materials List -->
+    {% if task_materials %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for task in task_materials %}
+        <div class="kwuo-torn-docket-wrapper">
+            <article class="kwuo-torn-docket !p-6 flex flex-col justify-between h-full">
+                <div>
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                            {{ task.category.value|replace('_', ' ') }}
+                        </span>
+                        {% if task.task_id %}
+                        <span class="font-body text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            Task: {{ task.task_id }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <h3 class="text-lg font-heading font-bold text-theme-heading">
+                        {{ task.title }}
+                    </h3>
+                    {% if task.description %}
+                    <p class="mt-2 text-xs sm:text-sm text-theme-body/80 leading-relaxed">
+                        {{ task.description }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-theme-border flex items-center justify-between text-xs">
+                    <span class="font-body text-theme-body/60 text-[11px] uppercase">
+                        {{ task.filename }} • {{ task.formatted_size }}
+                    </span>
+                    <a href="/files/{{ task.id }}/download"
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-kwuo-bronze text-white font-semibold text-xs shadow-sm hover:bg-kwuo-mahogany transition">
+                        <i class="ph-bold ph-download-simple"></i>
+                        <span>Download Sheet</span>
+                    </a>
+                </div>
+            </article>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Pending Motions Post-it -->
+    <div class="flex justify-center py-8">
+        {% call edit.post_it(title="Motion Release Embargo", tag="CAP Desk", size="md", curl="right") %}
+        <p class="text-sm leading-relaxed text-theme-body/90 mt-1">
+            Round tasks, motions, and impromptu prompts are embargoed until their scheduled release times by the Chief Adjudication Panel.
+        </p>
+        <div class="mt-4 pt-3 border-t border-theme-border/40 text-[11px] font-body opacity-60">
+            Prompts unlock simultaneously with round draw release.
+        </div>
+        {% endcall %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

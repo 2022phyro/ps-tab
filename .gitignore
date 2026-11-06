@@ -37,7 +37,7 @@ venv.bak/
 
 # RUV & Local Settings
 .ruv
-
+uploads/
 # Testing & Coverage
 .pytest_cache/
 .coverage

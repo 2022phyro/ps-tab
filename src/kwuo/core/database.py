@@ -32,3 +32,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+# Alias for dependency injection
+get_db = get_db_session

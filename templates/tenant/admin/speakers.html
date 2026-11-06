@@ -1,0 +1,161 @@
+{% extends "tenant/admin/layout.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Speakers Roster — Tab Room{% endblock %}
+
+{% block admin_content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <!-- Breadcrumb & Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1">
+                <a href="/admin" class="hover:text-kwuo-bronze">Tab Room</a>
+                <span>/</span>
+                <span>Organization</span>
+                <span>/</span>
+                <span class="text-kwuo-bronze">Speakers</span>
+            </div>
+            <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
+                Speakers Roster &amp; Check-In Desk
+            </h1>
+            <p class="text-xs text-theme-body/70 mt-0.5">
+                Register competitors with single names or nicknames, issue zero-auth magic links, and manage arrival check-in.
+            </p>
+        </div>
+
+        <a href="/participants?role=speakers" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
+            <i class="ph-bold ph-arrow-square-out text-sm"></i>
+            <span>Preview Public Roster</span>
+        </a>
+    </div>
+
+    {% if msg %}
+    <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
+        <i class="ph-bold ph-check-circle text-base"></i>
+        <span>{{ msg }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Top Action Card: Add Speaker Modal / Form & Summary -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Add Speaker Form (1 col) -->
+        <div>
+            <div class="kwuo-torn-docket-wrapper">
+                <article class="kwuo-torn-docket !p-5">
+                    <h3 class="text-sm font-heading font-bold text-theme-heading mb-3 pb-2 border-b border-theme-border flex items-center gap-2">
+                        <i class="ph-bold ph-user-plus text-kwuo-bronze"></i>
+                        <span>Register Speaker</span>
+                    </h3>
+
+                    <form method="POST" action="/admin/speakers" class="space-y-3">
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Speaker Name / Nickname *
+                            </label>
+                            <input type="text" name="name" required placeholder="e.g. Kofi Mensah or 'JJ'"
+                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs">
+                            <p class="text-[10px] text-theme-body/60 mt-0.5">Supports single mononym, nickname, or full name.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Email Address *
+                            </label>
+                            <input type="email" name="email" required placeholder="speaker@institution.edu"
+                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Division Eligibility *
+                            </label>
+                            {% set div_options = [] %}
+                            {% for div in tournament.divisions %}
+                                {% set _ = div_options.append({"value": div.id, "label": div.name, "icon": "ph-users"}) %}
+                            {% endfor %}
+                            {{ edit.custom_select(
+                                name="division_id",
+                                value=tournament.divisions[0].id if tournament.divisions else "",
+                                required=true,
+                                options=div_options
+                            ) }}
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Institution
+                            </label>
+                            <input type="text" name="institution_name" placeholder="e.g. University of Ghana or Independent"
+                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs">
+                        </div>
+
+                        <button type="submit" class="w-full py-2.5 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center justify-center gap-2 mt-2">
+                            <i class="ph-bold ph-plus"></i>
+                            <span>Add Speaker to Roster</span>
+                        </button>
+                    </form>
+                </article>
+            </div>
+        </div>
+
+        <!-- Speaker Table (2 cols) -->
+        <div class="lg:col-span-2">
+            <div class="kwuo-torn-docket-wrapper">
+                <article class="kwuo-torn-docket !p-6">
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
+                        <h3 class="text-sm font-heading font-bold text-theme-heading">
+                            Registered Speakers ({{ tournament.speakers|length }})
+                        </h3>
+                        <span class="text-xs text-theme-body/60">
+                            {{ tournament.speakers|selectattr('status.value', 'equalto', 'checked_in')|list|length }} Checked In
+                        </span>
+                    </div>
+
+                    {% if tournament.speakers %}
+                    <div class="divide-y divide-theme-border overflow-x-auto">
+                        {% for spk in tournament.speakers %}
+                        <div class="py-3 flex items-center justify-between gap-4 min-w-[480px]">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-heading font-bold text-sm text-theme-heading">{{ spk.name }}</span>
+                                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full {% if spk.status.value == 'checked_in' %}bg-emerald-500/10 text-emerald-600 dark:text-emerald-400{% else %}bg-theme-base text-theme-body/60 border border-theme-border{% endif %}">
+                                        {{ spk.status.value|replace('_', ' ')|capitalize }}
+                                    </span>
+                                </div>
+                                <div class="text-[11px] text-theme-body/60 mt-0.5">
+                                    {{ spk.email }} &bull; {{ spk.institution_name }} &bull; {{ spk.division_names|join(', ') }}
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2 shrink-0">
+                                <!-- Check-in toggle -->
+                                <form method="POST" action="/admin/speakers/{{ spk.id }}/toggle-checkin">
+                                    <button type="submit" class="px-2.5 py-1 rounded-lg text-xs font-semibold border {% if spk.status.value == 'checked_in' %}border-emerald-300 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300{% else %}border-theme-border hover:bg-theme-base text-theme-heading{% endif %} transition">
+                                        {% if spk.status.value == 'checked_in' %}
+                                        <i class="ph-bold ph-check"></i> Present
+                                        {% else %}
+                                        Check In
+                                        {% endif %}
+                                    </button>
+                                </form>
+
+                                <!-- Magic link copy helper -->
+                                <button type="button" @click="navigator.clipboard.writeText(window.location.origin + '/portal/speaker'); alert('Speaker portal URL copied!')"
+                                        class="p-1.5 rounded-lg border border-theme-border hover:bg-theme-base text-theme-heading text-xs" title="Copy Magic Link">
+                                    <i class="ph-bold ph-link-simple"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="py-8 text-center text-xs text-theme-body/60">
+                        No speakers registered yet. Use the registration form to add competitors.
+                    </div>
+                    {% endif %}
+                </article>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

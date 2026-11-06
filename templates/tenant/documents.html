@@ -1,0 +1,115 @@
+{% extends "tenant/base.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Documents & Briefings — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <!-- Header Banner -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <div class="flex items-center gap-3">
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
+                    <i class="ph-bold ph-folder-open text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
+                        Documents & Briefing Repository
+                    </h1>
+                    <p class="text-xs sm:text-sm text-theme-body/70 mt-1">
+                        Official briefing packages, equity policies, scoring guides, and tournament schedules.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Dynamic Category Filter Pills (Reflecting existing files in DB) -->
+            <div class="flex items-center gap-2 mt-6 pt-4 border-t border-theme-border flex-wrap text-xs font-body">
+                <span class="text-theme-body/60 font-semibold mr-1">Filter:</span>
+                <a href="/documents"
+                    class="px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 {% if not active_category %}bg-kwuo-bronze text-white font-bold border-kwuo-bronze shadow-sm{% else %}bg-theme-base border-theme-border text-theme-heading hover:bg-theme-surface{% endif %}">
+                    <span>All Files</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold {% if not active_category %}bg-white/20 text-white{% else %}bg-theme-surface text-theme-body/70 border border-theme-border{% endif %}">
+                        {{ all_public_count }}
+                    </span>
+                </a>
+
+                {% for c in existing_categories %}
+                <a href="/documents?cat={{ c.key }}"
+                    class="px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 {% if active_category == c.key %}bg-kwuo-bronze text-white font-bold border-kwuo-bronze shadow-sm{% else %}bg-theme-base border-theme-border text-theme-heading hover:bg-theme-surface{% endif %}">
+                    <i class="ph-bold {{ c.icon }} text-xs"></i>
+                    <span>{{ c.label }}</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold {% if active_category == c.key %}bg-white/20 text-white{% else %}bg-theme-surface text-theme-body/70 border border-theme-border{% endif %}">
+                        {{ c.count }}
+                    </span>
+                </a>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+
+    <!-- Documents Grid -->
+    {% if attachments %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for doc in attachments %}
+        <div class="kwuo-torn-docket-wrapper">
+            <article class="kwuo-torn-docket !p-5 flex flex-col justify-between h-full group hover:border-kwuo-bronze/40 transition">
+                <div>
+                    <!-- Badge and Icon -->
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-theme-base border border-theme-border text-kwuo-bronze group-hover:bg-kwuo-bronze group-hover:text-white transition">
+                            <i class="ph-bold ph-{{ doc.phosphor_icon }} text-xl"></i>
+                        </div>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                            {{ doc.category.value|replace('_', ' ') }}
+                        </span>
+                    </div>
+
+                    <!-- Title & Description -->
+                    <h3 class="font-heading font-bold text-base text-theme-heading leading-snug group-hover:text-kwuo-bronze transition">
+                        {{ doc.title }}
+                    </h3>
+                    {% if doc.description %}
+                    <p class="mt-1.5 text-xs text-theme-body/75 line-clamp-2 leading-relaxed">
+                        {{ doc.description }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                <!-- Footer & Actions -->
+                <div class="mt-5 pt-3 border-t border-theme-border/70 flex items-center justify-between text-xs">
+                    <span class="font-body text-[11px] text-theme-body/60 uppercase">
+                        {{ doc.extension }} • {{ doc.formatted_size }}
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <a href="/files/{{ doc.id }}/download?inline=1" target="_blank" rel="noopener noreferrer"
+                           class="p-1.5 rounded-lg text-theme-body/60 hover:text-kwuo-bronze hover:bg-theme-base transition"
+                           title="Preview file in browser">
+                            <i class="ph-bold ph-eye text-base"></i>
+                        </a>
+                        <a href="/files/{{ doc.id }}/download"
+                           class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-kwuo-bronze text-white font-semibold text-xs shadow-sm hover:bg-kwuo-mahogany transition"
+                           title="Download document">
+                            <i class="ph-bold ph-download-simple"></i>
+                            <span>Download</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State Post-it -->
+    <div class="flex justify-center py-8">
+        {% call edit.post_it(title="No Files Published Yet", tag="Document Archive", size="md", curl="right") %}
+        <p class="text-sm leading-relaxed text-theme-body/90 mt-1">
+            There are currently no documents published in this category. Adjudicator briefings and schedule materials will be uploaded here by tournament staff.
+        </p>
+        <div class="mt-4 pt-3 border-t border-theme-border/40 text-[11px] font-body opacity-60">
+            Check back closer to tournament start.
+        </div>
+        {% endcall %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

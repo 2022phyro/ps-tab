@@ -1,0 +1,112 @@
+{% extends "tenant/base.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Current Round — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <!-- Header Banner -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        <i class="ph-bold ph-play-circle text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Live Room Status
+                            </span>
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading mt-1">
+                            Current Round
+                        </h1>
+                        <p class="text-xs sm:text-sm text-theme-body/70 mt-1">
+                            Live round pairings, flight timings, room allocations, and motion releases.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <a href="/schedule" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
+                        <i class="ph-bold ph-calendar"></i>
+                        <span>Master Schedule</span>
+                    </a>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    {% if tournament.has_active_round %}
+    <!-- Active Round Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Live Status & Round Overview (2 columns) -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="kwuo-torn-docket-wrapper">
+                <article class="kwuo-torn-docket !p-6 sm:!p-8">
+                    <div class="flex items-center justify-between pb-4 border-b border-theme-border mb-6">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-kwuo-bronze">Active Milestone</span>
+                            <h2 class="text-xl font-heading font-bold text-theme-heading mt-0.5">Round Live in Progress</h2>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
+                            ● In Progress
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                        <div class="p-4 rounded-xl bg-theme-base border border-theme-border">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-theme-body/60 block">Draw Status</span>
+                            <span class="text-base font-heading font-extrabold text-theme-heading mt-1 block">Pairings Released</span>
+                        </div>
+                        <div class="p-4 rounded-xl bg-theme-base border border-theme-border">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-theme-body/60 block">Ballots Desk</span>
+                            <span class="text-base font-heading font-extrabold text-theme-heading mt-1 block">Collecting</span>
+                        </div>
+                        <div class="p-4 rounded-xl bg-theme-base border border-theme-border col-span-2 sm:col-span-1">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-theme-body/60 block">Tab Audit</span>
+                            <span class="text-base font-heading font-extrabold text-theme-heading mt-1 block">Active</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-kwuo-sand/30 dark:bg-kwuo-dark-surface border border-theme-border flex items-start gap-3">
+                        <i class="ph-bold ph-info text-kwuo-bronze text-lg mt-0.5 shrink-0"></i>
+                        <p class="text-xs text-theme-body/80 leading-relaxed">
+                            Judges: Please access your private ballot link via your personalized magic URL or check in with the Tab Room if you require assistance. Competitors must report directly to their allocated section rooms.
+                        </p>
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <!-- Round Guidelines / Post-It Note (1 column) -->
+        <div>
+            {% call edit.post_it(
+                title="Round Protocol",
+                curl="left",
+                tone="butter"
+            ) %}
+            <p class="text-xs text-theme-body/80 leading-relaxed">
+                Please maintain decorum outside competition rooms. Timekeepers will indicate grace intervals as specified in the briefing guidelines. In case of clashes or room emergencies, contact the Tab Room immediately.
+            </p>
+            {% endcall %}
+        </div>
+    </div>
+    {% else %}
+    <!-- No Active Round Notice -->
+    <div class="max-w-xl mx-auto py-8">
+        {% call edit.post_it(
+            title="Round Standby",
+            curl="right",
+            tone="sage"
+        ) %}
+        <p class="text-xs text-theme-body/80 leading-relaxed">
+            No round is currently in progress for this tournament. Please consult the Schedule tab for flight timelines and check back when the Tab Room announces pairings for the next round.
+        </p>
+        {% endcall %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

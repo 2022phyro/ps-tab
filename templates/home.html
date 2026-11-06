@@ -846,13 +846,16 @@
                                 class="block text-xs font-bold text-slate-700 dark:text-kwuo-gold uppercase tracking-wider mb-1">
                                 Inquiry Topic
                             </label>
-                            <select name="subject"
-                                class="w-full rounded-xl border border-slate-300 dark:border-kwuo-dark-input bg-white dark:bg-kwuo-dark-surface px-3.5 py-2.5 text-xs text-slate-900 dark:text-kwuo-sand shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
-                                <option value="Tournament Onboarding">Hosting a Tournament with Kwuo</option>
-                                <option value="Custom Rubric Request">Custom Adjudication Rubric Request</option>
-                                <option value="Technical Advisory">Technical / Architecture Question</option>
-                                <option value="General Inquiry">General Feedback or Hello</option>
-                            </select>
+                            {{ edit.custom_select(
+                                name="subject",
+                                value="Tournament Onboarding",
+                                options=[
+                                    {"value": "Tournament Onboarding", "label": "Hosting a Tournament with Kwuo", "icon": "ph-trophy"},
+                                    {"value": "Custom Rubric Request", "label": "Custom Adjudication Rubric Request", "icon": "ph-sliders"},
+                                    {"value": "Technical Advisory", "label": "Technical / Architecture Question", "icon": "ph-code"},
+                                    {"value": "General Inquiry", "label": "General Feedback or Hello", "icon": "ph-chat-circle-dots"}
+                                ]
+                            ) }}
                         </div>
                     </div>
 

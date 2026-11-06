@@ -7,6 +7,13 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import StaticPool
 
+import os
+from kwuo.core.config import settings
+
+# Force testing environment for unit/integration tests
+os.environ["ENVIRONMENT"] = "testing"
+settings.ENVIRONMENT = "testing"
+
 from kwuo.main import app
 from kwuo.models.base import Base
 import kwuo.models  # Ensure all model tables are registered on Base.metadata
@@ -28,6 +35,11 @@ TestSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
+# Bind kwuo.core.database session factory to in-memory test DB
+import kwuo.core.database
+kwuo.core.database.async_session_factory = TestSessionLocal
+kwuo.core.database.engine = test_engine
 
 
 @pytest_asyncio.fixture(scope="function")

@@ -91,6 +91,9 @@ async def send_email(
     return True
 
 
+from kwuo.core.queue import enqueue_job
+
+
 async def send_verification_otp_email(to_email: str, otp_code: str, name: str = "") -> bool:
     """Send account verification 6-digit OTP code."""
     greeting = f"Hello {name.strip()}," if name else "Hello,"
@@ -101,13 +104,24 @@ async def send_verification_otp_email(to_email: str, otp_code: str, name: str = 
         f"    Verification Code: {otp_code}\n\n"
         f"This code will expire in 5 minutes. If you did not create this account, please ignore this email."
     )
-    return await send_email(
+    subject = "Verify your Kwuo account"
+    enqueued = await enqueue_job(
+        "send_email_task",
         to_email=to_email,
-        subject="Verify your Kwuo account",
+        subject=subject,
         body=body,
         otp_code=otp_code,
-        metadata={"action": "account_verify"},
+        metadata={"action": "account_verify", "name": name},
     )
+    if not enqueued:
+        return await send_email(
+            to_email=to_email,
+            subject=subject,
+            body=body,
+            otp_code=otp_code,
+            metadata={"action": "account_verify"},
+        )
+    return True
 
 
 async def send_password_reset_otp_email(to_email: str, otp_code: str, name: str = "") -> bool:
@@ -121,10 +135,21 @@ async def send_password_reset_otp_email(to_email: str, otp_code: str, name: str 
         f"This code will expire in 5 minutes. If you did not request a password reset,\n"
         f"someone may be trying to access your account. Please log in and check your security settings."
     )
-    return await send_email(
+    subject = "Kwuo Password Reset Code"
+    enqueued = await enqueue_job(
+        "send_email_task",
         to_email=to_email,
-        subject="Kwuo Password Reset Code",
+        subject=subject,
         body=body,
         otp_code=otp_code,
-        metadata={"action": "password_reset"},
+        metadata={"action": "password_reset", "name": name},
     )
+    if not enqueued:
+        return await send_email(
+            to_email=to_email,
+            subject=subject,
+            body=body,
+            otp_code=otp_code,
+            metadata={"action": "password_reset"},
+        )
+    return True

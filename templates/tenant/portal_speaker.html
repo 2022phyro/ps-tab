@@ -1,0 +1,88 @@
+{% extends "tenant/base.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Competitor Portal — {{ participant.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <!-- Competitor Header Docket -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <div class="flex items-start justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/30 text-2xl">
+                        <i class="ph-bold ph-microphone-stage"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                Competitor
+                            </span>
+                            <span class="text-xs text-theme-body/60 font-body">{{ participant.id }}</span>
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading mt-1">
+                            {{ participant.name }}
+                        </h1>
+                        <p class="text-xs text-theme-body/70 mt-0.5">
+                            {{ participant.institution_name }} • {% for d in participant.division_names %}{{ d }}{% if not loop.last %}, {% endif %}{% else %}Open Division{% endfor %}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Check-in Status Action -->
+                <div class="flex items-center gap-3">
+                    {% if participant.status.value == 'checked_in' %}
+                    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                        <i class="ph-bold ph-check-circle text-base"></i>
+                        <span>Checked In & Active</span>
+                    </div>
+                    {% else %}
+                    <form method="POST" action="/portal/check-in">
+                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-kwuo-bronze text-white font-bold text-xs shadow-sm hover:bg-kwuo-mahogany transition">
+                            <i class="ph-bold ph-hand-tap text-base"></i>
+                            <span>Confirm Check-in Now</span>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <!-- Active Rounds & Room Assignments -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <h2 class="text-lg font-heading font-bold text-theme-heading mb-4 flex items-center gap-2">
+                <i class="ph-bold ph-chalkboard text-kwuo-bronze"></i>
+                <span>Your Speaking Rounds & Room Allocations</span>
+            </h2>
+
+            <div class="p-6 rounded-xl bg-theme-base border border-dashed border-theme-border text-center space-y-2">
+                <i class="ph-bold ph-calendar-blank text-3xl text-theme-body/40"></i>
+                <h3 class="text-sm font-heading font-bold text-theme-heading">Draws Scheduled for Release</h3>
+                <p class="text-xs text-theme-body/70 max-w-md mx-auto">
+                    Room pairing matrices and speaker speaking orders will appear here automatically the moment the round draw is released by the tab room.
+                </p>
+            </div>
+        </article>
+    </div>
+
+    <!-- Private Feedback & Ballot Archive -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+            <h2 class="text-lg font-heading font-bold text-theme-heading mb-4 flex items-center gap-2">
+                <i class="ph-bold ph-chat-circle-dots text-kwuo-bronze"></i>
+                <span>Your Adjudicator Feedback & Ballot Archive</span>
+            </h2>
+
+            <div class="p-6 rounded-xl bg-theme-base border border-dashed border-theme-border text-center space-y-2">
+                <i class="ph-bold ph-lock-key text-3xl text-theme-body/40"></i>
+                <h3 class="text-sm font-heading font-bold text-theme-heading">Feedback Embargo in Place</h3>
+                <p class="text-xs text-theme-body/70 max-w-md mx-auto">
+                    Individual judge score breakdowns, rubric dimensional tallies, and written comments are sealed during preliminary rounds and will release to this portal upon round publication.
+                </p>
+            </div>
+        </article>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,484 @@
+{% extends "tenant/admin/layout.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Tournament Settings — Tab Room{% endblock %}
+
+{% block admin_content %}
+<div x-data="{
+    currentTab: (function() {
+        const t = new URLSearchParams(window.location.search).get('tab');
+        if (t === 'config' || t === 'rules') return 'config';
+        if (t === 'schedule') return 'schedule';
+        return 'setup';
+    })(),
+    addScheduleModal: false
+}" class="max-w-5xl mx-auto space-y-6">
+    <!-- Breadcrumb & Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1">
+                <a href="/admin" class="hover:text-kwuo-bronze">Tab Room</a>
+                <span>/</span>
+                <span>Organization</span>
+                <span>/</span>
+                <span class="text-kwuo-bronze">Tournament Settings</span>
+            </div>
+            <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
+                Tournament Settings &amp; Configuration
+            </h1>
+            <p class="text-xs text-theme-body/70 mt-0.5">
+                Consolidated event parameters, draw rules, ghost participant policies, and master timetable.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="/schedule" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
+                <i class="ph-bold ph-calendar text-sm"></i>
+                <span>Public Schedule</span>
+            </a>
+            <a href="/schedule/download.ics"
+               download="{{ tournament.slug }}-schedule.ics"
+               hx-boost="false"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-kwuo-bronze hover:bg-kwuo-bronze/10 transition"
+               title="Export schedule as iCalendar file">
+                <i class="ph-bold ph-download-simple text-sm"></i>
+                <span>Download .ics</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Navigation Tabs for Settings: Setup, Config, Schedule -->
+    <div class="flex flex-flow justify-evenly items-stretch gap-2 border-b border-theme-border overflow-x-auto pb-1">
+        <button type="button" @click="currentTab = 'setup'"
+                class="px-4 py-2 rounded-xl text-xs flex-row font-bold transition flex items-center gap-2 whitespace-nowrap w-full justify-center"
+                :class="currentTab === 'setup' ? 'bg-kwuo-bronze text-white shadow-sm' : 'text-theme-heading/70 hover:bg-theme-surface hover:text-theme-heading'">
+            <i class="ph-bold ph-gear text-sm"></i>
+            <span>Setup</span>
+        </button>
+
+        <button type="button" @click="currentTab = 'config'"
+                class="px-4 py-2 rounded-xl text-xs flex-row font-bold transition flex items-center gap-2 whitespace-nowrap w-full justify-center"
+                :class="currentTab === 'config' ? 'bg-kwuo-bronze text-white shadow-sm' : 'text-theme-heading/70 hover:bg-theme-surface hover:text-theme-heading'">
+            <i class="ph-bold ph-sliders text-sm"></i>
+            <span>Config</span>
+        </button>
+
+        <button type="button" @click="currentTab = 'schedule'"
+                class="px-4 py-2 rounded-xl text-xs flex-row font-bold transition flex items-center gap-2 whitespace-nowrap w-full justify-center"
+                :class="currentTab === 'schedule' ? 'bg-kwuo-bronze text-white shadow-sm' : 'text-theme-heading/70 hover:bg-theme-surface hover:text-theme-heading'">
+            <i class="ph-bold ph-calendar text-sm"></i>
+            <span>Schedule</span>
+        </button>
+    </div>
+
+    <!-- TAB 1 & 2: Combined Base Settings and Rules Form -->
+    <form method="POST" action="/admin/settings" class="space-y-6">
+        <!-- Input field to retain active tab upon submit -->
+        <input type="hidden" name="active_tab" :value="currentTab">
+
+        <!-- ============================================================= -->
+        <!-- TAB 1: Setup                                                  -->
+        <!-- ============================================================= -->
+        <div x-show="currentTab === 'setup'" class="space-y-6">
+            <div class="kwuo-torn-docket-wrapper">
+                <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-6">
+                    <div class="pb-3 border-b border-theme-border">
+                        <h2 class="text-base font-heading font-bold text-theme-heading">Event Details</h2>
+                        <p class="text-xs text-theme-body/60">Core identity and venue parameters</p>
+                    </div>
+
+                    <!-- Tournament Name & Slug -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Tournament Name *
+                            </label>
+                            <input type="text" name="name" required value="{{ tournament.name }}"
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Tenant Subdomain
+                            </label>
+                            <div class="px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base/60 text-theme-body/70 text-sm font-body flex items-center justify-between">
+                                <span>{{ tournament.slug }}.kwuo.com</span>
+                                <span class="text-[10px] uppercase font-bold text-theme-body/50">Tenant Key</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Event Modality & Location Venue in Semantically Paired Row -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Location Type *
+                            </label>
+                            {{ edit.custom_select(
+                                name="location_type",
+                                value=tournament.location_type.value,
+                                required=true,
+                                options=[
+                                    {"value": "physical", "label": "Physical / In-Person", "icon": "ph-map-pin"},
+                                    {"value": "virtual", "label": "Virtual / Online", "icon": "ph-video-camera"},
+                                    {"value": "hybrid", "label": "Hybrid (Campus & Remote)", "icon": "ph-globe"}
+                                ]
+                            ) }}
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Location / Venue / Virtual Access Details
+                            </label>
+                            <input type="text" name="location" value="{{ tournament.location or '' }}"
+                                   placeholder="e.g. Accra International Conference Centre or Zoom / Discord Main Server"
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
+                        </div>
+                    </div>
+
+                    <!-- Tournament Dates (Start & End Date Paired) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Start Date
+                            </label>
+                            <input type="date" name="start_date" value="{{ tournament.start_date.strftime('%Y-%m-%d') if tournament.start_date else '' }}"
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                End Date
+                            </label>
+                            <input type="date" name="end_date" value="{{ tournament.end_date.strftime('%Y-%m-%d') if tournament.end_date else '' }}"
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
+                        </div>
+                    </div>
+
+                    <!-- Status & Overview Description Paired -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Status *
+                            </label>
+                            {{ edit.custom_select(
+                                name="status",
+                                value=tournament.status.value,
+                                required=true,
+                                options=[
+                                    {"value": "draft", "label": "Draft", "icon": "ph-pencil-line"},
+                                    {"value": "active", "label": "Active", "icon": "ph-broadcast"},
+                                    {"value": "concluded", "label": "Concluded", "icon": "ph-check-circle"}
+                                ]
+                            ) }}
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Description &amp; Event Overview
+                            </label>
+                            <textarea name="description" rows="2"
+                                      placeholder="Public overview and welcome guidance for attendees..."
+                                      class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">{{ tournament.description or '' }}</textarea>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 2: Config                                                 -->
+        <!-- ============================================================= -->
+        <div x-show="currentTab === 'config'" class="space-y-6">
+            <div class="kwuo-torn-docket-wrapper">
+                <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-6">
+                    <div class="pb-3 border-b border-theme-border">
+                        <h2 class="text-base font-heading font-bold text-theme-heading">Rules &amp; Draw Configuration</h2>
+                        <p class="text-xs text-theme-body/60">Balloting mechanics, room sizing constraints, panel allocations, and ghost policies</p>
+                    </div>
+
+                    <!-- Ballot Scoring Mode & Draw Methodology (Semantically Paired) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Ballot Scoring Mode *
+                            </label>
+                            {{ edit.custom_select(
+                                name="ballot_mode",
+                                value=tournament.ballot_mode.value,
+                                required=true,
+                                options=[
+                                    {"value": "strict", "label": "Strict Mode (Chair Override Permitted)", "icon": "ph-shield-check"},
+                                    {"value": "democracy", "label": "Democracy Mode (Equal Weight Panel)", "icon": "ph-users-three"}
+                                ]
+                            ) }}
+                            <p class="text-[11px] text-theme-body/60 mt-1">Controls individual score card validation and chair override permissions.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Draw Seeding Methodology *
+                            </label>
+                            {{ edit.custom_select(
+                                name="draw_method",
+                                value=tournament.draw_method.value,
+                                required=true,
+                                options=[
+                                    {"value": "power_matched", "label": "Power-Matched", "icon": "ph-trend-up"},
+                                    {"value": "random", "label": "Random Matrix", "icon": "ph-shuffle"},
+                                    {"value": "equal", "label": "Equal Spread", "icon": "ph-equals"}
+                                ]
+                            ) }}
+                            <p class="text-[11px] text-theme-body/60 mt-1">Algorithm used when generating section matrix pairings.</p>
+                        </div>
+                    </div>
+
+                    <!-- Room Sizing Bounds & Preference -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Min Room Size *
+                            </label>
+                            <input type="number" min="2" max="12" name="min_room_size" required value="{{ tournament.min_room_size }}"
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <p class="text-[11px] text-theme-body/60 mt-1">Minimum speakers per room.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Max Room Size *
+                            </label>
+                            <input type="number" min="3" max="20" name="max_room_size" required value="{{ tournament.max_room_size }}"
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <p class="text-[11px] text-theme-body/60 mt-1">Maximum speakers per room.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Room Sizing Preference *
+                            </label>
+                            {{ edit.custom_select(
+                                name="room_size_preference",
+                                value=tournament.room_size_preference.value,
+                                required=true,
+                                options=[
+                                    {"value": "fewest_rooms", "label": "Fewest Rooms (Larger Rooms)", "icon": "ph-arrows-in"},
+                                    {"value": "smaller_rooms", "label": "Smaller Rooms (Disperse Evenly)", "icon": "ph-arrows-out"}
+                                ]
+                            ) }}
+                            <p class="text-[11px] text-theme-body/60 mt-1">Headcount distribution strategy.</p>
+                        </div>
+                    </div>
+
+                    <!-- Panel Sizing & Ghost Action -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Standard Panel Size *
+                            </label>
+                            <input type="number" min="1" max="9" name="panel_size" required value="{{ tournament.panel_size }}"
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <p class="text-[11px] text-theme-body/60 mt-1">Target judge panel count.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Minimum Panel Size *
+                            </label>
+                            <input type="number" min="1" max="5" name="minimum_panel_size" required value="{{ tournament.minimum_panel_size }}"
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <p class="text-[11px] text-theme-body/60 mt-1">Emergency solo-judge floor.</p>
+                        </div>
+
+                        <!-- GHOST ACTION (GHOST POLICY) -->
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 flex items-center justify-between">
+                                <span>Ghost Action (Rounds) *</span>
+                                <span class="text-[10px] text-kwuo-bronze font-bold uppercase tracking-wider">Auto-Cut</span>
+                            </label>
+                            <input type="number" name="ghost_round_limit" min="1" max="10" required value="{{ tournament.ghost_round_limit }}"
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40 font-bold">
+                            <p class="text-[11px] text-theme-body/60 mt-1">
+                                Consecutive missed rounds before a speaker/judge is deemed a "ghost", removed from draws, and records expunged.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Preliminary Ties -->
+                    <div class="pt-1">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" name="allow_prelim_ties" id="allow_prelim_ties" value="true"
+                                   {% if tournament.allow_prelim_ties %}checked{% endif %}
+                                   class="rounded text-kwuo-bronze focus:ring-kwuo-bronze">
+                            <label for="allow_prelim_ties" class="text-xs font-semibold text-theme-heading">
+                                Allow Preliminary Ties
+                            </label>
+                        </div>
+                        <p class="text-[11px] text-theme-body/60 mt-1">If unchecked, requires ballot tie-breaks before tab release.</p>
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <!-- Pinned Save Bar for Setup & Config -->
+        <div x-show="currentTab === 'setup' || currentTab === 'config'" class="pt-4 flex items-center justify-end">
+            <button type="submit" class="px-6 py-2.5 rounded-xl bg-kwuo-bronze text-white font-semibold text-xs shadow-md hover:bg-kwuo-mahogany transition flex items-center gap-2">
+                <i class="ph-bold ph-floppy-disk text-base"></i>
+                <span>Save Tournament Settings</span>
+            </button>
+        </div>
+    </form>
+
+    <!-- ============================================================= -->
+    <!-- TAB 3: Schedule & Timetable                                   -->
+    <!-- ============================================================= -->
+    <div x-show="currentTab === 'schedule'" class="space-y-6">
+        <div class="kwuo-torn-docket-wrapper">
+            <article class="kwuo-torn-docket !p-6 sm:!p-8">
+                <div class="flex items-center justify-between pb-4 border-b border-theme-border mb-6 flex-wrap gap-4">
+                    <div>
+                        <h2 class="text-base font-heading font-bold text-theme-heading">Tournament Schedule &amp; Timetable</h2>
+                        <p class="text-xs text-theme-body/60">Manage master timeline, flight milestones, and roll call checkpoints</p>
+                    </div>
+
+                    <!-- Trigger Button for Add Schedule Modal -->
+                    <button type="button" @click="addScheduleModal = true"
+                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center gap-2 shadow-sm">
+                        <i class="ph-bold ph-plus-circle text-base"></i>
+                        <span>Add Schedule</span>
+                    </button>
+                </div>
+
+                {% if tournament.schedule_items %}
+                <div class="divide-y divide-theme-border">
+                    {% for item in tournament.schedule_items %}
+                    <div class="py-4 flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xs font-heading font-extrabold text-kwuo-bronze">
+                                    {{ item.start_time.strftime('%b %d, %H:%M') }}
+                                    {% if item.end_time %}– {{ item.end_time.strftime('%H:%M') }}{% endif %}
+                                </span>
+                                {% if item.location %}
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-theme-base border border-theme-border text-theme-body/75">
+                                    <i class="ph-bold ph-map-pin text-[9px]"></i> {{ item.location }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <h3 class="font-heading font-bold text-base text-theme-heading">{{ item.title }}</h3>
+                            {% if item.description %}
+                            <p class="text-xs text-theme-body/75 leading-relaxed">{{ item.description }}</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="shrink-0 flex items-center gap-2">
+                            <form method="POST" action="/admin/settings/schedule/{{ item.id }}/delete" onsubmit="return confirm('Delete this schedule milestone?');">
+                                <button type="submit" class="p-2 rounded-lg border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 text-rose-600 hover:bg-rose-100 transition text-xs" title="Delete Milestone">
+                                    <i class="ph-bold ph-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="py-12 text-center space-y-3">
+                    <div class="w-12 h-12 rounded-2xl bg-kwuo-bronze/10 text-kwuo-bronze text-2xl flex items-center justify-center mx-auto">
+                        <i class="ph-bold ph-calendar-blank"></i>
+                    </div>
+                    <p class="text-xs text-theme-body/60 max-w-sm mx-auto">
+                        No schedules have been added yet. Click the button below to add roll calls, briefings, and round start times.
+                    </p>
+                    <button type="button" @click="addScheduleModal = true"
+                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition inline-flex items-center gap-2">
+                        <i class="ph-bold ph-plus"></i>
+                        <span>add schedule</span>
+                    </button>
+                </div>
+                {% endif %}
+            </article>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL: Add Schedule Milestone                                -->
+    <!-- ============================================================= -->
+    <div x-show="addScheduleModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div @click="addScheduleModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Modal Dialog Box (Torn-Docket aesthetic) -->
+        <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10" @keydown.escape.window="addScheduleModal = false">
+            <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
+                            <i class="ph-bold ph-calendar-plus"></i>
+                        </div>
+                        <h3 class="font-heading font-bold text-lg text-theme-heading">Add Schedule</h3>
+                    </div>
+                    <button type="button" @click="addScheduleModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                        <i class="ph-bold ph-x text-lg"></i>
+                    </button>
+                </div>
+
+                <form method="POST" action="/admin/settings/schedule" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
+                            Title *
+                        </label>
+                        <input type="text" name="title" required placeholder="e.g. Round 1 Briefing &amp; Motion Release"
+                               class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs focus:ring-1 focus:ring-kwuo-bronze">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Start Date &amp; Time *
+                            </label>
+                            <input type="datetime-local" name="start_time" required
+                                   class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                End Time (Optional)
+                            </label>
+                            <input type="datetime-local" name="end_time"
+                                   class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
+                            Room / Venue / Online Link
+                        </label>
+                        <input type="text" name="location" placeholder="e.g. Main Auditorium or Zoom Room 1"
+                               class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
+                            Description &amp; Attendee Instructions
+                        </label>
+                        <textarea name="description" rows="2" placeholder="e.g. Mandatory roll call for all accredited judges and speakers."
+                                  class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs"></textarea>
+                    </div>
+
+                    <div class="pt-2 flex items-center justify-end gap-3 border-t border-theme-border">
+                        <button type="button" @click="addScheduleModal = false"
+                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm flex items-center gap-2">
+                            <i class="ph-bold ph-plus"></i>
+                            <span>Update Schedule</span>
+                        </button>
+                    </div>
+                </form>
+            </article>
+        </div>
+    </div>
+</div>
+{% endblock %}

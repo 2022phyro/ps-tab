@@ -1,12 +1,12 @@
 {# =========================================================================
-   Kwuo Editorial Components Macro
-   - Torn-Docket Card (Primary Content Container)
-   - Wind-Curled Post-It Note (Alert & Briefing Container)
-   Usage:
-     {% import "macros/editorial.html" as edit %}
-     {% call edit.torn_docket() %} ... {% endcall %}
-     {% call edit.post_it(title="Motion Release") %} ... {% endcall %}
-   ========================================================================= #}
+Kwuo Editorial Components Macro
+- Torn-Docket Card (Primary Content Container)
+- Wind-Curled Post-It Note (Alert & Briefing Container)
+Usage:
+{% import "macros/editorial.html" as edit %}
+{% call edit.torn_docket() %} ... {% endcall %}
+{% call edit.post_it(title="Motion Release") %} ... {% endcall %}
+========================================================================= #}
 
 {% macro torn_docket(class="", wrapper_class="", attrs="") %}
 <div class="kwuo-torn-docket-wrapper {{ wrapper_class }}">
@@ -16,13 +16,16 @@
 </div>
 {% endmacro %}
 
-{% macro post_it(title=None, tag="", curl="right", curl_md=None, size="md", tone=None, color=None, tape=true, class="", style="", attrs="") %}
+{% macro post_it(title=None, tag="", curl="right", curl_md=None, size="md", tone=None, color=None, tape=true, class="",
+style="", attrs="") %}
 {% set presets = ["xs", "sm", "md", "lg"] %}
 {% set size_class = ("kwuo-post-it-" ~ size) if size in presets else "" %}
-{% set inline_vars = ("" if size in presets else ("--curl-size:" ~ size ~ ";")) ~ (("--note:" ~ color ~ ";") if color else "") %}
-<aside class="kwuo-post-it kwuo-post-it-{{ curl }}{% if curl_md %} kwuo-post-it-from-md-{{ curl_md }}{% endif %} {{ size_class }}{% if tone %} kwuo-post-it-tone-{{ tone }}{% endif %} {{ class }}"
-       {% if inline_vars or style %}style="{{ inline_vars }}{{ style }}"{% endif %}
-       {% if attrs %}{{ attrs|safe }}{% endif %}>
+{% set inline_vars = ("" if size in presets else ("--curl-size:" ~ size ~ ";")) ~ (("--note:" ~ color ~ ";") if color
+else "") %}
+<aside
+    class="kwuo-post-it kwuo-post-it-{{ curl }}{% if curl_md %} kwuo-post-it-from-md-{{ curl_md }}{% endif %} {{ size_class }}{% if tone %} kwuo-post-it-tone-{{ tone }}{% endif %} {{ class }}"
+    {% if inline_vars or style %}style="{{ inline_vars }}{{ style }}" {% endif %} {% if attrs %}{{ attrs|safe }}{% endif
+    %}>
     {% if tape %}
     <div class="kwuo-tape-strip" aria-hidden="true"></div>
     {% endif %}
@@ -30,7 +33,8 @@
     {% if tag or title %}
     <div class="flex items-center justify-between gap-3 mb-2.5">
         {% if tag %}
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-kwuo-mahogany/10 dark:bg-kwuo-dark-border text-kwuo-mahogany dark:text-kwuo-gold border border-kwuo-mahogany/20 dark:border-kwuo-gold/20">
+        <span
+            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-body font-bold tracking-wider uppercase bg-kwuo-mahogany/10 dark:bg-kwuo-dark-border text-kwuo-mahogany dark:text-kwuo-gold border border-kwuo-mahogany/20 dark:border-kwuo-gold/20">
             <span class="h-1.5 w-1.5 rounded-full bg-kwuo-bronze dark:bg-kwuo-gold animate-pulse"></span>
             {{ tag }}
         </span>
@@ -45,4 +49,151 @@
 
     {{ caller() if caller else '' }}
 </aside>
+{% endmacro %}
+
+{% macro custom_select(name, value="", options=[], placeholder="Select an option...", class="", id=None, required=false, button_class="", onchange="") %}
+<script>
+    if (typeof window.kwuoCustomSelect === 'undefined') {
+        window.kwuoCustomSelect = function(config) {
+            const rawOpts = config.options || [];
+            const normalizedOpts = rawOpts.map(function(opt) {
+                if (typeof opt === 'string') {
+                    return { value: opt, label: opt, icon: '' };
+                }
+                if (Array.isArray(opt)) {
+                    return { value: opt[0], label: opt[1] !== undefined ? opt[1] : opt[0], icon: opt[2] || '' };
+                }
+                return {
+                    value: opt.value !== undefined ? opt.value : '',
+                    label: opt.label !== undefined ? opt.label : (opt.value || ''),
+                    icon: opt.icon || ''
+                };
+            });
+            return {
+                open: false,
+                selectedValue: config.value !== undefined ? String(config.value) : '',
+                options: normalizedOpts,
+                placeholder: config.placeholder || 'Select an option...',
+                menuStyle: '',
+                get currentOption() {
+                    for (let i = 0; i < this.options.length; i++) {
+                        if (String(this.options[i].value) === String(this.selectedValue)) {
+                            return this.options[i];
+                        }
+                    }
+                    return { value: '', label: this.placeholder, icon: '' };
+                },
+                toggle() {
+                    if (this.open) {
+                        this.close();
+                    } else {
+                        this.show();
+                    }
+                },
+                show() {
+                    this.open = true;
+                    this.$nextTick(() => {
+                        this.updatePosition();
+                    });
+                    this._reposition = () => {
+                        if (this.open) this.updatePosition();
+                    };
+                    window.addEventListener('scroll', this._reposition, true);
+                    window.addEventListener('resize', this._reposition);
+                },
+                close() {
+                    this.open = false;
+                    if (this._reposition) {
+                        window.removeEventListener('scroll', this._reposition, true);
+                        window.removeEventListener('resize', this._reposition);
+                        this._reposition = null;
+                    }
+                },
+                updatePosition() {
+                    const btn = this.$refs.trigger;
+                    if (!btn) return;
+                    const rect = btn.getBoundingClientRect();
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const minW = Math.max(rect.width, 180);
+                    const maxH = 240;
+
+                    let topCss = '';
+                    if (spaceBelow < 220 && rect.top > spaceBelow) {
+                        topCss = 'bottom: ' + Math.round(window.innerHeight - rect.top + 4) + 'px; max-height: ' + Math.min(maxH, rect.top - 12) + 'px;';
+                    } else {
+                        topCss = 'top: ' + Math.round(rect.bottom + 4) + 'px; max-height: ' + Math.min(maxH, spaceBelow - 12) + 'px;';
+                    }
+
+                    let leftPos = rect.left;
+                    if (leftPos + minW > window.innerWidth - 12) {
+                        leftPos = Math.max(12, window.innerWidth - minW - 12);
+                    }
+
+                    this.menuStyle = 'position: fixed; left: ' + Math.round(leftPos) + 'px; width: ' + Math.round(minW) + 'px; z-index: 999999; ' + topCss;
+                },
+                select(val) {
+                    this.selectedValue = String(val);
+                    this.close();
+                    const input = this.$el.querySelector('input[type="hidden"]');
+                    if (input) {
+                        input.value = String(val);
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    this.$dispatch('change', val);
+                    this.$dispatch('input', val);
+                }
+            };
+        };
+    }
+</script>
+<div x-data="kwuoCustomSelect({
+    value: {{ value|tojson|forceescape }},
+    options: {{ options|tojson|forceescape }},
+    placeholder: {{ placeholder|tojson|forceescape }}
+})" class="relative w-full {{ class }}">
+    <!-- Hidden native input to seamlessly submit in standard and HTMX forms -->
+    <input type="hidden" name="{{ name }}" {% if id %}id="{{ id }}"{% endif %} :value="selectedValue" {% if required %}required{% endif %}>
+
+    <!-- Trigger Button -->
+    <button type="button" x-ref="trigger" @click="toggle()" @keydown.escape="close()"
+            class="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-surface text-theme-heading text-xs font-semibold shadow-sm hover:border-kwuo-bronze/40 focus:outline-none focus:ring-2 focus:ring-kwuo-bronze/30 transition text-left {{ button_class }}">
+        <span class="flex items-center gap-2 truncate">
+            <template x-if="currentOption.icon">
+                <i :class="currentOption.icon" class="text-kwuo-bronze text-sm shrink-0"></i>
+            </template>
+            <span x-text="currentOption.label" class="truncate font-body"></span>
+        </span>
+        <i class="ph-bold ph-caret-down text-theme-body/60 transition-transform duration-200 shrink-0" :class="{ 'rotate-180': open }"></i>
+    </button>
+
+    <!-- Teleported Floating Dropdown Menu (Escapes All Parent Clipping & Torn-Dockets) -->
+    <template x-teleport="body">
+        <div x-show="open" x-cloak
+             @click.outside="if (!$refs.trigger || !$refs.trigger.contains($event.target)) close()"
+             @keydown.escape.window="close()"
+             :style="menuStyle"
+             x-transition:enter="transition ease-out duration-120"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="overflow-y-auto rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md">
+            <template x-for="opt in options" :key="opt.value">
+                <button type="button" @click="select(opt.value)"
+                        class="w-full px-3.5 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze"
+                        :class="selectedValue === String(opt.value) ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                    <span class="flex items-center gap-2 truncate">
+                        <template x-if="opt.icon">
+                            <i :class="opt.icon" class="text-sm shrink-0" :class="selectedValue === String(opt.value) ? 'text-kwuo-bronze' : 'text-theme-body/60'"></i>
+                        </template>
+                        <span x-text="opt.label" class="truncate"></span>
+                    </span>
+                    <i x-show="selectedValue === String(opt.value)" class="ph-bold ph-check text-kwuo-bronze text-sm shrink-0"></i>
+                </button>
+            </template>
+        </div>
+    </template>
+</div>
 {% endmacro %}
