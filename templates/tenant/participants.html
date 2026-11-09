@@ -51,61 +51,9 @@
     }
 </script>
 
-<script id="participants-directory-data" type="application/json">
-{{ participants_data | tojson | safe }}
-</script>
-
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
      x-data="{
-         viewMode: window.innerWidth < 768 ? 'cards' : 'table',
-         searchQuery: '{{ search_query }}',
-         roleFilter: '{{ active_role }}',
-         divisionFilter: '{{ active_division or '' }}',
-         sortCol: 'name',
-         sortAsc: true,
-         sortBy(col) {
-             if (this.sortCol === col) {
-                 this.sortAsc = !this.sortAsc;
-             } else {
-                 this.sortCol = col;
-                 this.sortAsc = true;
-             }
-         },
-         participants: JSON.parse(document.getElementById('participants-directory-data')?.textContent || '[]'),
-         get filteredParticipants() {
-             const q = this.searchQuery.trim().toLowerCase();
-             const list = this.participants.filter(p => {
-                 // Role filter
-                 if (this.roleFilter === 'speakers' && !p.is_speaker) return false;
-                 if (this.roleFilter === 'judges' && !p.is_judge) return false;
-
-                 // Division filter
-                 if (this.divisionFilter && !p.divisions.some(d => d.toLowerCase() === this.divisionFilter.toLowerCase())) {
-                     return false;
-                 }
-
-                 // Search query
-                 if (q) {
-                     const matchName = p.name.toLowerCase().includes(q);
-                     const matchInst = p.institution.toLowerCase().includes(q);
-                     const matchDiv = p.divisions.some(d => d.toLowerCase().includes(q));
-                     if (!matchName && !matchInst && !matchDiv) return false;
-                 }
-                 return true;
-             });
-
-             return list.sort((a, b) => {
-                 let vA = a[this.sortCol];
-                 let vB = b[this.sortCol];
-                 if (Array.isArray(vA)) vA = vA.join(', ');
-                 if (Array.isArray(vB)) vB = vB.join(', ');
-                 if (typeof vA === 'string') vA = vA.toLowerCase();
-                 if (typeof vB === 'string') vB = vB.toLowerCase();
-                 if (vA < vB) return this.sortAsc ? -1 : 1;
-                 if (vA > vB) return this.sortAsc ? 1 : -1;
-                 return 0;
-             });
-         }
+         viewMode: window.innerWidth < 768 ? 'cards' : 'table'
      }"
      @resize.window="if (window.innerWidth < 768 && viewMode === 'table') viewMode = 'cards'">
 
@@ -136,7 +84,7 @@
                 <div class="flex items-center gap-2 font-body">
                     <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-theme-base border border-theme-border text-theme-heading shadow-2xs">
                         <i class="ph-bold ph-users text-kwuo-bronze"></i>
-                        <span><strong x-text="participants.length"></strong> Participants</span>
+                        <span><strong>{{ page_result.total_items }}</strong> Total</span>
                     </span>
                     <span class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-theme-body/70 border border-theme-border/60">
                         <span class="font-bold text-theme-heading">{{ total_speakers_count }}</span> Speakers &bull;
@@ -147,225 +95,269 @@
         </article>
     </div>
 
-    <!-- Sticky Filter & Search Toolbar (Positioned outside torn-docket so CSS sticky works against page scroll) -->
-    <div class="sticky top-[70px] z-30 bg-theme-base/95 backdrop-blur-md pt-3 pb-3 border-b border-theme-border/60 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3.5" style="top: 70px; margin-top: 0; background-color: var(--color-bg-base);">
-        <!-- Left: Title & Count -->
-        <div class="flex items-center gap-2.5 shrink-0">
-            <h2 class="text-base sm:text-lg font-heading font-extrabold text-theme-heading">
-                All Participants
-            </h2>
-            <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20"
-                  x-text="filteredParticipants.length">
-            </span>
-        </div>
-
-        <!-- Right: Controls & Filters -->
-        <div class="flex flex-wrap items-center gap-2.5 flex-1 lg:justify-end">
-            <!-- Role Filter Segmented Control -->
-            <div class="inline-flex p-0.5 rounded-xl border border-theme-border bg-theme-base text-xs font-medium shrink-0">
-                <button type="button" @click="roleFilter = 'all'"
-                        class="px-3 py-1.5 rounded-lg transition"
-                        :class="roleFilter === 'all' ? 'bg-kwuo-bronze text-white font-bold shadow-2xs' : 'text-theme-body/70 hover:text-theme-heading'">
-                    All
-                </button>
-                <button type="button" @click="roleFilter = 'speakers'"
-                        class="px-3 py-1.5 rounded-lg transition"
-                        :class="roleFilter === 'speakers' ? 'bg-kwuo-bronze text-white font-bold shadow-2xs' : 'text-theme-body/70 hover:text-theme-heading'">
-                    Speakers
-                </button>
-                <button type="button" @click="roleFilter = 'judges'"
-                        class="px-3 py-1.5 rounded-lg transition"
-                        :class="roleFilter === 'judges' ? 'bg-kwuo-bronze text-white font-bold shadow-2xs' : 'text-theme-body/70 hover:text-theme-heading'">
-                    Adjudicators
-                </button>
+    <div id="participants-content">
+        <!-- Sticky Filter & Search Toolbar (Laps directly underneath 70px header with zero gap) -->
+        <div class="sticky z-30 bg-theme-base/95 backdrop-blur-md pt-3 pb-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="top: 55px; margin-top: 0; background-color: var(--color-bg-base);">
+            <!-- Left: Title & Count -->
+            <div class="flex items-center gap-2.5 shrink-0">
+                <h2 class="text-base sm:text-lg font-heading font-extrabold text-theme-heading">
+                    {% if active_role == 'speakers' %}Speakers{% elif active_role == 'judges' %}Adjudicators{% else %}All Participants{% endif %}
+                </h2>
+                <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                    {{ page_result.total_items }}
+                </span>
             </div>
 
-            <!-- Division Dropdown (Combobox using high z-index and fixed teleported position) -->
-            {% if divisions %}
-            <div x-data="kwuoDropdown()" class="relative shrink-0">
-                <button type="button" x-ref="trigger" @click="toggle()" @keydown.escape="close()"
-                        class="inline-flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border border-theme-border bg-theme-base text-xs font-semibold text-theme-heading hover:border-kwuo-bronze/50 transition">
-                    <span x-text="divisionFilter ? divisionFilter : 'All Divisions'"></span>
-                    <i class="ph-bold ph-caret-down text-xs text-theme-body/50 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
-                </button>
+            <!-- Right: Controls & Filters -->
+            <div class="flex flex-wrap items-center gap-2.5 flex-1 lg:justify-end">
+                <!-- Role Filter Segmented Control -->
+                <div class="inline-flex p-0.5 rounded-xl border border-theme-border bg-theme-base text-xs font-medium shrink-0">
+                    <a href="?role=all{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       class="px-3 py-1.5 rounded-lg transition {% if active_role == 'all' %}bg-kwuo-bronze text-white font-bold shadow-2xs{% else %}text-theme-body/70 hover:text-theme-heading{% endif %}">
+                        All
+                    </a>
+                    <a href="?role=speakers{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       class="px-3 py-1.5 rounded-lg transition {% if active_role == 'speakers' %}bg-kwuo-bronze text-white font-bold shadow-2xs{% else %}text-theme-body/70 hover:text-theme-heading{% endif %}">
+                        Speakers
+                    </a>
+                    <a href="?role=judges{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       class="px-3 py-1.5 rounded-lg transition {% if active_role == 'judges' %}bg-kwuo-bronze text-white font-bold shadow-2xs{% else %}text-theme-body/70 hover:text-theme-heading{% endif %}">
+                        Adjudicators
+                    </a>
+                </div>
 
-                <template x-teleport="body">
-                    <div x-show="open" x-cloak @click.away="close()" :style="menuStyle"
-                         x-transition:enter="transition ease-out duration-150"
-                         x-transition:enter-start="opacity-0 scale-95"
-                         x-transition:enter-end="opacity-100 scale-100"
-                         x-transition:leave="transition ease-in duration-100"
-                         x-transition:leave-start="opacity-100 scale-100"
-                         x-transition:leave-end="opacity-0 scale-95"
-                         class="overflow-y-auto rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md">
-                        <button type="button" @click="divisionFilter = ''; close()"
-                                class="w-full px-3.5 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
-                                :class="!divisionFilter ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
-                            <span>All Divisions</span>
-                            <i x-show="!divisionFilter" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
-                        </button>
-                        <div class="my-1 border-t border-theme-border/60"></div>
-                        {% for d in divisions %}
-                        <button type="button" @click="divisionFilter = '{{ d.name }}'; close()"
-                                class="w-full px-3.5 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
-                                :class="divisionFilter === '{{ d.name }}' ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
-                            <span>{{ d.name }}</span>
-                            <i x-show="divisionFilter === '{{ d.name }}'" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
-                        </button>
-                        {% endfor %}
+                <!-- Division Filter -->
+                {% if divisions %}
+                <div class="relative shrink-0" x-data="kwuoDropdown()" @click.away="close()">
+                    <button type="button" x-ref="trigger" @click="toggle()"
+                            class="px-3 py-1.5 rounded-xl border border-theme-border bg-theme-surface text-xs font-medium text-theme-heading hover:border-kwuo-bronze/40 transition flex items-center gap-1.5 shadow-2xs">
+                        <i class="ph-bold ph-tag text-kwuo-bronze text-xs"></i>
+                        <span>{{ active_division or 'All Divisions' }}</span>
+                        <i class="ph-bold ph-caret-down text-[10px] text-theme-body/60"></i>
+                    </button>
+                    <template x-teleport="body">
+                        <div x-show="open" x-cloak :style="menuStyle"
+                             class="rounded-xl border border-theme-border bg-theme-surface shadow-2xl p-1.5 text-xs font-body space-y-0.5 overflow-y-auto z-[999999]">
+                            <a href="?role={{ active_role }}{% if search_query %}&q={{ search_query }}{% endif %}"
+                               class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if not active_division %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
+                                <span>All Divisions</span>
+                                {% if not active_division %}<i class="ph-bold ph-check text-xs"></i>{% endif %}
+                            </a>
+                            {% for d in divisions %}
+                            <a href="?role={{ active_role }}&div={{ d.name }}{% if search_query %}&q={{ search_query }}{% endif %}"
+                               class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if active_division == d.name %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
+                                <span>{{ d.name }}</span>
+                                {% if active_division == d.name %}<i class="ph-bold ph-check text-xs"></i>{% endif %}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </template>
+                </div>
+                {% endif %}
+
+                <!-- Search Input with Debounced HTMX -->
+                <form method="GET" action="/participants" class="relative flex-1 min-w-[200px] max-w-sm"
+                      hx-boost="true" hx-target="#participants-content" hx-select="#participants-content" hx-indicator="#search-spinner">
+                    <input type="hidden" name="role" value="{{ active_role }}">
+                    {% if active_division %}
+                    <input type="hidden" name="div" value="{{ active_division }}">
+                    {% endif %}
+                    <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-theme-body/40 text-xs"></i>
+                    <input type="search" name="q" value="{{ search_query }}"
+                           placeholder="Search participants or institutions..."
+                           hx-get="/participants"
+                           hx-trigger="input changed delay:250ms, search"
+                           hx-target="#participants-content"
+                           hx-select="#participants-content"
+                           hx-indicator="#search-spinner"
+                           hx-push-url="true"
+                           class="w-full pl-9 pr-8 py-1.5 text-xs rounded-xl border border-theme-border bg-theme-surface text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze transition font-body">
+                    <div id="search-spinner" class="htmx-indicator absolute right-3 top-2.5 text-kwuo-bronze text-xs">
+                        <i class="ph-bold ph-spinner animate-spin"></i>
                     </div>
-                </template>
-            </div>
-            {% endif %}
+                </form>
 
-            <!-- Search Input -->
-            <div class="relative min-w-[180px] sm:min-w-[220px] flex-1 sm:flex-initial">
-                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-theme-body/40 text-xs"></i>
-                <input type="text" x-model="searchQuery" placeholder="Find in Directory..."
-                       class="w-full pl-8 pr-7 py-1.5 rounded-xl border border-theme-border bg-theme-base text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
-                <button type="button" x-show="searchQuery" @click="searchQuery = ''"
-                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-theme-body/40 hover:text-theme-heading">
-                    <i class="ph-bold ph-x text-xs"></i>
-                </button>
-            </div>
-
-            <!-- View Switcher -->
-            <div class="inline-flex p-0.5 rounded-xl border border-theme-border bg-theme-base text-xs font-medium shrink-0">
-                <button type="button" @click="viewMode = 'table'"
-                        class="px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition"
-                        :class="viewMode === 'table' ? 'bg-theme-surface text-theme-heading font-bold shadow-2xs' : 'text-theme-body/60 hover:text-theme-heading'">
-                    <i class="ph-bold ph-table text-xs"></i>
-                    <span class="hidden sm:inline">Table</span>
-                </button>
-                <button type="button" @click="viewMode = 'cards'"
-                        class="px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition"
-                        :class="viewMode === 'cards' ? 'bg-theme-surface text-theme-heading font-bold shadow-2xs' : 'text-theme-body/60 hover:text-theme-heading'">
-                    <i class="ph-bold ph-cards text-xs"></i>
-                    <span class="hidden sm:inline">Cards</span>
-                </button>
+                <!-- View Switcher -->
+                <div class="inline-flex p-0.5 rounded-xl border border-theme-border bg-theme-base text-xs font-medium shrink-0">
+                    <button type="button" @click="viewMode = 'table'"
+                            class="px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition"
+                            :class="viewMode === 'table' ? 'bg-theme-surface text-theme-heading font-bold shadow-2xs' : 'text-theme-body/60 hover:text-theme-heading'">
+                        <i class="ph-bold ph-table text-xs"></i>
+                        <span class="hidden sm:inline">Table</span>
+                    </button>
+                    <button type="button" @click="viewMode = 'cards'"
+                            class="px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition"
+                            :class="viewMode === 'cards' ? 'bg-theme-surface text-theme-heading font-bold shadow-2xs' : 'text-theme-body/60 hover:text-theme-heading'">
+                        <i class="ph-bold ph-cards text-xs"></i>
+                        <span class="hidden sm:inline">Cards</span>
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Main Content Container with Torn Docket Aesthetic -->
-    <div class="kwuo-torn-docket-wrapper mt-6">
-        <article class="kwuo-torn-docket !p-5 sm:!p-7 space-y-5 font-body">
+        <!-- Main Content Container with Torn Docket Aesthetic -->
+        <div class="kwuo-torn-docket-wrapper mt-6">
+            <article class="kwuo-torn-docket !p-5 sm:!p-7 space-y-5 font-body">
 
-            <!-- TABLE VIEW -->
-            <div x-show="viewMode === 'table'" x-cloak class="overflow-x-auto rounded-xl border border-theme-border">
-                <table class="w-full text-left text-xs divide-y divide-theme-border">
-                    <thead>
-                        <tr class="bg-theme-base/60 text-theme-body/70 text-[11px] font-bold uppercase tracking-wider font-body">
-                            <th scope="col" class="py-3 px-4 cursor-pointer select-none group" @click="sortBy('name')">
-                                <div class="flex items-center gap-1.5">
-                                    <span>Full Name</span>
-                                    <i class="ph-bold text-xs" :class="sortCol === 'name' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
-                                </div>
-                            </th>
-                            <th scope="col" class="py-3 px-4 cursor-pointer select-none group" @click="sortBy('role_label')">
-                                <div class="flex items-center gap-1.5">
-                                    <span>Role</span>
-                                    <i class="ph-bold text-xs" :class="sortCol === 'role_label' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
-                                </div>
-                            </th>
-                            <th scope="col" class="py-3 px-4 cursor-pointer select-none group" @click="sortBy('institution')">
-                                <div class="flex items-center gap-1.5">
-                                    <span>Institution</span>
-                                    <i class="ph-bold text-xs" :class="sortCol === 'institution' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
-                                </div>
-                            </th>
-                            <th scope="col" class="py-3 px-4 cursor-pointer select-none group" @click="sortBy('divisions')">
-                                <div class="flex items-center gap-1.5">
-                                    <span>Division(s)</span>
-                                    <i class="ph-bold text-xs" :class="sortCol === 'divisions' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
-                                </div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-theme-border bg-theme-surface">
-                        <template x-for="p in filteredParticipants" :key="p.id">
-                            <tr class="hover:bg-theme-base/40 transition">
+                <!-- TABLE VIEW -->
+                <div x-show="viewMode === 'table'" x-cloak class="overflow-x-auto rounded-xl border border-theme-border">
+                    <table class="w-full text-left text-xs divide-y divide-theme-border">
+                        <thead>
+                            <tr class="bg-theme-base/60 text-theme-body/70 text-[11px] font-bold uppercase tracking-wider font-body">
+                                <th scope="col" class="py-3 px-4">
+                                    <a href="?role={{ active_role }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}&sort=name&dir={% if sort_col == 'name' and sort_asc %}desc{% else %}asc{% endif %}"
+                                       class="flex items-center gap-1.5 hover:text-theme-heading transition">
+                                        <span>Full Name</span>
+                                        <i class="ph-bold text-xs {% if sort_col == 'name' %}{% if sort_asc %}ph-caret-up text-kwuo-bronze{% else %}ph-caret-down text-kwuo-bronze{% endif %}{% else %}ph-caret-up-down text-theme-body/30{% endif %}"></i>
+                                    </a>
+                                </th>
+                                <th scope="col" class="py-3 px-4">Role</th>
+                                <th scope="col" class="py-3 px-4">
+                                    <a href="?role={{ active_role }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}&sort=institution&dir={% if sort_col == 'institution' and sort_asc %}desc{% else %}asc{% endif %}"
+                                       class="flex items-center gap-1.5 hover:text-theme-heading transition">
+                                        <span>Institution</span>
+                                        <i class="ph-bold text-xs {% if sort_col == 'institution' %}{% if sort_asc %}ph-caret-up text-kwuo-bronze{% else %}ph-caret-down text-kwuo-bronze{% endif %}{% else %}ph-caret-up-down text-theme-body/30{% endif %}"></i>
+                                    </a>
+                                </th>
+                                <th scope="col" class="py-3 px-4">Division(s)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-theme-border bg-theme-surface">
+                            {% for p in participants %}
+                            <tr class="hover:bg-theme-base/40 transition" style="content-visibility: auto; contain-intrinsic-size: 0 44px;">
                                 <!-- Name -->
                                 <td class="py-3 px-4 font-body">
-                                    <a :href="'/participants/' + p.id" class="font-bold text-theme-heading hover:text-kwuo-bronze transition hover:underline" x-text="p.name"></a>
-                                    <div x-show="p.pronouns" class="text-[10px] text-theme-body/60 mt-0.5" x-text="'(' + p.pronouns + ')'"></div>
+                                    <a href="/participants/{{ p.id }}" class="font-bold text-theme-heading hover:text-kwuo-bronze transition hover:underline">
+                                        {{ p.name }}
+                                    </a>
+                                    {% if p.speaker_profile and p.speaker_profile.pronouns %}
+                                    <div class="text-[10px] text-theme-body/60 mt-0.5">({{ p.speaker_profile.pronouns }})</div>
+                                    {% endif %}
                                 </td>
 
-                                <!-- Role (strictly Speaker or Adj) -->
+                                <!-- Role -->
                                 <td class="py-3 px-4 font-body whitespace-nowrap">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                          :class="p.is_speaker ? 'bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20' : 'bg-theme-base text-theme-body/80 border border-theme-border'"
-                                          x-text="p.is_speaker ? 'Speaker' : 'Adj'">
+                                    {% if p.is_speaker %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                        Speaker
                                     </span>
+                                    {% else %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-base text-theme-body/80 border border-theme-border">
+                                        Adj
+                                    </span>
+                                    {% endif %}
                                 </td>
 
                                 <!-- Institution -->
-                                <td class="py-3 px-4 text-theme-heading font-medium font-body" x-text="p.institution"></td>
+                                <td class="py-3 px-4 text-theme-heading font-medium font-body">
+                                    {{ p.institution.name if p.institution else 'Independent' }}
+                                </td>
 
                                 <!-- Divisions -->
                                 <td class="py-3 px-4 font-body">
                                     <div class="flex flex-wrap gap-1">
-                                        <template x-for="d in p.divisions" :key="d">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 whitespace-nowrap"
-                                                  x-text="d">
-                                            </span>
-                                        </template>
-                                        <span x-show="p.divisions.length === 0" class="text-theme-body/50 text-[11px] italic">Open</span>
+                                        {% for d in p.divisions %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 whitespace-nowrap">
+                                            {{ d.name }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-theme-body/50 text-[11px] italic">Open</span>
+                                        {% endfor %}
                                     </div>
                                 </td>
                             </tr>
-                        </template>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="py-12 text-center text-xs text-theme-body/60 italic font-body">
+                                    No participants match the selected filters or search query.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
 
-                        <tr x-show="filteredParticipants.length === 0">
-                            <td colspan="4" class="py-12 text-center text-xs text-theme-body/60 italic font-body">
-                                No participants match the selected filters or search query.
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- CARDS VIEW (Mobile & Tablet Optimized) -->
-            <div x-show="viewMode === 'cards'" x-cloak class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <template x-for="p in filteredParticipants" :key="p.id">
-                    <div class="p-4 rounded-xl border border-theme-border bg-theme-surface hover:border-kwuo-bronze/40 transition space-y-2.5">
+                <!-- CARDS VIEW (Mobile & Tablet Optimized) -->
+                <div x-show="viewMode === 'cards'" x-cloak class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {% for p in participants %}
+                    <div class="p-4 rounded-xl border border-theme-border bg-theme-surface hover:border-kwuo-bronze/40 transition space-y-2.5" style="content-visibility: auto; contain-intrinsic-size: 0 120px;">
                         <div class="flex items-start justify-between gap-2">
                             <div>
-                                <a :href="'/participants/' + p.id" class="font-bold text-sm text-theme-heading hover:text-kwuo-bronze transition hover:underline block" x-text="p.name"></a>
-                                <span x-show="p.pronouns" class="text-[11px] text-theme-body/60" x-text="'(' + p.pronouns + ')'"></span>
+                                <a href="/participants/{{ p.id }}" class="font-bold text-sm text-theme-heading hover:text-kwuo-bronze transition hover:underline block">
+                                    {{ p.name }}
+                                </a>
+                                {% if p.speaker_profile and p.speaker_profile.pronouns %}
+                                <span class="text-[11px] text-theme-body/60">({{ p.speaker_profile.pronouns }})</span>
+                                {% endif %}
                             </div>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
-                                  :class="p.is_speaker ? 'bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20' : 'bg-theme-base text-theme-body/80 border border-theme-border'"
-                                  x-text="p.is_speaker ? 'Speaker' : 'Adj'">
+                            {% if p.is_speaker %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                Speaker
                             </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 bg-theme-base text-theme-body/80 border border-theme-border">
+                                Adj
+                            </span>
+                            {% endif %}
                         </div>
 
                         <div class="text-xs text-theme-heading font-medium pt-1 border-t border-theme-border/60 flex items-center justify-between">
                             <span class="text-theme-body/60 text-[11px]">Institution</span>
-                            <span class="truncate ml-2 text-right" x-text="p.institution"></span>
+                            <span class="truncate ml-2 text-right">{{ p.institution.name if p.institution else 'Independent' }}</span>
                         </div>
 
                         <div class="pt-1 flex items-center justify-between gap-1 text-xs">
                             <span class="text-theme-body/60 text-[11px]">Division(s)</span>
                             <div class="flex flex-wrap gap-1 justify-end">
-                                <template x-for="d in p.divisions" :key="d">
-                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20"
-                                          x-text="d">
-                                    </span>
-                                </template>
-                                <template x-if="p.divisions.length === 0">
-                                    <span class="text-theme-body/50 text-[10px]">Open</span>
-                                </template>
+                                {% for d in p.divisions %}
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                    {{ d.name }}
+                                </span>
+                                {% else %}
+                                <span class="text-theme-body/50 text-[10px]">Open</span>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
-                </template>
-
-                <div x-show="filteredParticipants.length === 0" class="col-span-full py-12 text-center text-xs text-theme-body/60 italic font-body">
-                    No participants match the selected filters or search query.
+                    {% else %}
+                    <div class="col-span-full py-12 text-center text-xs text-theme-body/60 italic font-body">
+                        No participants match the selected filters or search query.
+                    </div>
+                    {% endfor %}
                 </div>
-            </div>
-        </article>
+
+                <!-- Pagination Bar -->
+                {% if page_result.total_pages > 1 %}
+                <div class="flex items-center justify-between pt-4 border-t border-theme-border flex-wrap gap-3 font-body text-xs">
+                    <div class="text-theme-body/70">
+                        Showing <span class="font-bold text-theme-heading">{{ ((page_result.page - 1) * page_result.page_size) + 1 }}</span>
+                        to <span class="font-bold text-theme-heading">{{ [page_result.page * page_result.page_size, page_result.total_items]|min }}</span>
+                        of <span class="font-bold text-theme-heading">{{ page_result.total_items }}</span> participants
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        {% if page_result.has_prev %}
+                        <a href="?page={{ page_result.prev_page }}&role={{ active_role }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                           class="px-2.5 py-1.5 rounded-lg border border-theme-border hover:bg-theme-base transition font-medium">
+                            Previous
+                        </a>
+                        {% endif %}
+                        {% for p_num in page_result.page_range() %}
+                        <a href="?page={{ p_num }}&role={{ active_role }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                           class="px-3 py-1.5 rounded-lg border {% if p_num == page_result.page %}bg-kwuo-bronze text-white border-kwuo-bronze font-bold{% else %}border-theme-border hover:bg-theme-base{% endif %} transition">
+                            {{ p_num }}
+                        </a>
+                        {% endfor %}
+                        {% if page_result.has_next %}
+                        <a href="?page={{ page_result.next_page }}&role={{ active_role }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                           class="px-2.5 py-1.5 rounded-lg border border-theme-border hover:bg-theme-base transition font-medium">
+                            Next
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </article>
+        </div>
     </div>
 </div>
 {% endblock %}

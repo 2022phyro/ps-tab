@@ -391,7 +391,7 @@
     </div>
 
     <!-- Sticky Action & Search Toolbar -->
-    <div class="sticky top-14 lg:top-0 z-30 bg-theme-base py-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="background-color: var(--color-bg-base);">
+    <div class="sticky top-14 lg:top-0 z-10 bg-theme-base py-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="background-color: var(--color-bg-base);">
         <!-- Left: Search, Multi-select indicator & Column Visibility Picker -->
         <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-1 min-w-0">
             <!-- Search Bar -->
@@ -1028,12 +1028,12 @@
     <!-- ============================================================= -->
     <template x-teleport="body">
         <div x-show="addModal" x-cloak
-             class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+             class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
             <!-- Backdrop -->
-            <div @click="addModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+            <div @click="addModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
         <!-- Dialog -->
-        <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10" @keydown.escape.window="addModal = false">
+        <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="addModal = false">
             {% call edit.torn_docket(wrapper_class="h-full", class="h-full space-y-4") %}
             <div class="flex items-center justify-between pb-3 border-b border-theme-border">
                 <div class="flex items-center gap-2.5">
@@ -1137,12 +1137,12 @@
     <!-- ============================================================= -->
     <template x-teleport="body">
         <div x-show="mergeModal" x-cloak
-             class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+             class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
             <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="mergeModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+            <div @click="mergeModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
         <!-- Dialog -->
-        <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10" @keydown.escape.window="mergeModal = false">
+        <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="mergeModal = false">
             {% call edit.torn_docket(wrapper_class="h-full", class="h-full space-y-4") %}
             <div class="flex items-center justify-between pb-3 border-b border-theme-border">
                 <div class="flex items-center gap-2.5">
@@ -1226,12 +1226,12 @@
     <!-- ============================================================= -->
     <template x-teleport="body">
         <div x-show="importModal" x-cloak
-             class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+             class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
             <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="importModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+            <div @click="importModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
         <!-- Dialog -->
-        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="importModal = false">
+        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="importModal = false">
             {% call edit.torn_docket(wrapper_class="h-full", class="h-full space-y-4") %}
             <div class="flex items-center justify-between pb-3 border-b border-theme-border">
                 <div class="flex items-center gap-2.5">
@@ -1283,12 +1283,12 @@
     <!-- ============================================================= -->
     <template x-teleport="body">
         <div x-show="deleteModal" x-cloak
-             class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+             class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
             <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="deleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+            <div @click="deleteModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
             <!-- Dialog -->
-            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="deleteModal = false">
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="deleteModal = false">
                 <article class="kwuo-torn-docket !p-6 sm:!p-7 space-y-4">
                     <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
                         <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0">
@@ -1325,12 +1325,12 @@
     <!-- ============================================================= -->
     <template x-teleport="body">
         <div x-show="bulkDeleteModal" x-cloak
-             class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+             class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
             <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="bulkDeleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+            <div @click="bulkDeleteModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
             <!-- Dialog -->
-            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="bulkDeleteModal = false">
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="bulkDeleteModal = false">
                 <article class="kwuo-torn-docket !p-6 sm:!p-7 space-y-4">
                     <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
                         <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0">

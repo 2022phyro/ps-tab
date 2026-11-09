@@ -443,7 +443,7 @@
 
     <!-- Sticky Action & Search Toolbar -->
     <div
-        class="sticky top-14 lg:top-0 z-30 bg-theme-base py-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="background-color: var(--color-bg-base);">
+        class="sticky top-14 lg:top-0 z-10 bg-theme-base py-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="background-color: var(--color-bg-base);">
         <!-- Left: Search, Selection Pill & View Switcher -->
         <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-1 min-w-0">
             <!-- Search Bar -->
@@ -1021,11 +1021,11 @@
 
     <!-- MODAL 1: Add Official Modal (Docket styling, fixed height, scrollable body) -->
     <template x-teleport="body">
-        <div x-show="addModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
-            <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="addModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+        <div x-show="addModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="addModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
-            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg z-10" @keydown.escape.window="addModal = false">
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="addModal = false">
                 <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[88vh] font-body">
                     <!-- Modal Fixed Header -->
                     <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
@@ -1201,11 +1201,11 @@
 
     <!-- MODAL 2: Import Officials Modal (Docket styling, fixed height, scrollable body) -->
     <template x-teleport="body">
-        <div x-show="importModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
-            <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="importModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+        <div x-show="importModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="importModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
-            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg z-10" @keydown.escape.window="importModal = false">
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="importModal = false">
                 <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[85vh] font-body">
                     <!-- Modal Fixed Header -->
                     <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
@@ -1279,11 +1279,11 @@
 
     <!-- MODAL 3: Edit Official & Affiliations Modal (Docket styling, fixed height, scrollable body) -->
     <template x-teleport="body">
-        <div x-show="editModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
-            <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="editModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+        <div x-show="editModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="editModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
-            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg z-10" @keydown.escape.window="editModal = false">
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="editModal = false">
                 <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[88vh] font-body">
                     <!-- Modal Fixed Header -->
                     <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
@@ -1575,11 +1575,11 @@
 
 <!-- MODAL 4: Delete Official Confirmation (Docket styling, accessible dialog) -->
 <template x-teleport="body">
-    <div x-show="deleteModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
-        <!-- Full Viewport Backdrop Starting at Top: 0 -->
-        <div @click="deleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+    <div x-show="deleteModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+        <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+        <div @click="deleteModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
-        <div class="relative kwuo-torn-docket-wrapper w-full max-w-sm z-10" @keydown.escape.window="deleteModal = false">
+        <div class="relative kwuo-torn-docket-wrapper w-full max-w-sm kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="deleteModal = false">
             <article class="kwuo-torn-docket !p-5 sm:!p-6 space-y-4 font-body">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">

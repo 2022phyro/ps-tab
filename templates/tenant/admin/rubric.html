@@ -162,76 +162,77 @@
     </div>
 
     <!-- ============================================================= -->
-    <!-- MODAL: Add Rubric Dimension                                   -->
+    <!-- MODAL: Add Rubric Dimension (Standardized Full-Stacking Modal)  -->
     <!-- ============================================================= -->
-    <div x-show="addModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-        <!-- Backdrop -->
-        <div @click="addModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+    <template x-teleport="body">
+        <div x-show="addModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="addModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
-        <!-- Dialog (Torn-Docket aesthetic) -->
-        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="addModal = false">
-            <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4">
-                <div class="flex items-center justify-between pb-3 border-b border-theme-border">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
-                            <i class="ph-bold ph-plus-circle"></i>
+            <!-- Dialog (Torn-Docket aesthetic) -->
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="addModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[85vh] font-body space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
+                                <i class="ph-bold ph-plus-circle"></i>
+                            </div>
+                            <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">Add Rubric Dimension</h3>
                         </div>
-                        <h3 class="font-heading font-bold text-base text-theme-heading">Add Rubric Dimension</h3>
-                    </div>
-                    <button type="button" @click="addModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
-                        <i class="ph-bold ph-x text-lg"></i>
-                    </button>
-                </div>
-
-                <form method="POST" action="/admin/rubric/criterion" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
-                            Dimension Name *
-                        </label>
-                        <input type="text" name="name" required placeholder="e.g. Content &amp; Argumentation"
-                               class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs focus:ring-1 focus:ring-kwuo-bronze">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
-                                Point Cap *
-                            </label>
-                            <input type="number" step="0.5" name="max_points" required value="10.0"
-                                   class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-bold">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
-                                Display Order
-                            </label>
-                            <input type="number" name="display_order" value="{{ (tournament.rubric_criteria|length) + 1 }}"
-                                   class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
-                            Description / Guidelines
-                        </label>
-                        <textarea name="description" rows="2" placeholder="Brief judge evaluation instruction"
-                                  class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs"></textarea>
-                    </div>
-
-                    <div class="pt-2 flex items-center justify-end gap-3 border-t border-theme-border">
-                        <button type="button" @click="addModal = false"
-                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                                class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm flex items-center gap-2">
-                            <i class="ph-bold ph-plus"></i>
-                            <span>Add Dimension</span>
+                        <button type="button" @click="addModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-lg"></i>
                         </button>
                     </div>
-                </form>
-            </article>
+
+                    <form method="POST" action="/admin/rubric/criterion" class="space-y-4 flex-1 overflow-y-auto min-h-0 font-body">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Dimension Name *
+                            </label>
+                            <input type="text" name="name" required placeholder="e.g. Content &amp; Argumentation"
+                                   class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs focus:ring-1 focus:ring-kwuo-bronze">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                    Point Cap *
+                                </label>
+                                <input type="number" step="0.5" name="max_points" required value="10.0"
+                                       class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-bold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                    Display Order
+                                </label>
+                                <input type="number" name="display_order" value="{{ (tournament.rubric_criteria|length) + 1 }}"
+                                       class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Description / Guidelines
+                            </label>
+                            <textarea name="description" rows="2" placeholder="Brief judge evaluation instruction"
+                                      class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs"></textarea>
+                        </div>
+
+                        <div class="pt-2 flex items-center justify-end gap-3 border-t border-theme-border shrink-0">
+                            <button type="button" @click="addModal = false"
+                                    class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                    class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm flex items-center gap-2">
+                                <i class="ph-bold ph-plus"></i>
+                                <span>Add Dimension</span>
+                            </button>
+                        </div>
+                    </form>
+                </article>
+            </div>
         </div>
-    </div>
+    </template>
 </div>
 {% endblock %}

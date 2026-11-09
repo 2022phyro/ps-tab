@@ -22,7 +22,9 @@ from kwuo.web.routes.documentation import router as docs_router
 from kwuo.web.routes.tournaments import router as tournaments_router
 from kwuo.web.routes.attachments import router as attachments_router
 from kwuo.web.routes.tenant import router as tenant_router
+from fastapi.middleware.gzip import GZipMiddleware
 from kwuo.web.middleware.tenant import TenantSubdomainMiddleware
+from kwuo.core.timing import PerformanceTimingMiddleware
 
 
 @asynccontextmanager
@@ -77,7 +79,9 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     app.include_router(docs_router)
 
-    # Register tenant subdomain resolution middleware
+    # Register compression and performance observation middlewares
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    app.add_middleware(PerformanceTimingMiddleware)
     app.add_middleware(TenantSubdomainMiddleware)
 
     # Mount static assets directory

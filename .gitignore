@@ -38,6 +38,7 @@ venv.bak/
 # RUV & Local Settings
 .ruv
 uploads/
+.jinja_cache/
 # Testing & Coverage
 .pytest_cache/
 .coverage

@@ -3,6 +3,31 @@
 {% block title %}Account Settings &amp; Security — Kwuo{% endblock %}
 
 {% block content %}
+<style>
+    .dark .profile-field-container {
+        background-color: #1E1614 !important;
+        border-color: #3D2D23 !important;
+        color: #FAF8F5 !important;
+    }
+    .dark .profile-badge-box {
+        background-color: #231A15 !important;
+        border-color: #3D2D23 !important;
+        color: #FAF8F5 !important;
+    }
+    .dark .profile-dropdown-menu {
+        background-color: #1E1614 !important;
+        border-color: #3D2D23 !important;
+        color: #FAF8F5 !important;
+    }
+    .dark .profile-dropdown-header {
+        background-color: #231A15 !important;
+        border-color: #3D2D23 !important;
+    }
+    .dark .profile-dropdown-item:hover {
+        background-color: #2D221C !important;
+        color: #FAF8F5 !important;
+    }
+</style>
 <!-- Structured JSON catalogs for robust client-side filtering without HTML attribute escaping issues -->
 <script id="kwuo-countries-data" type="application/json">{{ country_calling_codes | tojson | safe }}</script>
 <script id="kwuo-timezones-data" type="application/json">{{ grouped_timezones | tojson | safe }}</script>
@@ -28,6 +53,16 @@
             countries: countries,
             open: false,
             search: "",
+
+            init() {
+                if (!this.countries || !this.countries.length) {
+                    try {
+                        this.countries = window.__kwuo_countries || JSON.parse(document.getElementById("kwuo-countries-data")?.textContent || "[]");
+                        const match = this.countries.find(c => c.code === this.selectedCode);
+                        if (match) this.selectedFlag = match.flag;
+                    } catch (e) {}
+                }
+            },
 
             get filteredCountries() {
                 const q = this.search.trim().toLowerCase();
@@ -88,6 +123,22 @@
             timezones: timezones,
             open: false,
             search: "",
+
+            init() {
+                if (!this.timezones || Object.keys(this.timezones).length === 0) {
+                    try {
+                        this.timezones = window.__kwuo_timezones || JSON.parse(document.getElementById("kwuo-timezones-data")?.textContent || "{}");
+                        for (const region in this.timezones) {
+                            for (const tz of this.timezones[region]) {
+                                if (tz.id === this.selectedId) {
+                                    this.selectedLabel = tz.label;
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }
+            },
 
             get filteredGroups() {
                 const q = this.search.trim().toLowerCase();
@@ -262,11 +313,11 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label
-                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold mb-1">
+                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#FAF8F5] mb-1 font-body">
                                 First Name <span class="text-rose-500">*</span>
                             </label>
                             <input type="text" name="first_name" required value="{{ user.first_name }}"
-                                class="w-full rounded-xl border border-slate-300 dark:!border-[#332420] bg-white dark:!bg-[#1E1614] px-3.5 py-2.5 text-xs text-slate-900 dark:!text-[#FAF8F5] shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                class="w-full rounded-xl border border-slate-300 dark:border-[#3D2D23] bg-white profile-field-container px-3.5 py-2.5 text-xs text-slate-900 dark:text-[#FAF8F5] shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
                         </div>
                         <div>
                             <label
@@ -274,30 +325,30 @@
                                 Last Name <span class="text-rose-500">*</span>
                             </label>
                             <input type="text" name="last_name" required value="{{ user.last_name }}"
-                                class="w-full rounded-xl border border-slate-300 dark:!border-[#332420] bg-white dark:!bg-[#1E1614] px-3.5 py-2.5 text-xs text-slate-900 dark:!text-[#FAF8F5] shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                class="w-full rounded-xl border border-slate-300 dark:border-[#3D2D23] bg-white profile-field-container px-3.5 py-2.5 text-xs text-slate-900 dark:text-[#FAF8F5] shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label
-                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold mb-1">
+                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#FAF8F5] mb-1 font-body">
                                 Email Address (Locked)
                             </label>
                             <input type="email" disabled value="{{ user.email }}"
-                                class="w-full rounded-xl border border-slate-200 dark:!border-[#332420] bg-slate-100 dark:!bg-[#1E1614] px-3.5 py-2.5 text-xs text-slate-500 dark:!text-[#C8BEB7] cursor-not-allowed">
+                                class="w-full rounded-xl border border-slate-200 dark:border-[#332420] bg-slate-100 dark:bg-[#16110F] px-3.5 py-2.5 text-xs text-slate-500 dark:text-[#A89B91] cursor-not-allowed font-body">
                         </div>
                         <div>
                             <label
-                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold mb-1">
+                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#FAF8F5] mb-1 font-body">
                                 Phone Number
                             </label>
-                            <div class="relative flex rounded-xl shadow-sm border border-slate-300 dark:!border-[#332420] bg-white dark:!bg-[#1E1614] focus-within:ring-1 focus-within:ring-kwuo-bronze focus-within:border-kwuo-bronze"
+                            <div class="relative flex rounded-xl shadow-sm border border-slate-300 dark:border-[#3D2D23] bg-white profile-field-container focus-within:ring-1 focus-within:ring-kwuo-bronze focus-within:border-kwuo-bronze"
                                 x-data="phoneCountryDropdown('{{ current_country_code or "+234" }}')">
 
                                 <!-- Compact Country Code Trigger (Flag + Code ONLY, no country name) -->
                                 <button type="button" @click="toggle()" @click.outside="open = false"
-                                    class="w-24 sm:w-28 shrink-0 flex items-center justify-between px-2.5 py-2.5 text-xs text-slate-800 dark:!text-[#FAF8F5] bg-slate-50 dark:!bg-[#231A15] border-r border-slate-200 dark:!border-[#332420] rounded-l-xl cursor-pointer hover:bg-slate-100 dark:hover:!bg-[#2D221C] transition">
+                                    class="w-24 sm:w-28 shrink-0 flex items-center justify-between px-2.5 py-2.5 text-xs text-slate-800 dark:text-[#FAF8F5] bg-slate-50 profile-badge-box border-r border-slate-200 dark:border-[#3D2D23] rounded-l-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-[#2D221C] transition">
                                     <span class="flex items-center gap-1.5 truncate">
                                         <span x-text="selectedFlag" class="text-sm"></span>
                                         <span x-text="selectedCode" class="font-body font-bold"></span>
@@ -310,27 +361,27 @@
 
                                 <!-- Searchable Country Dropdown Popup -->
                                 <div x-show="open" x-cloak
-                                    class="absolute top-full left-0 mt-1.5 w-64 sm:w-72 max-h-72 bg-white dark:!bg-[#1E1614] rounded-2xl shadow-2xl border border-slate-200 dark:!border-[#332420] z-50 flex flex-col overflow-hidden font-body">
+                                    class="absolute top-full left-0 mt-1.5 w-64 sm:w-72 max-h-72 bg-white profile-dropdown-menu rounded-2xl shadow-2xl border border-slate-200 dark:border-[#3D2D23] z-50 flex flex-col overflow-hidden font-body">
                                     <div
-                                        class="p-2 border-b border-slate-100 dark:!border-[#332420] bg-slate-50 dark:!bg-[#231A15]">
+                                        class="p-2 border-b border-slate-100 dark:border-[#3D2D23] bg-slate-50 profile-dropdown-header">
                                         <div class="relative">
                                             <i
                                                 class="ph-bold ph-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
                                             <input type="text" x-model="search" x-ref="countrySearch"
                                                 @keydown.enter.prevent.stop="selectFirst()"
                                                 placeholder="Search country or code..."
-                                                class="w-full rounded-lg border border-slate-200 dark:!border-[#332420] bg-white dark:!bg-[#231A15] pl-7 pr-2.5 py-1.5 text-xs text-slate-800 dark:!text-[#FAF8F5] placeholder:text-slate-400 dark:placeholder:text-[#C8BEB7]/50 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                                class="w-full rounded-lg border border-slate-200 dark:border-[#3D2D23] bg-white profile-field-container pl-7 pr-2.5 py-1.5 text-xs text-slate-800 dark:text-[#FAF8F5] placeholder:text-slate-400 dark:placeholder:text-[#C8BEB7]/50 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
                                         </div>
                                     </div>
                                     <div
-                                        class="overflow-y-auto max-h-56 divide-y divide-slate-100 dark:!divide-[#332420] dark:!bg-[#1E1614]">
+                                        class="overflow-y-auto max-h-56 divide-y divide-slate-100 dark:divide-[#3D2D23]">
                                         <template x-for="c in filteredCountries" :key="c.code + c.name">
                                             <button type="button" @click="select(c)"
-                                                class="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-kwuo-sand/30 dark:hover:!bg-[#2D221C] transition text-xs font-body">
+                                                class="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-kwuo-sand/30 dark:hover:bg-[#2D221C] transition text-xs font-body profile-dropdown-item">
                                                 <div class="flex items-center gap-2 truncate">
                                                     <span x-text="c.flag" class="text-sm shrink-0"></span>
                                                     <span x-text="c.name"
-                                                        class="truncate font-medium text-slate-800 dark:!text-[#FAF8F5]"></span>
+                                                        class="truncate font-medium text-slate-800 dark:text-[#FAF8F5]"></span>
                                                 </div>
                                                 <span x-text="c.code"
                                                     class="font-body text-slate-500 dark:text-[#C8BEB7] shrink-0 ml-2"></span>
@@ -346,7 +397,7 @@
                                 <!-- Subscriber Phone Digits (Bounded to max 15 digits) -->
                                 <input type="tel" name="phone_number_local" id="phone_number_local" maxlength="15"
                                     value="{{ current_local_phone }}" placeholder="e.g. 801 234 5678"
-                                    class="flex-1 border-0 bg-transparent px-3.5 py-2.5 text-xs text-slate-900 dark:!text-[#FAF8F5] placeholder:text-slate-400 dark:placeholder:text-[#C8BEB7]/50 focus:ring-0 focus:outline-none font-body"
+                                    class="flex-1 border-0 bg-transparent px-3.5 py-2.5 text-xs text-slate-900 dark:text-[#FAF8F5] placeholder:text-slate-400 dark:placeholder:text-[#C8BEB7]/50 focus:ring-0 focus:outline-none font-body"
                                     @input="$event.target.value = $event.target.value.replace(/[^0-9\s\-]/g, '').slice(0, 15)">
                             </div>
                             <p class="mt-1 text-[11px] text-slate-500 dark:text-[#C8BEB7] font-body">
@@ -358,11 +409,11 @@
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
                             <label
-                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-kwuo-gold">
+                                class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#FAF8F5] font-body">
                                 Timezone
                             </label>
                             <button type="button" @click="$dispatch('detect-timezone')"
-                                class="inline-flex items-center gap-1 text-[11px] font-semibold text-kwuo-bronze dark:text-kwuo-gold hover:underline">
+                                class="inline-flex items-center gap-1 text-[11px] font-semibold text-kwuo-bronze dark:text-[#E4D6A9] hover:underline font-body">
                                 <i class="ph-bold ph-crosshair"></i>
                                 <span id="detect-tz-label">Detect my timezone</span>
                             </button>
@@ -372,7 +423,7 @@
 
                             <!-- Trigger Button -->
                             <button type="button" @click="toggle()" @click.outside="open = false"
-                                class="w-full rounded-xl border border-slate-300 dark:!border-[#332420] bg-white dark:!bg-[#1E1614] px-3.5 py-2.5 text-xs text-slate-900 dark:!text-[#FAF8F5] shadow-sm flex items-center justify-between cursor-pointer focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                class="w-full rounded-xl border border-slate-300 dark:border-[#3D2D23] bg-white profile-field-container px-3.5 py-2.5 text-xs text-slate-900 dark:text-[#FAF8F5] shadow-sm flex items-center justify-between cursor-pointer focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
                                 <div class="flex items-center gap-2 truncate">
                                     <i class="ph-bold ph-globe text-kwuo-bronze dark:text-[#E4D6A9] shrink-0"></i>
                                     <span x-text="selectedLabel" class="truncate font-medium"></span>
@@ -385,30 +436,30 @@
                             <input type="hidden" name="timezone_name" :value="selectedId">
 
                             <!-- Live 12-Hour Current Time Badge in Selected Timezone -->
-                            <div class="mt-2 flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 dark:!bg-[#231A15] border border-slate-200 dark:!border-[#332420] text-xs font-body">
+                            <div class="mt-2 flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 profile-badge-box border border-slate-200 dark:border-[#3D2D23] text-xs font-body">
                                 <div class="flex items-center gap-2 text-slate-600 dark:text-[#C8BEB7]">
                                     <i class="ph-bold ph-clock text-kwuo-bronze dark:text-[#E4D6A9] text-sm"></i>
                                     <span>Current Time in this Zone:</span>
                                 </div>
-                                <span class="font-bold text-slate-900 dark:!text-[#FAF8F5]" x-text="currentTime12"></span>
+                                <span class="font-bold text-slate-900 dark:text-[#FAF8F5]" x-text="currentTime12"></span>
                             </div>
 
                             <!-- Floating Searchable Dropdown Popup -->
                             <div x-show="open" x-cloak
-                                class="absolute top-full left-0 right-0 mt-1.5 max-h-80 bg-white dark:!bg-[#1E1614] rounded-2xl shadow-2xl border border-slate-200 dark:!border-[#332420] z-50 flex flex-col overflow-hidden font-body">
+                                class="absolute top-full left-0 right-0 mt-1.5 max-h-80 bg-white profile-dropdown-menu rounded-2xl shadow-2xl border border-slate-200 dark:border-[#3D2D23] z-50 flex flex-col overflow-hidden font-body">
                                 <div
-                                    class="p-2.5 border-b border-slate-100 dark:!border-[#332420] bg-slate-50 dark:!bg-[#231A15]">
+                                    class="p-2.5 border-b border-slate-100 dark:border-[#3D2D23] bg-slate-50 profile-dropdown-header">
                                     <div class="relative">
                                         <i
                                             class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
                                         <input type="text" x-model="search" x-ref="tzSearch"
                                             @keydown.enter.prevent.stop="selectFirst()"
                                             placeholder="Search timezones (e.g. Lagos, Accra, Nairobi, London, GMT+1, New York)..."
-                                            class="w-full rounded-lg border border-slate-200 dark:!border-[#332420] bg-white dark:!bg-[#231A15] pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:!text-[#FAF8F5] placeholder:text-slate-400 dark:placeholder:text-[#C8BEB7]/50 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                            class="w-full rounded-lg border border-slate-200 dark:border-[#3D2D23] bg-white profile-field-container pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-[#FAF8F5] placeholder:text-slate-400 dark:placeholder:text-[#C8BEB7]/50 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
                                     </div>
                                 </div>
 
-                                <div class="overflow-y-auto max-h-64 p-2 space-y-3 dark:!bg-[#1E1614]">
+                                <div class="overflow-y-auto max-h-64 p-2 space-y-3">
                                     <template x-for="(tzs, region) in filteredGroups" :key="region">
                                         <div x-show="tzs.length > 0">
                                             <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#C8BEB7] px-2 py-1 font-body"
@@ -416,8 +467,8 @@
                                             <div class="space-y-0.5 mt-0.5">
                                                 <template x-for="tz in tzs" :key="tz.id">
                                                     <button type="button" @click="select(tz)"
-                                                        class="w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-left text-xs transition font-body"
-                                                        :class="tz.id === selectedId ? 'bg-kwuo-bronze text-white font-semibold' : 'text-slate-800 dark:!text-[#FAF8F5] hover:bg-slate-100 dark:hover:!bg-[#2D221C]'">
+                                                        class="w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-left text-xs transition font-body profile-dropdown-item"
+                                                        :class="tz.id === selectedId ? 'bg-kwuo-bronze text-white font-semibold' : 'text-slate-800 dark:text-[#FAF8F5] hover:bg-slate-100 dark:hover:bg-[#2D221C]'">
                                                         <span x-text="tz.label" class="truncate"></span>
                                                         <div class="flex items-center gap-1.5 shrink-0 ml-2">
                                                             <span class="text-[10px] font-body opacity-75" x-text="getTime12(tz.id)"></span>
@@ -485,7 +536,7 @@
                             Current Password <span class="text-rose-500">*</span>
                         </label>
                         <input type="password" name="current_password" required placeholder="••••••••"
-                            class="w-full rounded-xl border border-slate-300 dark:!border-[#332420] bg-white dark:!bg-[#1E1614] px-3.5 py-2.5 text-xs text-slate-900 dark:!text-[#FAF8F5] shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                            class="w-full rounded-xl border border-slate-300 dark:border-[#3D2D23] bg-white profile-field-container px-3.5 py-2.5 text-xs text-slate-900 dark:text-[#FAF8F5] shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -496,7 +547,7 @@
                             </label>
                             <input type="password" name="new_password" minlength="8" required
                                 placeholder="Min. 8 characters"
-                                class="w-full rounded-xl border border-slate-300 dark:!border-[#332420] bg-white dark:!bg-[#1E1614] px-3.5 py-2.5 text-xs text-slate-900 dark:!text-[#FAF8F5] shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                class="w-full rounded-xl border border-slate-300 dark:border-[#3D2D23] bg-white profile-field-container px-3.5 py-2.5 text-xs text-slate-900 dark:text-[#FAF8F5] shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
                         </div>
                         <div>
                             <label
@@ -505,7 +556,7 @@
                             </label>
                             <input type="password" name="confirm_password" minlength="8" required
                                 placeholder="Repeat new password"
-                                class="w-full rounded-xl border border-slate-300 dark:!border-[#332420] bg-white dark:!bg-[#1E1614] px-3.5 py-2.5 text-xs text-slate-900 dark:!text-[#FAF8F5] shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                class="w-full rounded-xl border border-slate-300 dark:border-[#3D2D23] bg-white profile-field-container px-3.5 py-2.5 text-xs text-slate-900 dark:text-[#FAF8F5] shadow-sm focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
                         </div>
                     </div>
 

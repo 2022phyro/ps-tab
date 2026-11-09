@@ -154,8 +154,8 @@
         </article>
     </div>
 
-    <!-- Timezone Banner & Multi-Switch Toolbar (Sticky) -->
-    <div class="sticky top-[70px] z-30 bg-theme-base/95 backdrop-blur-md pt-3 pb-3 border-b border-theme-border/60 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-body" style="top: 70px; margin-top: 0; background-color: var(--color-bg-base);">
+    <!-- Timezone Banner & Multi-Switch Toolbar (Sticky directly underneath 70px header with zero gap) -->
+    <div class="sticky z-30 bg-theme-base/95 backdrop-blur-md pt-3 pb-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="top: 55px; margin-top: 0; background-color: var(--color-bg-base);">
         <div class="flex items-center gap-2 text-xs text-theme-heading">
             <i class="ph-bold ph-globe-hemisphere-west text-kwuo-bronze text-base shrink-0"></i>
             <div>
@@ -196,7 +196,7 @@
 
                 <!-- Floating Searchable Dropdown Popup -->
                 <div x-show="customDropdownOpen" x-cloak
-                     class="absolute left-0 right-0 sm:left-auto sm:right-0 mt-1.5 w-full sm:w-80 max-h-80 bg-theme-surface rounded-2xl shadow-2xl border border-theme-border z-50 flex flex-col overflow-hidden text-xs font-body">
+                     class="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-full sm:w-80 max-h-80 bg-theme-surface rounded-2xl shadow-2xl border border-theme-border z-50 flex flex-col overflow-hidden text-xs font-body">
                     <div class="p-2 border-b border-theme-border bg-theme-base/60">
                         <div class="relative">
                             <i class="ph-bold ph-magnifying-glass absolute left-2.5 top-2 text-theme-body/40 text-xs"></i>

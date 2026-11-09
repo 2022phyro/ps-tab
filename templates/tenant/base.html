@@ -11,6 +11,7 @@
         }
     });
 ">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,16 +31,22 @@
             background-color: #F7F4EE;
             color: #4A3A35;
         }
+
         html.dark {
             background-color: #15100E;
             color: #C8BEB7;
             color-scheme: dark;
         }
+
         body {
             background-color: inherit;
             color: inherit;
         }
     </style>
+
+    <!-- Preload primary font and stylesheet -->
+    <link rel="preload" href="/static/fonts/onest/onest-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/static/css/app.min.css" as="style">
 
     <!-- Compiled Local Stylesheet (Tailwind CSS, Self-Hosted Fonts & Phosphor Icons) -->
     <link rel="stylesheet" href="/static/css/app.min.css">
@@ -52,6 +59,7 @@
             --color-border: #E8E2D8;
             --color-surface: #FFFFFF;
         }
+
         .dark {
             --color-bg-base: #15100E;
             --color-bg-surface: #1E1614;
@@ -61,14 +69,42 @@
             --color-surface: #231A15;
         }
 
+        /* Universal Form Inversion in Dark Mode */
+        .dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+        .dark select,
+        .dark textarea {
+            background-color: #1E1614 !important;
+            border-color: #332420 !important;
+            color: #FAF8F5 !important;
+        }
+
+        .dark input:disabled,
+        .dark select:disabled,
+        .dark textarea:disabled {
+            background-color: #16110F !important;
+            border-color: #2A1F18 !important;
+            color: #A89B91 !important;
+        }
+
+        .dark label {
+            color: #FAF8F5 !important;
+        }
+
+        .dark input::placeholder,
+        .dark textarea::placeholder {
+            color: rgba(200, 190, 183, 0.5) !important;
+        }
+
         /* Torn-Docket Card */
         .kwuo-torn-docket-wrapper {
             filter: drop-shadow(0 4px 6px rgba(98, 43, 20, 0.08)) drop-shadow(0 1px 3px rgba(98, 43, 20, 0.04));
             transition: filter 250ms ease, transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
         }
+
         .kwuo-torn-docket-wrapper:hover {
             filter: drop-shadow(0 10px 18px rgba(98, 43, 20, 0.12)) drop-shadow(0 4px 6px rgba(98, 43, 20, 0.06));
         }
+
         .kwuo-torn-docket {
             background-color: var(--color-surface, #FFFFFF);
             border-left: 1.5px solid var(--color-border, #E4D6A9);
@@ -77,18 +113,19 @@
             border-bottom: none;
             padding: 2rem 1.5rem;
             position: relative;
-            clip-path: polygon(
-                0% 4px, 4% 2px, 8% 5px, 12% 1px, 16% 4px, 20% 6px, 24% 2px, 28% 5px, 32% 1px, 36% 4px, 40% 6px, 44% 2px, 48% 5px, 52% 1px, 56% 4px, 60% 6px, 64% 2px, 68% 5px, 72% 1px, 76% 4px, 80% 6px, 84% 2px, 88% 5px, 92% 1px, 96% 4px, 100% 3px,
-                100% calc(100% - 3px),
-                96% calc(100% - 5px), 92% calc(100% - 1px), 88% calc(100% - 4px), 84% calc(100% - 6px), 80% calc(100% - 2px), 76% calc(100% - 5px), 72% calc(100% - 1px), 68% calc(100% - 4px), 64% calc(100% - 6px), 60% calc(100% - 2px), 56% calc(100% - 5px), 52% calc(100% - 1px), 48% calc(100% - 4px), 44% calc(100% - 6px), 40% calc(100% - 2px), 36% calc(100% - 5px), 32% calc(100% - 1px), 28% calc(100% - 4px), 24% calc(100% - 6px), 20% calc(100% - 2px), 16% calc(100% - 5px), 12% calc(100% - 1px), 8% calc(100% - 4px), 4% calc(100% - 2px), 0% calc(100% - 4px)
-            );
+            clip-path: polygon(0% 4px, 4% 2px, 8% 5px, 12% 1px, 16% 4px, 20% 6px, 24% 2px, 28% 5px, 32% 1px, 36% 4px, 40% 6px, 44% 2px, 48% 5px, 52% 1px, 56% 4px, 60% 6px, 64% 2px, 68% 5px, 72% 1px, 76% 4px, 80% 6px, 84% 2px, 88% 5px, 92% 1px, 96% 4px, 100% 3px,
+                    100% calc(100% - 3px),
+                    96% calc(100% - 5px), 92% calc(100% - 1px), 88% calc(100% - 4px), 84% calc(100% - 6px), 80% calc(100% - 2px), 76% calc(100% - 5px), 72% calc(100% - 1px), 68% calc(100% - 4px), 64% calc(100% - 6px), 60% calc(100% - 2px), 56% calc(100% - 5px), 52% calc(100% - 1px), 48% calc(100% - 4px), 44% calc(100% - 6px), 40% calc(100% - 2px), 36% calc(100% - 5px), 32% calc(100% - 1px), 28% calc(100% - 4px), 24% calc(100% - 6px), 20% calc(100% - 2px), 16% calc(100% - 5px), 12% calc(100% - 1px), 8% calc(100% - 4px), 4% calc(100% - 2px), 0% calc(100% - 4px));
         }
+
         .dark .kwuo-torn-docket-wrapper {
             filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
         }
+
         .dark .kwuo-torn-docket-wrapper:hover {
             filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.7));
         }
+
         .dark .kwuo-torn-docket {
             background-color: var(--color-surface, #231A15);
             border-left-color: var(--color-border, #3D2D23);
@@ -100,19 +137,20 @@
             filter: drop-shadow(0 4px 6px rgba(98, 43, 20, 0.08)) drop-shadow(0 1px 3px rgba(98, 43, 20, 0.04));
             transition: filter 250ms ease;
         }
+
         .dark .kwuo-torn-header-wrapper {
             filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
         }
+
         .kwuo-torn-header {
             background-color: var(--color-surface, #FFFFFF);
             border-bottom: none;
-            clip-path: polygon(
-                0% 0%,
-                100% 0%,
-                100% calc(100% - 3px),
-                96% calc(100% - 5px), 92% calc(100% - 1px), 88% calc(100% - 4px), 84% calc(100% - 6px), 80% calc(100% - 2px), 76% calc(100% - 5px), 72% calc(100% - 1px), 68% calc(100% - 4px), 64% calc(100% - 6px), 60% calc(100% - 2px), 56% calc(100% - 5px), 52% calc(100% - 1px), 48% calc(100% - 4px), 44% calc(100% - 6px), 40% calc(100% - 2px), 36% calc(100% - 5px), 32% calc(100% - 1px), 28% calc(100% - 4px), 24% calc(100% - 6px), 20% calc(100% - 2px), 16% calc(100% - 5px), 12% calc(100% - 1px), 8% calc(100% - 4px), 4% calc(100% - 2px), 0% calc(100% - 4px)
-            );
+            clip-path: polygon(0% 0%,
+                    100% 0%,
+                    100% calc(100% - 3px),
+                    96% calc(100% - 5px), 92% calc(100% - 1px), 88% calc(100% - 4px), 84% calc(100% - 6px), 80% calc(100% - 2px), 76% calc(100% - 5px), 72% calc(100% - 1px), 68% calc(100% - 4px), 64% calc(100% - 6px), 60% calc(100% - 2px), 56% calc(100% - 5px), 52% calc(100% - 1px), 48% calc(100% - 4px), 44% calc(100% - 6px), 40% calc(100% - 2px), 36% calc(100% - 5px), 32% calc(100% - 1px), 28% calc(100% - 4px), 24% calc(100% - 6px), 20% calc(100% - 2px), 16% calc(100% - 5px), 12% calc(100% - 1px), 8% calc(100% - 4px), 4% calc(100% - 2px), 0% calc(100% - 4px));
         }
+
         .dark .kwuo-torn-header {
             background-color: var(--color-surface, #1E1614);
         }
@@ -139,6 +177,7 @@
             transform: rotate(var(--rot, -0.85deg));
             transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), --curl 300ms cubic-bezier(0.16, 1, 0.3, 1);
         }
+
         .kwuo-post-it::before {
             content: "";
             position: absolute;
@@ -149,6 +188,7 @@
             background: linear-gradient(135deg, color-mix(in srgb, var(--note), var(--tint-a)) 0%, var(--note) 68%, color-mix(in srgb, var(--note), var(--tint-c)) 100%);
             clip-path: var(--clip, polygon(0 0, 100% 0, 100% calc(100% - var(--curl)), calc(100% - var(--curl)) 100%, 0 100%));
         }
+
         .kwuo-post-it::after {
             content: "";
             position: absolute;
@@ -162,10 +202,12 @@
             background: linear-gradient(135deg, color-mix(in srgb, var(--note), var(--tint-hi)) 0%, color-mix(in srgb, var(--note), var(--tint-mid)) 38%, color-mix(in srgb, var(--note), var(--tint-lo)) 49.6%, transparent 50.4%);
             filter: drop-shadow(calc(var(--curl) * 0.09) calc(var(--curl) * 0.14) calc(var(--curl) * 0.11) rgb(var(--shadow) / var(--flap-shadow)));
         }
+
         .kwuo-post-it:hover {
             --curl: 0px;
             transform: rotate(0deg) translateY(-2px);
         }
+
         .dark .kwuo-post-it {
             --note: #2B1F19;
             --note-ink: #FAF7F0;
@@ -179,6 +221,7 @@
             --flap-shadow: 0.75;
             filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.5)) drop-shadow(0 6px 10px rgb(0 0 0 / 0.55));
         }
+
         .kwuo-tape-strip {
             position: absolute;
             top: -10px;
@@ -198,38 +241,75 @@
         [x-cloak] {
             display: none !important;
         }
+
+        /* Top HTMX loading bar */
+        .htmx-progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #C07D53;
+            z-index: 9999999;
+            opacity: 0;
+            transition: opacity 200ms ease;
+            pointer-events: none;
+        }
+        .htmx-request .htmx-progress-bar,
+        body.htmx-request .htmx-progress-bar {
+            opacity: 1;
+            animation: htmxProgressAnim 1.5s infinite ease-in-out;
+        }
+        @keyframes htmxProgressAnim {
+            0% { transform: scaleX(0); transform-origin: left; }
+            50% { transform: scaleX(0.7); transform-origin: left; }
+            100% { transform: scaleX(1); transform-origin: right; }
+        }
     </style>
 
     <!-- Bundled Local JavaScript (HTMX, Alpine & Alpine Collapse) -->
     <script defer src="/static/js/app.min.js"></script>
 </head>
+
 <body hx-boost="true" class="min-h-full flex flex-col bg-theme-base text-theme-body font-sans">
+    <div class="htmx-progress-bar"></div>
     <!-- Tournament Header Navigation with Authentic Torn Paper Bottom Edge -->
-    <header class="sticky top-0 z-40 kwuo-torn-header-wrapper">
-        <div class="kwuo-torn-header bg-theme-surface/95 backdrop-blur-md pb-1 sm:pb-1.5">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center justify-between h-[70px] min-h-[70px]">
+    <header class="sticky top-0 z-40 kwuo-torn-header-wrapper" style="height: 60px;">
+        <div class="kwuo-torn-header bg-theme-surface/95 backdrop-blur-md h-full flex flex-col justify-center">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                <div class="flex items-center justify-between">
                     <!-- Tournament Branding (Name Only, Clean & Distinctive) -->
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
+                        <div
+                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
                             <i class="ph-bold ph-trophy text-lg"></i>
                         </div>
-                        <a href="/" class="text-base sm:text-lg font-heading font-extrabold tracking-tight text-theme-heading hover:text-kwuo-bronze transition truncate" title="{{ tournament.name }}">
+                        <a href="/"
+                            class="text-base sm:text-lg font-heading font-extrabold tracking-tight text-theme-heading hover:text-kwuo-bronze transition truncate"
+                            title="{{ tournament.name }}">
                             {{ tournament.name }}
                         </a>
                     </div>
 
                     <!-- Navigation Links -->
                     <nav class="hidden lg:flex items-center gap-6 text-sm font-semibold">
-                        <a href="/" class="{% if request.url.path == '/' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Overview</a>
-                        <a href="/documents" class="{% if request.url.path == '/documents' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Documents</a>
-                        <a href="/tasks" class="{% if request.url.path == '/tasks' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Tasks</a>
-                        <a href="/schedule" class="{% if request.url.path == '/schedule' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Schedule</a>
-                        <a href="/participants" class="{% if request.url.path == '/participants' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Participants</a>
-                        <a href="/institutions" class="{% if request.url.path == '/institutions' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Institutions</a>
-                        <a href="/rankings" class="{% if request.url.path == '/rankings' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Rankings</a>
+                        <a href="/"
+                            class="{% if request.url.path == '/' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Overview</a>
+                        <a href="/documents"
+                            class="{% if request.url.path == '/documents' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Documents</a>
+                        <a href="/tasks"
+                            class="{% if request.url.path == '/tasks' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Tasks</a>
+                        <a href="/schedule"
+                            class="{% if request.url.path == '/schedule' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Schedule</a>
+                        <a href="/participants"
+                            class="{% if request.url.path == '/participants' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Participants</a>
+                        <a href="/institutions"
+                            class="{% if request.url.path == '/institutions' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Institutions</a>
+                        <a href="/rankings"
+                            class="{% if request.url.path == '/rankings' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Rankings</a>
                         {% if tournament.has_active_round %}
-                        <a href="/current-round" class="{% if request.url.path == '/current-round' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">
+                        <a href="/current-round"
+                            class="{% if request.url.path == '/current-round' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">
                             <span class="inline-flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                                 Current Round
@@ -237,7 +317,8 @@
                         </a>
                         {% endif %}
                         {% if tournament.has_published_results %}
-                        <a href="/results" class="{% if request.url.path == '/results' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Results</a>
+                        <a href="/results"
+                            class="{% if request.url.path == '/results' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Results</a>
                         {% endif %}
                     </nav>
 
@@ -245,28 +326,28 @@
                     <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         {% if tournament.status.value == 'registration' %}
                         <a href="/register"
-                           class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white transition text-xs font-bold font-body shadow-xs"
-                           title="Register as a Competitor">
+                            class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white transition text-xs font-bold font-body shadow-xs"
+                            title="Register as a Competitor">
                             <i class="ph-bold ph-user-plus text-base"></i>
                             <span>Register</span>
                         </a>
                         {% endif %}
                         <a href="/admin"
-                           class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base hover:text-kwuo-bronze transition text-xs font-semibold font-body"
-                           title="Officials &amp; Tab Room Login">
+                            class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base hover:text-kwuo-bronze transition text-xs font-semibold font-body"
+                            title="Officials &amp; Tab Room Login">
                             <i class="ph-bold ph-sign-in text-base text-kwuo-bronze"></i>
                             <span>Login</span>
                         </a>
                         <button @click="darkMode = !darkMode" type="button"
-                                class="p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition flex items-center justify-center"
-                                aria-label="Toggle theme">
+                            class="p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition flex items-center justify-center"
+                            aria-label="Toggle theme">
                             <i x-show="!darkMode" class="ph-bold ph-moon text-base sm:text-lg"></i>
                             <i x-show="darkMode" class="ph-bold ph-sun text-base sm:text-lg"></i>
                         </button>
                         <!-- Mobile menu button -->
                         <button @click="mobileMenuOpen = !mobileMenuOpen" type="button"
-                                class="lg:hidden p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition flex items-center justify-center"
-                                aria-label="Toggle navigation menu">
+                            class="lg:hidden p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition flex items-center justify-center"
+                            aria-label="Toggle navigation menu">
                             <i x-show="!mobileMenuOpen" class="ph-bold ph-list text-base sm:text-lg"></i>
                             <i x-show="mobileMenuOpen" class="ph-bold ph-x text-base sm:text-lg"></i>
                         </button>
@@ -275,15 +356,23 @@
 
                 <!-- Mobile Navigation Drawer -->
                 <div x-show="mobileMenuOpen" x-transition class="lg:hidden py-4 border-t border-theme-border space-y-2">
-                    <a href="/" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Overview</a>
-                    <a href="/documents" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/documents' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Documents</a>
-                    <a href="/tasks" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/tasks' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Tasks</a>
-                    <a href="/schedule" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/schedule' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Schedule</a>
-                    <a href="/participants" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/participants' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Participants</a>
-                    <a href="/institutions" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/institutions' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Institutions</a>
-                    <a href="/rankings" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/rankings' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Rankings</a>
+                    <a href="/"
+                        class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Overview</a>
+                    <a href="/documents"
+                        class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/documents' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Documents</a>
+                    <a href="/tasks"
+                        class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/tasks' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Tasks</a>
+                    <a href="/schedule"
+                        class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/schedule' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Schedule</a>
+                    <a href="/participants"
+                        class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/participants' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Participants</a>
+                    <a href="/institutions"
+                        class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/institutions' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Institutions</a>
+                    <a href="/rankings"
+                        class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/rankings' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Rankings</a>
                     {% if tournament.has_active_round %}
-                    <a href="/current-round" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/current-round' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">
+                    <a href="/current-round"
+                        class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/current-round' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">
                         <span class="inline-flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                             Current Round
@@ -291,11 +380,13 @@
                     </a>
                     {% endif %}
                     {% if tournament.has_published_results %}
-                    <a href="/results" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/results' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Results</a>
+                    <a href="/results"
+                        class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/results' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Results</a>
                     {% endif %}
                     <div class="pt-2 border-t border-theme-border space-y-2">
                         {% if tournament.status.value == 'registration' %}
-                        <a href="/register" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white text-xs font-bold transition font-body shadow-xs">
+                        <a href="/register"
+                            class="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white text-xs font-bold transition font-body shadow-xs">
                             <div class="flex items-center gap-2">
                                 <i class="ph-bold ph-user-plus text-base"></i>
                                 <span>Register as a Competitor</span>
@@ -303,7 +394,8 @@
                             <i class="ph-bold ph-arrow-right text-xs text-white/80"></i>
                         </a>
                         {% endif %}
-                        <a href="/admin" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                        <a href="/admin"
+                            class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
                             <div class="flex items-center gap-2">
                                 <i class="ph-bold ph-sign-in text-base text-kwuo-bronze"></i>
                                 <span>Officials &amp; Tab Room Login</span>
@@ -322,11 +414,14 @@
     </main>
 
     <!-- Tournament Footer -->
-    <footer class="mt-auto border-t border-theme-border bg-theme-surface/50 py-8 text-center text-xs text-theme-body/60">
+    <footer
+        class="mt-auto border-t border-theme-border bg-theme-surface/50 py-8 text-center text-xs text-theme-body/60">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p>{{ tournament.name }} &copy; {{ tournament.created_at.year if tournament.created_at else '2026' }}. Tabulated with Kwuo.</p>
+            <p>{{ tournament.name }} &copy; {{ tournament.created_at.year if tournament.created_at else '2026' }}.
+                Tabulated with Kwuo.</p>
             <div class="flex items-center gap-4 text-xs font-semibold text-theme-body/60">
-                <span>{{ tournament.location_type.value|capitalize if tournament.location_type else 'Physical' }} Competition</span>
+                <span>{{ tournament.location_type.value|capitalize if tournament.location_type else 'Physical' }}
+                    Competition</span>
                 <span>•</span>
                 <span>Tabulation Powered by Kwuo</span>
             </div>
@@ -334,9 +429,7 @@
     </footer>
 
     <!-- Global Kwuo Toast Notifications Container -->
-    <div x-data="kwuoToastSystem()"
-         @toast.window="add($event.detail)"
-         x-init="
+    <div x-data="kwuoToastSystem()" @toast.window="add($event.detail)" x-init="
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('msg')) {
                 add({ message: urlParams.get('msg'), type: 'success' });
@@ -346,18 +439,15 @@
                 add({ message: urlParams.get('error'), type: 'error' });
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
-         "
-         class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+         " class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
         <template x-for="t in toasts" :key="t.id">
-            <div x-show="t.visible"
-                 x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="opacity-0 translate-y-3 scale-95"
-                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 scale-100"
-                 x-transition:leave-end="opacity-0 scale-95"
-                 class="pointer-events-auto rounded-2xl p-4 shadow-xl border flex items-start gap-3 backdrop-blur-md transition"
-                 :class="t.type === 'error' ? 'bg-rose-50/95 dark:bg-rose-950/90 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200' :
+            <div x-show="t.visible" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-3 scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="pointer-events-auto rounded-2xl p-4 shadow-xl border flex items-start gap-3 backdrop-blur-md transition"
+                :class="t.type === 'error' ? 'bg-rose-50/95 dark:bg-rose-950/90 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200' :
                          t.type === 'warning' ? 'bg-amber-50/95 dark:bg-amber-950/90 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200' :
                          'bg-emerald-50/95 dark:bg-emerald-950/90 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'">
                 <div class="shrink-0 mt-0.5">
@@ -366,7 +456,8 @@
                                'ph-bold ph-check-circle text-lg text-emerald-600 dark:text-emerald-400'"></i>
                 </div>
                 <div class="flex-1 text-xs font-semibold leading-relaxed" x-text="t.message"></div>
-                <button @click="remove(t.id)" class="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5">
+                <button @click="remove(t.id)"
+                    class="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5">
                     <i class="ph-bold ph-x text-sm"></i>
                 </button>
             </div>
@@ -447,4 +538,5 @@
         });
     </script>
 </body>
+
 </html>

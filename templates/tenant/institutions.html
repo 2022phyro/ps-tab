@@ -112,8 +112,8 @@
         </article>
     </div>
 
-    <!-- Sticky Controls Toolbar (Positioned outside torn-docket so CSS sticky works against page scroll) -->
-    <div class="sticky top-[70px] z-30 bg-theme-base/95 backdrop-blur-md pt-3 pb-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="top: 70px; margin-top: 0; background-color: var(--color-bg-base);">
+    <!-- Sticky Controls Toolbar (Laps directly underneath 70px header with zero gap) -->
+    <div class="sticky z-30 bg-theme-base/95 backdrop-blur-md pt-3 pb-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="top: 55px; margin-top: 0; background-color: var(--color-bg-base);">
         <div class="flex items-center gap-2">
             <span class="font-heading font-bold text-base text-theme-heading">
                 All Delegations
@@ -271,7 +271,8 @@
                             data-judges="{{ inst.judges_count }}"
                             data-ias="{{ inst.ias_count }}"
                             data-total="{{ inst.total_count }}"
-                            class="public-inst-row hover:bg-theme-base/60 transition group font-body">
+                            class="public-inst-row hover:bg-theme-base/60 transition group font-body"
+                            style="content-visibility: auto; contain-intrinsic-size: 0 44px;">
                             <!-- 1. FULL NAME (Clean, word-wrapped, no bulky icon) -->
                             <td class="py-2.5 px-3 max-w-[280px]">
                                 <div class="font-heading font-bold text-xs sm:text-sm text-theme-heading break-words leading-snug">

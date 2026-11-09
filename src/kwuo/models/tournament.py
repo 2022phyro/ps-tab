@@ -19,6 +19,7 @@ from sqlalchemy import (
     Text,
     Enum as SAEnum,
     UniqueConstraint,
+    Index,
     inspect,
     Table,
     Column,
@@ -150,6 +151,7 @@ class Institution(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint("tournament_id", "name_normalized", name="uq_institutions_tournament_name_normalized"),
+        Index("ix_institutions_tournament_name", "tournament_id", "name"),
     )
 
     def __init__(self, **kwargs: Any) -> None:
@@ -894,6 +896,8 @@ class Participant(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint("tournament_id", "email", name="uq_participants_tournament_email"),
+        Index("ix_participants_tournament_status", "tournament_id", "status"),
+        Index("ix_participants_tournament_name", "tournament_id", "name"),
     )
 
     def __init__(self, **kwargs: Any) -> None:

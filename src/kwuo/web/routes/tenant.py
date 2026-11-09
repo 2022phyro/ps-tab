@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any, Set
 from fastapi import APIRouter, Request, Depends, Form, File, UploadFile, HTTPException, status, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, JSONResponse
 from sqlalchemy import select, update, delete, or_, func
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kwuo.core.database import get_db
@@ -29,6 +29,8 @@ from kwuo.services.storage import (
     InvalidExtensionError,
 )
 from kwuo.services.email import send_official_invitation_email, send_magic_link_email
+from kwuo.services.metrics import get_tournament_nav_counts
+from kwuo.core.pagination import paginate, Page
 from kwuo.core.security import (
     create_participant_token,
     decode_participant_token,
@@ -244,15 +246,20 @@ async def get_current_official_context(
     user: Optional[User] = Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """Verify whether caller is authenticated as an official with dynamic RBAC permissions."""
+    if hasattr(request.state, "official_context") and request.state.official_context is not None:
+        return request.state.official_context
+
     if not getattr(request.state, "is_tenant_domain", False):
         return None
     tournament = getattr(request.state, "tenant_tournament", None)
     if not tournament:
         return None
 
+    ctx: Optional[Dict[str, Any]] = None
+
     # 1. Platform super admin always has full official bypass access
     if user and user.is_super_admin:
-        return {
+        ctx = {
             "is_organizer": True,
             "role": "Super Admin",
             "role_names": ["Super Admin"],
@@ -263,8 +270,8 @@ async def get_current_official_context(
         }
 
     # 2. Tournament creator / organizer has full tab room access
-    if user and tournament.organizer_id == user.id:
-        return {
+    elif user and tournament.organizer_id == user.id:
+        ctx = {
             "is_organizer": True,
             "role": "Tournament Director",
             "role_names": ["Tournament Director"],
@@ -275,66 +282,66 @@ async def get_current_official_context(
         }
 
     # 3. Check official session cookie
-    cookie_name = f"kwuo_off_{tournament.id}"
-    token = request.cookies.get(cookie_name)
-    if not token:
-        return None
+    else:
+        cookie_name = f"kwuo_off_{tournament.id}"
+        token = request.cookies.get(cookie_name)
+        if token:
+            payload = decode_official_token(token)
+            if payload and payload.get("tourn") == tournament.id:
+                official_id = payload.get("sub")
+                if official_id:
+                    # Check if this token was issued to a platform User (organizer or super admin)
+                    if official_id.startswith(("usr_", "user_")):
+                        stmt_user = select(User).where(User.id == official_id)
+                        res_u = await db.execute(stmt_user)
+                        plat_user = res_u.scalar_one_or_none()
+                        if plat_user and (plat_user.is_super_admin or tournament.organizer_id == plat_user.id):
+                            ctx = {
+                                "is_organizer": True,
+                                "role": "Tournament Director" if tournament.organizer_id == plat_user.id else "Super Admin",
+                                "role_names": ["Tournament Director"] if tournament.organizer_id == plat_user.id else ["Super Admin"],
+                                "permissions": ALL_TABROOM_PERMISSION_CODES,
+                                "name": plat_user.full_name,
+                                "email": plat_user.email,
+                                "official_profile": None,
+                            }
+                    else:
+                        stmt = (
+                            select(OfficialProfile)
+                            .options(
+                                selectinload(OfficialProfile.participant),
+                                selectinload(OfficialProfile.roles).selectinload(Role.permissions),
+                            )
+                            .where(OfficialProfile.id == official_id)
+                        )
+                        result = await db.execute(stmt)
+                        official = result.scalar_one_or_none()
 
-    payload = decode_official_token(token)
-    if not payload or payload.get("tourn") != tournament.id:
-        return None
+                        if official and official.is_active:
+                            perms = official.permission_codes
+                            if not perms and official.role:
+                                perms = ALL_TABROOM_PERMISSION_CODES
 
-    official_id = payload.get("sub")
-    if not official_id:
-        return None
+                            role_names = official.role_names
+                            display_role = ", ".join(role_names) if role_names else (official.role.value.upper() if official.role else "Official")
 
-    # Check if this token was issued to a platform User (organizer or super admin)
-    if official_id.startswith(("usr_", "user_")):
-        stmt_user = select(User).where(User.id == official_id)
-        res_u = await db.execute(stmt_user)
-        plat_user = res_u.scalar_one_or_none()
-        if plat_user and (plat_user.is_super_admin or tournament.organizer_id == plat_user.id):
-            return {
-                "is_organizer": True,
-                "role": "Tournament Director" if tournament.organizer_id == plat_user.id else "Super Admin",
-                "role_names": ["Tournament Director"] if tournament.organizer_id == plat_user.id else ["Super Admin"],
-                "permissions": ALL_TABROOM_PERMISSION_CODES,
-                "name": plat_user.full_name,
-                "email": plat_user.email,
-                "official_profile": None,
-            }
-        return None
+                            ctx = {
+                                "is_organizer": False,
+                                "role": display_role,
+                                "role_names": role_names,
+                                "permissions": perms,
+                                "name": official.participant.name if official.participant else "Official",
+                                "email": official.participant.email if official.participant else "",
+                                "official_profile": official,
+                            }
 
-    stmt = (
-        select(OfficialProfile)
-        .options(
-            selectinload(OfficialProfile.participant),
-            selectinload(OfficialProfile.roles).selectinload(Role.permissions),
-        )
-        .where(OfficialProfile.id == official_id)
-    )
-    result = await db.execute(stmt)
-    official = result.scalar_one_or_none()
+    if ctx is not None:
+        nav_counts = await get_tournament_nav_counts(db, tournament.id)
+        ctx["nav_counts"] = nav_counts
+        request.state.nav_counts = nav_counts
+        request.state.official_context = ctx
 
-    if not official or not official.is_active:
-        return None
-
-    perms = official.permission_codes
-    if not perms and official.role:
-        perms = ALL_TABROOM_PERMISSION_CODES
-
-    role_names = official.role_names
-    display_role = ", ".join(role_names) if role_names else (official.role.value.upper() if official.role else "Official")
-
-    return {
-        "is_organizer": False,
-        "role": display_role,
-        "role_names": role_names,
-        "permissions": perms,
-        "name": official.participant.name if official.participant else "Official",
-        "email": official.participant.email if official.participant else "",
-        "official_profile": official,
-    }
+    return ctx
 
 
 # =========================================================================
@@ -344,15 +351,47 @@ async def get_current_official_context(
 async def render_tenant_home(
     request: Request,
     user: Optional[User] = None,
+    db: Optional[AsyncSession] = None,
 ) -> HTMLResponse:
     """Render public tournament overview on tenant subdomain."""
     tournament = get_current_tenant_tournament(request)
+    
+    counts: Dict[str, Any] = {}
+    officials: List[Participant] = []
+
+    async def _fetch_data(session: AsyncSession) -> None:
+        nonlocal counts, officials
+        counts = await get_tournament_nav_counts(session, tournament.id)
+        officials_stmt = (
+            select(Participant)
+            .options(
+                joinedload(Participant.institution),
+                selectinload(Participant.official_profile).selectinload(OfficialProfile.roles),
+                selectinload(Participant.affiliations).joinedload(ParticipantInstitution.institution),
+            )
+            .where(
+                Participant.tournament_id == tournament.id,
+                Participant.official_profile.has(),
+            )
+            .order_by(Participant.name)
+        )
+        officials = list((await session.scalars(officials_stmt)).all())
+
+    if db is not None:
+        await _fetch_data(db)
+    else:
+        from kwuo.core.database import async_session_factory
+        async with async_session_factory() as session:
+            await _fetch_data(session)
+
     return templates.TemplateResponse(
         request=request,
         name="tenant/home.html",
         context={
             "tournament": tournament,
             "user": user,
+            "officials": officials,
+            "stats": counts,
             "page_title": f"{tournament.name} — Overview",
         },
     )
@@ -552,47 +591,64 @@ async def get_tournament_institutions_with_stats(db: AsyncSession, tournament_id
     res = await db.execute(stmt)
     institutions = res.scalars().all()
 
-    # 2. Query participants in this tournament with their profile types and affiliations
-    p_stmt = (
-        select(Participant)
-        .where(Participant.tournament_id == tournament_id)
-        .options(
-            selectinload(Participant.affiliations),
-            selectinload(Participant.speaker_profile),
-            selectinload(Participant.judge_profile),
-        )
+    # 2. Query contingent counts grouped directly in SQL instead of loading all participant ORM models
+    spk_stmt = (
+        select(Participant.institution_id, func.count(Participant.id))
+        .join(SpeakerProfile, SpeakerProfile.participant_id == Participant.id)
+        .where(Participant.tournament_id == tournament_id, Participant.institution_id != None)
+        .group_by(Participant.institution_id)
     )
-    p_res = await db.execute(p_stmt)
-    participants = p_res.scalars().all()
+    primary_speakers = dict((await db.execute(spk_stmt)).all())
 
-    # Build tally
-    speakers_by_inst: Dict[str, set] = defaultdict(set)
-    judges_by_inst: Dict[str, set] = defaultdict(set)
-    ias_by_inst: Dict[str, set] = defaultdict(set)
-    total_by_inst: Dict[str, set] = defaultdict(set)
+    sec_spk_stmt = (
+        select(ParticipantInstitution.institution_id, func.count(ParticipantInstitution.participant_id))
+        .join(Participant, ParticipantInstitution.participant_id == Participant.id)
+        .join(SpeakerProfile, SpeakerProfile.participant_id == Participant.id)
+        .where(Participant.tournament_id == tournament_id)
+        .group_by(ParticipantInstitution.institution_id)
+    )
+    sec_speakers = dict((await db.execute(sec_spk_stmt)).all())
 
-    for p in participants:
-        inst_ids = set()
-        if p.institution_id:
-            inst_ids.add(p.institution_id)
-        for aff in p.affiliations:
-            inst_ids.add(aff.institution_id)
+    adj_stmt = (
+        select(Participant.institution_id, func.count(Participant.id))
+        .join(JudgeProfile, JudgeProfile.participant_id == Participant.id)
+        .where(
+            Participant.tournament_id == tournament_id,
+            Participant.institution_id != None,
+            JudgeProfile.is_independent == False,
+        )
+        .group_by(Participant.institution_id)
+    )
+    primary_judges = dict((await db.execute(adj_stmt)).all())
 
-        is_indep = bool(p.judge_profile and p.judge_profile.is_independent)
+    sec_adj_stmt = (
+        select(ParticipantInstitution.institution_id, func.count(ParticipantInstitution.participant_id))
+        .join(Participant, ParticipantInstitution.participant_id == Participant.id)
+        .join(JudgeProfile, JudgeProfile.participant_id == Participant.id)
+        .where(Participant.tournament_id == tournament_id, JudgeProfile.is_independent == False)
+        .group_by(ParticipantInstitution.institution_id)
+    )
+    sec_judges = dict((await db.execute(sec_adj_stmt)).all())
 
-        for i_id in inst_ids:
-            if p.is_speaker:
-                speakers_by_inst[i_id].add(p.id)
-            if p.is_judge:
-                if is_indep:
-                    ias_by_inst[i_id].add(p.id)
-                else:
-                    judges_by_inst[i_id].add(p.id)
-            total_by_inst[i_id].add(p.id)
+    ia_stmt = (
+        select(Participant.institution_id, func.count(Participant.id))
+        .join(JudgeProfile, JudgeProfile.participant_id == Participant.id)
+        .where(
+            Participant.tournament_id == tournament_id,
+            Participant.institution_id != None,
+            JudgeProfile.is_independent == True,
+        )
+        .group_by(Participant.institution_id)
+    )
+    ia_counts = dict((await db.execute(ia_stmt)).all())
 
     out = []
     for inst in institutions:
         c_info = get_country_info(inst.country)
+        spk_c = primary_speakers.get(inst.id, 0) + sec_speakers.get(inst.id, 0)
+        adj_c = primary_judges.get(inst.id, 0) + sec_judges.get(inst.id, 0)
+        ia_c = ia_counts.get(inst.id, 0)
+        tot_c = spk_c + adj_c + ia_c
         out.append({
             "id": inst.id,
             "name": inst.name,
@@ -602,10 +658,10 @@ async def get_tournament_institutions_with_stats(db: AsyncSession, tournament_id
             "flag": c_info["flag"],
             "region": inst.region or "",
             "region_display": inst.region.title() if inst.region else "",
-            "speakers_count": len(speakers_by_inst.get(inst.id, set())),
-            "judges_count": len(judges_by_inst.get(inst.id, set())),
-            "ias_count": len(ias_by_inst.get(inst.id, set())),
-            "total_count": len(total_by_inst.get(inst.id, set())),
+            "speakers_count": spk_c,
+            "judges_count": adj_c,
+            "ias_count": ia_c,
+            "total_count": tot_c,
         })
 
     return sorted(out, key=lambda x: (-x["total_count"], x["name"].lower()))
@@ -639,10 +695,14 @@ async def tournament_participants_page(
     role: str = "all",
     div: Optional[str] = None,
     q: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=10, le=100),
+    sort: str = "name",
+    dir: str = "asc",
     user: Optional[User] = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Render public participant directory with filterable speaker and judge tabs."""
+    """Render public participant directory with SQL filtering, search, and pagination."""
     tournament = get_current_tenant_tournament(request)
 
     stmt = (
@@ -651,7 +711,7 @@ async def tournament_participants_page(
             selectinload(Participant.speaker_profile),
             selectinload(Participant.judge_profile),
             selectinload(Participant.divisions),
-            selectinload(Participant.institution),
+            joinedload(Participant.institution),
         )
         .where(
             Participant.tournament_id == tournament.id,
@@ -660,57 +720,71 @@ async def tournament_participants_page(
                 Participant.judge_profile.has(),
             ),
         )
-        .order_by(Participant.name.asc())
     )
-    all_parts = list((await db.execute(stmt)).scalars().all())
 
-    speakers = [p for p in all_parts if p.is_speaker]
-    judges = [p for p in all_parts if p.is_judge]
+    # Filter by role
+    if role == "speakers":
+        stmt = stmt.where(Participant.speaker_profile.has())
+    elif role == "judges":
+        stmt = stmt.where(Participant.judge_profile.has())
 
-    # Pre-build unified serializable list for client-side Alpine search/filtering
-    participants_data = [
-        {
-            "id": p.id,
-            "name": p.name,
-            "role": "speaker" if p.is_speaker else "adj",
-            "role_label": "Speaker" if p.is_speaker else "Adj",
-            "is_speaker": p.is_speaker,
-            "is_judge": p.is_judge,
-            "pronouns": (p.speaker_profile.pronouns if p.speaker_profile else "") or "",
-            "institution": p.institution.name if p.institution else "Independent",
-            "divisions": [d.name for d in p.divisions],
-        }
-        for p in all_parts
-    ]
+    # Filter by division
+    if div and div.strip():
+        stmt = stmt.where(Participant.divisions.any(func.lower(Division.name) == div.strip().lower()))
 
-    # Division filtering for server-side initial state
-    filtered_speakers = speakers
-    filtered_judges = judges
-    if div:
-        filtered_speakers = [s for s in speakers if any(d.name.lower() == div.lower() for d in s.divisions)]
-        filtered_judges = [j for j in judges if any(d.name.lower() == div.lower() for d in j.divisions)]
-
-    # Search query filtering for server-side initial state
+    # Search filter
     if q and q.strip():
-        query = q.strip().lower()
-        filtered_speakers = [s for s in filtered_speakers if query in s.name.lower() or query in (s.institution.name.lower() if s.institution else "independent")]
-        filtered_judges = [j for j in filtered_judges if query in j.name.lower() or query in (j.institution.name.lower() if j.institution else "independent")]
+        search_term = f"%{q.strip().lower()}%"
+        stmt = stmt.outerjoin(Participant.institution).where(
+            or_(
+                func.lower(Participant.name).like(search_term),
+                func.lower(Institution.name).like(search_term),
+            )
+        )
+
+    # Sorting
+    if sort == "institution":
+        stmt = stmt.outerjoin(Participant.institution).order_by(
+            Institution.name.desc() if dir == "desc" else Institution.name.asc(),
+            Participant.name.asc(),
+        )
+    else:
+        stmt = stmt.order_by(
+            Participant.name.desc() if dir == "desc" else Participant.name.asc()
+        )
+
+    page_result = await paginate(db, stmt, page=page, page_size=page_size)
+
+    # Tab counts via fast scalar COUNT queries
+    tot_spk_stmt = (
+        select(func.count(SpeakerProfile.id))
+        .join(Participant, SpeakerProfile.participant_id == Participant.id)
+        .where(Participant.tournament_id == tournament.id)
+    )
+    total_speakers = (await db.execute(tot_spk_stmt)).scalar() or 0
+
+    tot_adj_stmt = (
+        select(func.count(JudgeProfile.id))
+        .join(Participant, JudgeProfile.participant_id == Participant.id)
+        .where(Participant.tournament_id == tournament.id)
+    )
+    total_judges = (await db.execute(tot_adj_stmt)).scalar() or 0
 
     return templates.TemplateResponse(
         request=request,
         name="tenant/participants.html",
         context={
             "tournament": tournament,
-            "all_participants": all_parts,
-            "participants_data": participants_data,
-            "speakers": filtered_speakers,
-            "judges": filtered_judges,
-            "total_speakers_count": len(speakers),
-            "total_judges_count": len(judges),
+            "page_result": page_result,
+            "participants": page_result.items,
+            "total_speakers_count": total_speakers,
+            "total_judges_count": total_judges,
             "active_role": role,
             "active_division": div,
             "search_query": q or "",
             "divisions": tournament.divisions,
+            "sort_col": sort,
+            "sort_asc": (dir == "asc"),
             "user": user,
             "page_title": f"Participants — {tournament.name}",
         },
@@ -2448,30 +2522,64 @@ async def admin_rubric_delete_criterion(
 @router.get("/admin/speakers", response_class=HTMLResponse)
 async def admin_speakers_page(
     request: Request,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=10, le=100),
+    q: Optional[str] = None,
+    div: Optional[str] = None,
+    sort: str = "name",
+    dir: str = "asc",
     official: Dict[str, Any] = Depends(require_permission("speakers:manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Render Tab Room speakers directory, live check-in desk, and participant manager."""
+    """Render Tab Room speakers directory, live check-in desk, and participant manager with SQL pagination."""
     tournament = get_current_tenant_tournament(request)
     msg = request.query_params.get("msg")
     error = request.query_params.get("error")
 
-    # 1. Query all speakers enrolled in this tournament
+    # 1. Query speakers enrolled in this tournament with SQL pagination & filtering
     stmt = (
         select(Participant)
         .options(
             selectinload(Participant.speaker_profile),
             selectinload(Participant.divisions),
-            selectinload(Participant.institution),
-            selectinload(Participant.affiliations).selectinload(ParticipantInstitution.institution),
+            joinedload(Participant.institution),
+            selectinload(Participant.affiliations).joinedload(ParticipantInstitution.institution),
         )
         .where(
             Participant.tournament_id == tournament.id,
-            Participant.speaker_profile != None,
+            Participant.speaker_profile.has(),
         )
-        .order_by(Participant.name.asc())
     )
-    speakers = list((await db.execute(stmt)).scalars().all())
+
+    if q and q.strip():
+        search_term = f"%{q.strip().lower()}%"
+        stmt = stmt.outerjoin(Participant.institution).where(
+            or_(
+                func.lower(Participant.name).like(search_term),
+                func.lower(Participant.email).like(search_term),
+                func.lower(Institution.name).like(search_term),
+            )
+        )
+
+    if div and div.strip():
+        stmt = stmt.where(Participant.divisions.any(Division.id == div.strip()))
+
+    if sort == "institution":
+        stmt = stmt.outerjoin(Participant.institution).order_by(
+            Institution.name.desc() if dir == "desc" else Institution.name.asc(),
+            Participant.name.asc(),
+        )
+    elif sort == "email":
+        stmt = stmt.order_by(
+            Participant.email.desc() if dir == "desc" else Participant.email.asc()
+        )
+    else:
+        stmt = stmt.order_by(
+            Participant.name.desc() if dir == "desc" else Participant.name.asc()
+        )
+
+    page_result = await paginate(db, stmt, page=page, page_size=page_size)
+    speakers = list(page_result.items)
 
     # 2. Query tournament institutions and divisions for comboboxes & filters
     inst_stmt = (
@@ -2511,6 +2619,11 @@ async def admin_speakers_page(
             "official": official,
             "speakers": speakers,
             "speakers_data": speakers_data,
+            "page_result": page_result,
+            "search_query": q or "",
+            "active_division": div or "",
+            "sort_col": sort,
+            "sort_asc": (dir == "asc"),
             "institutions": institutions,
             "divisions": divisions,
             "msg": msg,
@@ -3310,6 +3423,19 @@ async def admin_speakers_import(
             div_map[dn_lower] = new_div
             div_objs.append(new_div)
 
+    # Pre-fetch existing participants to avoid N+1 queries during row iteration
+    existing_parts_stmt = (
+        select(Participant)
+        .options(
+            selectinload(Participant.speaker_profile),
+            selectinload(Participant.affiliations),
+            selectinload(Participant.divisions),
+        )
+        .where(Participant.tournament_id == tournament.id)
+    )
+    existing_parts = (await db.execute(existing_parts_stmt)).scalars().all()
+    existing_by_email = {p.email.lower(): p for p in existing_parts}
+
     imported_count = 0
     for r in rows:
         c_name = r["name"]
@@ -3317,15 +3443,7 @@ async def admin_speakers_import(
         if not c_name or not c_email or "@" not in c_email:
             continue
 
-        existing = (await db.execute(
-            select(Participant)
-            .options(
-                selectinload(Participant.speaker_profile),
-                selectinload(Participant.affiliations),
-                selectinload(Participant.divisions),
-            )
-            .where(Participant.tournament_id == tournament.id, Participant.email == c_email)
-        )).scalar_one_or_none()
+        existing = existing_by_email.get(c_email.lower())
         if existing and existing.speaker_profile:
             continue
 
@@ -3345,6 +3463,7 @@ async def admin_speakers_import(
             access_token_hash=token_hash,
         )
         db.add(part)
+        existing_by_email[c_email.lower()] = part
         if not part.speaker_profile:
             part.speaker_profile = SpeakerProfile(pronouns=r["pronouns"])
         else:
@@ -3385,10 +3504,18 @@ async def admin_speakers_import(
 @router.get("/admin/judges", response_class=HTMLResponse)
 async def admin_judges_page(
     request: Request,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=10, le=100),
+    q: Optional[str] = None,
+    div: Optional[str] = None,
+    chair: Optional[bool] = None,
+    reserve: Optional[bool] = None,
+    sort: str = "name",
+    dir: str = "asc",
     official: Dict[str, Any] = Depends(require_permission("judges:manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Render Tab Room adjudicator pool and panel credentials."""
+    """Render Tab Room adjudicator pool and panel credentials with SQL pagination."""
     tournament = get_current_tenant_tournament(request)
     msg = request.query_params.get("msg")
     error = request.query_params.get("error")
@@ -3401,22 +3528,57 @@ async def admin_judges_page(
     inst_stmt = select(Institution).where(Institution.tournament_id == tournament.id).order_by(Institution.name)
     institutions = list((await db.execute(inst_stmt)).scalars().all())
 
-    # Fetch participants with JudgeProfile
+    # Fetch participants with JudgeProfile with SQL pagination & filtering
     judges_stmt = (
         select(Participant)
         .join(Participant.judge_profile)
         .options(
             selectinload(Participant.judge_profile),
-            selectinload(Participant.institution),
+            joinedload(Participant.institution),
             selectinload(Participant.divisions),
-            selectinload(Participant.affiliations).selectinload(ParticipantInstitution.institution),
+            selectinload(Participant.affiliations).joinedload(ParticipantInstitution.institution),
         )
         .where(Participant.tournament_id == tournament.id)
-        .order_by(Participant.name.asc())
     )
-    raw_judges = list((await db.execute(judges_stmt)).scalars().all())
 
-    # Calculate scores and serializable dictionary for Alpine.js
+    if q and q.strip():
+        search_term = f"%{q.strip().lower()}%"
+        judges_stmt = judges_stmt.outerjoin(Participant.institution).where(
+            or_(
+                func.lower(Participant.name).like(search_term),
+                func.lower(Participant.email).like(search_term),
+                func.lower(Institution.name).like(search_term),
+            )
+        )
+
+    if div and div.strip():
+        judges_stmt = judges_stmt.where(Participant.divisions.any(Division.id == div.strip()))
+
+    if chair is not None:
+        judges_stmt = judges_stmt.where(JudgeProfile.is_chair_eligible == chair)
+
+    if reserve is not None:
+        judges_stmt = judges_stmt.where(JudgeProfile.is_reserve == reserve)
+
+    if sort == "institution":
+        judges_stmt = judges_stmt.outerjoin(Participant.institution).order_by(
+            Institution.name.desc() if dir == "desc" else Institution.name.asc(),
+            Participant.name.asc(),
+        )
+    elif sort == "score":
+        judges_stmt = judges_stmt.order_by(
+            JudgeProfile.test_score.desc() if dir == "desc" else JudgeProfile.test_score.asc(),
+            Participant.name.asc(),
+        )
+    else:
+        judges_stmt = judges_stmt.order_by(
+            Participant.name.desc() if dir == "desc" else Participant.name.asc()
+        )
+
+    page_result = await paginate(db, judges_stmt, page=page, page_size=page_size)
+    raw_judges = list(page_result.items)
+
+    # Calculate scores and serializable dictionary for current page
     judges_data = []
     for p in raw_judges:
         adj = p.judge_profile
@@ -3469,6 +3631,11 @@ async def admin_judges_page(
             "official": official,
             "judges": raw_judges,
             "judges_data": judges_data,
+            "page_result": page_result,
+            "search_query": q or "",
+            "active_division": div or "",
+            "sort_col": sort,
+            "sort_asc": (dir == "asc"),
             "divisions": divisions,
             "institutions": institutions,
             "msg": msg,
@@ -3915,9 +4082,9 @@ async def admin_judges_export(
         .join(Participant.judge_profile)
         .options(
             selectinload(Participant.judge_profile),
-            selectinload(Participant.institution),
+            joinedload(Participant.institution),
             selectinload(Participant.divisions),
-            selectinload(Participant.affiliations).selectinload(ParticipantInstitution.institution),
+            selectinload(Participant.affiliations).joinedload(ParticipantInstitution.institution),
         )
         .where(Participant.tournament_id == tournament.id)
         .order_by(Participant.name.asc())
@@ -4161,6 +4328,15 @@ async def admin_judges_import(
             await db.flush()
             div_map[dn_lower] = new_div
 
+    # Pre-fetch existing participants to avoid N+1 queries during judge row iteration
+    existing_parts_stmt = (
+        select(Participant)
+        .options(selectinload(Participant.judge_profile), selectinload(Participant.divisions))
+        .where(Participant.tournament_id == tournament.id)
+    )
+    existing_parts = (await db.execute(existing_parts_stmt)).scalars().all()
+    existing_by_email = {p.email.lower(): p for p in existing_parts}
+
     imported_count = 0
     for r in rows:
         name_val = r["name"]
@@ -4168,15 +4344,7 @@ async def admin_judges_import(
         if not name_val or not email_val or "@" not in email_val:
             continue
 
-        stmt_existing = (
-            select(Participant)
-            .options(selectinload(Participant.judge_profile), selectinload(Participant.divisions))
-            .where(
-                Participant.tournament_id == tournament.id,
-                Participant.email == email_val,
-            )
-        )
-        existing_part = (await db.execute(stmt_existing)).scalar_one_or_none()
+        existing_part = existing_by_email.get(email_val.lower())
 
         inst_target = None
         if r.get("institution") and r["institution"].strip().lower() != "independent":
@@ -4246,6 +4414,7 @@ async def admin_judges_import(
                     )
                 )
             db.add(part)
+            existing_by_email[email_val.lower()] = part
 
         # Assign divisions
         assigned_div_ids = {d.id for d in part.divisions}
@@ -5407,7 +5576,11 @@ async def admin_institutions_page(
     for inst in institutions_list:
         if inst.get("region_display"):
             region_set.add(inst["region_display"])
-    reg_stmt = select(Institution.region).where(Institution.region.isnot(None)).distinct()
+    reg_stmt = (
+        select(Institution.region)
+        .where(Institution.tournament_id == tournament.id, Institution.region.isnot(None))
+        .distinct()
+    )
     reg_res = await db.execute(reg_stmt)
     for r in reg_res.all():
         if r[0] and r[0].strip():

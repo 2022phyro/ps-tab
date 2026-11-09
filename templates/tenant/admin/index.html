@@ -4,6 +4,7 @@
 {% block title %}Tab Room Control Center — {{ tournament.name }}{% endblock %}
 
 {% block admin_content %}
+{% set counts = official.nav_counts if official and official.nav_counts else {} %}
 <div class="max-w-6xl mx-auto space-y-8">
     <!-- Breadcrumb & Welcome -->
     <div>
@@ -26,7 +27,7 @@
             <article class="kwuo-torn-docket !p-5 text-center flex flex-col items-center justify-center h-full">
                 <span class="text-xs font-bold uppercase tracking-wider text-theme-body/60">Speakers Checked In</span>
                 <span class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading mt-1">
-                    {{ tournament.speakers|selectattr('status.value', 'equalto', 'checked_in')|list|length }} / {{ tournament.total_speakers_count }}
+                    {{ counts.speakers_checked_in if counts.speakers_checked_in is defined else (tournament.speakers|selectattr('status.value', 'equalto', 'checked_in')|list|length) }} / {{ counts.speakers if counts.speakers is defined else tournament.total_speakers_count }}
                 </span>
                 <span class="text-[10px] text-theme-body/60 mt-1 uppercase font-semibold">Registered Speakers</span>
             </article>
@@ -36,7 +37,7 @@
             <article class="kwuo-torn-docket !p-5 text-center flex flex-col items-center justify-center h-full">
                 <span class="text-xs font-bold uppercase tracking-wider text-theme-body/60">Judges Checked In</span>
                 <span class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading mt-1">
-                    {{ tournament.judges|selectattr('status.value', 'equalto', 'checked_in')|list|length }} / {{ tournament.total_judges_count }}
+                    {{ counts.judges_checked_in if counts.judges_checked_in is defined else (tournament.judges|selectattr('status.value', 'equalto', 'checked_in')|list|length) }} / {{ counts.judges if counts.judges is defined else tournament.total_judges_count }}
                 </span>
                 <span class="text-[10px] text-theme-body/60 mt-1 uppercase font-semibold">Accredited Panelists</span>
             </article>
@@ -152,7 +153,7 @@
                         <p class="text-xs text-theme-body/70 mt-1">Single names, magic links, check-in attendance.</p>
                     </div>
                     <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
-                        <span>View {{ tournament.total_speakers_count }} Speakers</span>
+                        <span>View {{ counts.speakers if counts.speakers is defined else tournament.total_speakers_count }} Speakers</span>
                         <i class="ph-bold ph-arrow-right"></i>
                     </span>
                 </article>
@@ -169,7 +170,7 @@
                         <p class="text-xs text-theme-body/70 mt-1">Chair eligibility, conflict tracking, magic links.</p>
                     </div>
                     <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
-                        <span>View {{ tournament.total_judges_count }} Judges</span>
+                        <span>View {{ counts.judges if counts.judges is defined else tournament.total_judges_count }} Judges</span>
                         <i class="ph-bold ph-arrow-right"></i>
                     </span>
                 </article>
@@ -186,7 +187,7 @@
                         <p class="text-xs text-theme-body/70 mt-1">Directors, CAP, DCAs, Equity, tab passwords.</p>
                     </div>
                     <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
-                        <span>View {{ tournament.total_officials_count }} Officials</span>
+                        <span>View {{ counts.officials if counts.officials is defined else tournament.total_officials_count }} Officials</span>
                         <i class="ph-bold ph-arrow-right"></i>
                     </span>
                 </article>
@@ -203,7 +204,7 @@
                         <p class="text-xs text-theme-body/70 mt-1">Member schools, delegation attendee stats.</p>
                     </div>
                     <span class="text-[10px] font-bold text-kwuo-bronze mt-4 flex items-center gap-1">
-                        <span>View {{ tournament.total_institutions_count }} Institutions</span>
+                        <span>View {{ counts.institutions if counts.institutions is defined else tournament.total_institutions_count }} Institutions</span>
                         <i class="ph-bold ph-arrow-right"></i>
                     </span>
                 </article>

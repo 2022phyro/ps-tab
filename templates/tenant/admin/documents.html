@@ -480,14 +480,14 @@
     <!-- MODAL 1: Upload Document (Archival Docket Aesthetic)          -->
     <!-- ============================================================= -->
     <template x-teleport="body">
-        <div x-show="addDocModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4">
-            <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="addDocModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+        <div x-show="addDocModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="addDocModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
             <!-- Dialog in Authentic Torn-Docket Styling -->
-            <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10"
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;"
                 @keydown.escape.window="addDocModal = false">
-                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[85vh] font-body">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[80vh] font-body">
                     <!-- Pinned Header -->
                     <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
                         <div class="flex items-center gap-2">
@@ -616,13 +616,13 @@
 <!-- MODAL 2: Delete Confirmation Modal                            -->
 <!-- ============================================================= -->
 <template x-teleport="body">
-    <div x-show="deleteDocModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4">
-        <!-- Backdrop -->
-        <div @click="deleteDocModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity">
+    <div x-show="deleteDocModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+        <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+        <div @click="deleteDocModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;">
         </div>
 
         <!-- Dialog -->
-        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="deleteDocModal = false">
+        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="deleteDocModal = false">
             <article class="kwuo-torn-docket !p-5 sm:!p-6 space-y-4">
                 <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
                     <div

@@ -8,6 +8,7 @@ from sqlalchemy import (
     Integer,
     ForeignKey,
     Text,
+    Index,
     Enum as SAEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -40,6 +41,9 @@ class FileAttachment(Base, TimestampMixin):
     - Public (accessible without login) vs staff-only visibility.
     """
     __tablename__ = "file_attachments"
+    __table_args__ = (
+        Index("ix_file_attachments_tournament_category", "tournament_id", "category"),
+    )
 
     id: Mapped[str] = mapped_column(
         TypeIDType("att"),

@@ -3,6 +3,8 @@
 from typing import Optional
 from fastapi import APIRouter, Request, Depends, Form, status
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from kwuo.core.database import get_db
 from kwuo.web.templates import templates
 from kwuo.core.rbac import get_optional_current_user
 from kwuo.models.user import User
@@ -14,11 +16,12 @@ router = APIRouter()
 async def home_page(
     request: Request,
     user: Optional[User] = Depends(get_optional_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Render public landing page on apex domain, or tournament portal on tenant subdomain."""
     if getattr(request.state, "is_tenant_domain", False):
         from kwuo.web.routes.tenant import render_tenant_home
-        return await render_tenant_home(request, user)
+        return await render_tenant_home(request, user, db)
 
     msg = request.query_params.get("msg")
     msg_type = request.query_params.get("msg_type", "success")

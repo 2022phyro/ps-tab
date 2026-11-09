@@ -506,14 +506,21 @@
     </div>
 
     <!-- Main Toolbar -->
-    <div class="sticky top-14 lg:top-0 z-30 bg-theme-base py-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="background-color: var(--color-bg-base);">
-        <!-- Search & Division Filter -->
+    <div class="sticky top-14 lg:top-0 z-10 bg-theme-base py-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="background-color: var(--color-bg-base);">
+        <!-- Search & Division Filter with Debounced HTMX -->
         <div class="flex items-center gap-2.5 flex-1 max-w-xl">
-            <div class="relative flex-1">
+            <form method="GET" action="/admin/judges" class="relative flex-1"
+                  hx-boost="true" hx-target="#judges-manager-container" hx-select="#judges-manager-container">
                 <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-theme-body/40 text-xs"></i>
-                <input type="text" x-model="searchQuery" placeholder="Filter judges by name, email, institution, divisions..."
+                <input type="search" name="q" value="{{ search_query }}" x-model="searchQuery"
+                       placeholder="Filter judges by name, email, institution, divisions..."
+                       hx-get="/admin/judges"
+                       hx-trigger="input changed delay:250ms, search"
+                       hx-target="#judges-manager-container"
+                       hx-select="#judges-manager-container"
+                       hx-push-url="true"
                        class="w-full pl-9 pr-3.5 py-2 rounded-xl border border-theme-border bg-theme-base text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
-            </div>
+            </form>
 
             <!-- Division Quick Filter -->
             <select x-model="divisionFilter"
@@ -1024,6 +1031,37 @@
                 </table>
             </div>
 
+            <!-- Server-Side Pagination Bar (Table) -->
+            {% if page_result and page_result.total_pages > 1 %}
+            <div x-show="viewMode === 'table'" class="flex items-center justify-between p-4 border-t border-theme-border flex-wrap gap-3 font-body text-xs">
+                <div class="text-theme-body/70">
+                    Showing <span class="font-bold text-theme-heading">{{ ((page_result.page - 1) * page_result.page_size) + 1 }}</span>
+                    to <span class="font-bold text-theme-heading">{{ [page_result.page * page_result.page_size, page_result.total_items]|min }}</span>
+                    of <span class="font-bold text-theme-heading">{{ page_result.total_items }}</span> adjudicators
+                </div>
+                <div class="flex items-center gap-1.5">
+                    {% if page_result.has_prev %}
+                    <a href="?page={{ page_result.prev_page }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       class="px-2.5 py-1.5 rounded-lg border border-theme-border hover:bg-theme-base transition font-medium">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% for p_num in page_result.page_range() %}
+                    <a href="?page={{ p_num }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       class="px-3 py-1.5 rounded-lg border {% if p_num == page_result.page %}bg-kwuo-bronze text-white border-kwuo-bronze font-bold{% else %}border-theme-border hover:bg-theme-base{% endif %} transition">
+                        {{ p_num }}
+                    </a>
+                    {% endfor %}
+                    {% if page_result.has_next %}
+                    <a href="?page={{ page_result.next_page }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       class="px-2.5 py-1.5 rounded-lg border border-theme-border hover:bg-theme-base transition font-medium">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- ========================================================= -->
             <!-- VIEW 2: CARDS VIEW (PROPER DOCKET WRAPPER, ROUNDED RECTS)  -->
             <!-- ========================================================= -->
@@ -1312,6 +1350,37 @@
                     No adjudicators found matching your criteria.
                 </div>
             </div>
+
+            <!-- Server-Side Pagination Bar (Cards) -->
+            {% if page_result and page_result.total_pages > 1 %}
+            <div x-show="viewMode === 'cards'" class="flex items-center justify-between p-4 border-t border-theme-border flex-wrap gap-3 font-body text-xs">
+                <div class="text-theme-body/70">
+                    Showing <span class="font-bold text-theme-heading">{{ ((page_result.page - 1) * page_result.page_size) + 1 }}</span>
+                    to <span class="font-bold text-theme-heading">{{ [page_result.page * page_result.page_size, page_result.total_items]|min }}</span>
+                    of <span class="font-bold text-theme-heading">{{ page_result.total_items }}</span> adjudicators
+                </div>
+                <div class="flex items-center gap-1.5">
+                    {% if page_result.has_prev %}
+                    <a href="?page={{ page_result.prev_page }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       class="px-2.5 py-1.5 rounded-lg border border-theme-border hover:bg-theme-base transition font-medium">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% for p_num in page_result.page_range() %}
+                    <a href="?page={{ p_num }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       class="px-3 py-1.5 rounded-lg border {% if p_num == page_result.page %}bg-kwuo-bronze text-white border-kwuo-bronze font-bold{% else %}border-theme-border hover:bg-theme-base{% endif %} transition">
+                        {{ p_num }}
+                    </a>
+                    {% endfor %}
+                    {% if page_result.has_next %}
+                    <a href="?page={{ page_result.next_page }}{% if active_division %}&div={{ active_division }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       class="px-2.5 py-1.5 rounded-lg border border-theme-border hover:bg-theme-base transition font-medium">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </article>
     </div>
 
@@ -1319,13 +1388,13 @@
     <!-- MODAL: ADD JUDGE (TORN DOCKET DIALOG)                                     -->
     <!-- ========================================================================= -->
     <template x-teleport="body">
-        <div x-show="addModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
-            <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="addModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+        <div x-show="addModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="addModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
-            <div class="relative kwuo-torn-docket-wrapper w-full max-w-xl z-10" @keydown.escape.window="addModal = false">
-                <article class="kwuo-torn-docket !p-5 sm:!p-6 space-y-4 font-body">
-                <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-xl kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="addModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[85vh] font-body">
+                <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
                     <div class="flex items-center gap-2.5">
                         <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
                             <i class="ph-bold ph-scales text-lg"></i>
@@ -1340,7 +1409,7 @@
                     </button>
                 </div>
 
-                <form method="POST" action="/admin/judges" class="space-y-4">
+                <form method="POST" action="/admin/judges" class="flex-1 overflow-y-auto py-2 space-y-4 pr-1 min-h-0 font-body">
                     <input type="hidden" name="institution_id" :value="addForm.institution_id">
                     <input type="hidden" name="new_institution_name" :value="addForm.isCreatingInst ? addForm.newInstName : ''">
                     <input type="hidden" name="new_institution_code" :value="addForm.isCreatingInst ? addForm.newInstCode : ''">
@@ -1547,11 +1616,11 @@
     <!-- MODAL: IMPORT JUDGES SPREADSHEET                                          -->
     <!-- ========================================================================= -->
     <template x-teleport="body">
-        <div x-show="importModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
-            <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="importModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+        <div x-show="importModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="importModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
-            <div class="relative kwuo-torn-docket-wrapper w-full max-w-md z-10" @keydown.escape.window="importModal = false">
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-md kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="importModal = false">
                 <article class="kwuo-torn-docket !p-5 sm:!p-6 space-y-4 font-body">
                 <div class="flex items-center justify-between pb-3 border-b border-theme-border">
                     <div class="flex items-center gap-2">
@@ -1598,11 +1667,11 @@
     <!-- MODAL: CONFIRM DELETE (CLEAN TORN DOCKET MODAL, NO NATIVE ALERTS)         -->
     <!-- ========================================================================= -->
     <template x-teleport="body">
-        <div x-show="deleteModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
-            <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="deleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+        <div x-show="deleteModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="deleteModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
-            <div class="relative kwuo-torn-docket-wrapper w-full max-w-sm z-10" @keydown.escape.window="deleteModal = false">
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-sm kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="deleteModal = false">
                 <article class="kwuo-torn-docket !p-5 sm:!p-6 space-y-4 font-body text-center">
                     <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 border border-rose-500/20">
                         <i class="ph-bold ph-trash text-2xl"></i>

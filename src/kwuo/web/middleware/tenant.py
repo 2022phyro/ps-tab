@@ -52,16 +52,7 @@ class TenantSubdomainMiddleware(BaseHTTPMiddleware):
                 select(Tournament)
                 .options(
                     selectinload(Tournament.divisions),
-                    selectinload(Tournament.rubric_criteria),
-                    selectinload(Tournament.attachments),
                     selectinload(Tournament.schedule_items),
-                    selectinload(Tournament.participants).selectinload(Participant.speaker_profile),
-                    selectinload(Tournament.participants).selectinload(Participant.judge_profile),
-                    selectinload(Tournament.participants).selectinload(Participant.official_profile).selectinload(OfficialProfile.roles),
-                    selectinload(Tournament.participants).selectinload(Participant.institution),
-                    selectinload(Tournament.participants).selectinload(Participant.divisions),
-                    selectinload(Tournament.institutions),
-                    selectinload(Tournament.roles),
                 )
                 .where(Tournament.slug == subdomain)
             )

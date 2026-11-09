@@ -42,6 +42,10 @@
         }
     </style>
 
+    <!-- Preload primary font and stylesheet -->
+    <link rel="preload" href="/static/fonts/onest/onest-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/static/css/app.min.css" as="style">
+
     <!-- Compiled Local Stylesheet (Tailwind CSS, Self-Hosted Fonts & Phosphor Icons) -->
     <link rel="stylesheet" href="/static/css/app.min.css">
 
@@ -61,6 +65,56 @@
             --color-text-body: #C8BEB7;
             --color-border: #332420;
             --color-surface: #231A15;
+        }
+
+        /* Universal Form Inversion in Dark Mode */
+        .dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+        .dark select,
+        .dark textarea {
+            background-color: #1E1614 !important;
+            border-color: #332420 !important;
+            color: #FAF8F5 !important;
+        }
+        .dark input:disabled,
+        .dark select:disabled,
+        .dark textarea:disabled {
+            background-color: #16110F !important;
+            border-color: #2A1F18 !important;
+            color: #A89B91 !important;
+        }
+        .dark label {
+            color: #FAF8F5 !important;
+        }
+        .dark input::placeholder,
+        .dark textarea::placeholder {
+            color: rgba(200, 190, 183, 0.5) !important;
+        }
+
+        /* Full Viewport Modal System - High Stacking Layer Covering Sidebar & Headers */
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .kwuo-modal-container {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .kwuo-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 99998;
+        }
+        .kwuo-modal-docket {
+            position: relative;
+            z-index: 99999;
         }
 
         /* Torn-Docket Card */
@@ -193,6 +247,30 @@
             color: #FAF7F0;
             padding: 8px 12px;
         }
+
+        /* Top HTMX loading bar */
+        .htmx-progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #C07D53;
+            z-index: 9999999;
+            opacity: 0;
+            transition: opacity 200ms ease;
+            pointer-events: none;
+        }
+        .htmx-request .htmx-progress-bar,
+        body.htmx-request .htmx-progress-bar {
+            opacity: 1;
+            animation: htmxProgressAnim 1.5s infinite ease-in-out;
+        }
+        @keyframes htmxProgressAnim {
+            0% { transform: scaleX(0); transform-origin: left; }
+            50% { transform: scaleX(0.7); transform-origin: left; }
+            100% { transform: scaleX(1); transform-origin: right; }
+        }
     </style>
 
     <!-- Bundled Local JavaScript (HTMX, Alpine & Alpine Collapse) -->
@@ -252,6 +330,8 @@
 
     <!-- Backdrop for mobile drawer -->
     <div x-show="drawerOpen" @click="drawerOpen = false" x-cloak x-transition.opacity class="fixed inset-0 z-40 bg-black/50 lg:hidden"></div>
+
+    {% set counts = (official.nav_counts if official and official.nav_counts else (request.state.nav_counts if request.state.nav_counts is defined else {})) %}
 
     <!-- Collapsible Sidebar (Reaches the VERY top of the screen on desktop) -->
     <aside :class="[
@@ -341,7 +421,7 @@
                                 </a>
                                 <a href="/admin/documents" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/documents' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
                                     <span class="flex items-center gap-2"><i class="ph-bold ph-files text-sm"></i> Documents</span>
-                                    <span class="text-[10px] text-theme-body/60">{{ tournament.attachments|length }}</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ counts.attachments if counts.attachments is defined else (tournament.attachments|length) }}</span>
                                 </a>
                                 <a href="/admin/rubric" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/rubric' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
                                     <span class="flex items-center gap-2"><i class="ph-bold ph-sliders text-sm"></i> Rubric</span>
@@ -349,23 +429,23 @@
                                 </a>
                                 <a href="/admin/speakers" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/speakers' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
                                     <span class="flex items-center gap-2"><i class="ph-bold ph-microphone text-sm"></i> Speakers</span>
-                                    <span class="text-[10px] text-theme-body/60">{{ tournament.total_speakers_count }}</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ counts.speakers if counts.speakers is defined else tournament.total_speakers_count }}</span>
                                 </a>
                                 <a href="/admin/judges" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/judges' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
                                     <span class="flex items-center gap-2"><i class="ph-bold ph-scales text-sm"></i> Adjudicators</span>
-                                    <span class="text-[10px] text-theme-body/60">{{ tournament.total_judges_count }}</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ counts.judges if counts.judges is defined else tournament.total_judges_count }}</span>
                                 </a>
                                 <a href="/admin/institutions" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/institutions' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
                                     <span class="flex items-center gap-2"><i class="ph-bold ph-buildings text-sm"></i> Institutions</span>
-                                    <span class="text-[10px] text-theme-body/60">{{ tournament.total_institutions_count }}</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ counts.institutions if counts.institutions is defined else tournament.total_institutions_count }}</span>
                                 </a>
                                 <a href="/admin/officials" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/officials' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
                                     <span class="flex items-center gap-2"><i class="ph-bold ph-users-three text-sm"></i> Staff</span>
-                                    <span class="text-[10px] text-theme-body/60">{{ tournament.total_officials_count }}</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ counts.officials if counts.officials is defined else tournament.total_officials_count }}</span>
                                 </a>
                                 <a href="/admin/authorization" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/authorization' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
                                     <span class="flex items-center gap-2"><i class="ph-bold ph-shield-check text-sm"></i> Authorization</span>
-                                    <span class="text-[10px] text-theme-body/60">{{ tournament.roles|length }}</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ counts.roles if counts.roles is defined else (tournament.roles|length) }}</span>
                                 </a>
                             </div>
                         </div>
@@ -467,7 +547,7 @@
                                 <i class="ph-bold ph-files text-sm shrink-0"></i>
                                 <span class="truncate">Documents</span>
                             </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.attachments|length }}</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ counts.attachments if counts.attachments is defined else (tournament.attachments|length) }}</span>
                         </a>
 
                         <!-- Scoring Criteria / Rubric -->
@@ -487,7 +567,7 @@
                                 <i class="ph-bold ph-microphone text-sm shrink-0"></i>
                                 <span class="truncate">Speakers</span>
                             </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.total_speakers_count }}</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ counts.speakers if counts.speakers is defined else tournament.total_speakers_count }}</span>
                         </a>
 
                         <!-- Judges -->
@@ -497,7 +577,7 @@
                                 <i class="ph-bold ph-scales text-sm shrink-0"></i>
                                 <span class="truncate">Adjudicators</span>
                             </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.total_judges_count }}</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ counts.judges if counts.judges is defined else tournament.total_judges_count }}</span>
                         </a>
 
                         <!-- Institutions -->
@@ -507,7 +587,7 @@
                                 <i class="ph-bold ph-buildings text-sm shrink-0"></i>
                                 <span class="truncate">Institutions</span>
                             </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.total_institutions_count }}</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ counts.institutions if counts.institutions is defined else tournament.total_institutions_count }}</span>
                         </a>
 
                         <!-- Officials / Staff -->
@@ -517,7 +597,7 @@
                                 <i class="ph-bold ph-users-three text-sm shrink-0"></i>
                                 <span class="truncate">Staff</span>
                             </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.total_officials_count }}</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ counts.officials if counts.officials is defined else tournament.total_officials_count }}</span>
                         </a>
 
                         <!-- Authorization & RBAC -->
@@ -527,7 +607,7 @@
                                 <i class="ph-bold ph-shield-check text-sm shrink-0"></i>
                                 <span class="truncate">Authorization</span>
                             </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.roles|length }}</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ counts.roles if counts.roles is defined else (tournament.roles|length) }}</span>
                         </a>
                     </div>
                 </div>

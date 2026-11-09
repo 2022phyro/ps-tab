@@ -135,7 +135,7 @@
                 <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze mb-2">
                     <i class="ph-bold ph-microphone-stage text-xl"></i>
                 </div>
-                <span class="text-3xl font-heading font-extrabold text-theme-heading">{{ tournament.total_speakers_count }}</span>
+                <span class="text-3xl font-heading font-extrabold text-theme-heading">{{ stats.speakers if stats and stats.speakers is defined else tournament.total_speakers_count }}</span>
                 <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider font-body">Registered Speakers</span>
             </article>
         </div>
@@ -146,7 +146,7 @@
                 <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze mb-2">
                     <i class="ph-bold ph-scales text-xl"></i>
                 </div>
-                <span class="text-3xl font-heading font-extrabold text-theme-heading">{{ tournament.total_judges_count }}</span>
+                <span class="text-3xl font-heading font-extrabold text-theme-heading">{{ stats.judges if stats and stats.judges is defined else tournament.total_judges_count }}</span>
                 <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider font-body">Accredited Judges</span>
             </article>
         </div>
@@ -157,7 +157,7 @@
                 <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze mb-2">
                     <i class="ph-bold ph-buildings text-xl"></i>
                 </div>
-                <span class="text-3xl font-heading font-extrabold text-theme-heading">{{ tournament.total_institutions_count }}</span>
+                <span class="text-3xl font-heading font-extrabold text-theme-heading">{{ stats.institutions if stats and stats.institutions is defined else tournament.total_institutions_count }}</span>
                 <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider font-body">Institutions</span>
             </article>
         </div>
@@ -192,9 +192,10 @@
                 </div>
             </div>
 
-            {% if tournament.officials %}
+            {% set displayed_officials = officials if officials is defined and officials is not none else tournament.officials %}
+            {% if displayed_officials %}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                {% for off in tournament.officials %}
+                {% for off in displayed_officials %}
                 {% set profile = off.official_profile %}
                 {% set display_title = profile.title if profile and profile.title else (profile.effective_title if profile else 'Tab Staff') %}
                 {% set secondary_affils = off.affiliations|rejectattr('is_primary')|list if off.affiliations else [] %}

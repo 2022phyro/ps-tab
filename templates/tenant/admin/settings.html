@@ -971,7 +971,7 @@
                                 </button>
 
                                 <div x-show="customDropdownOpen" x-cloak
-                                     class="absolute left-0 right-0 sm:left-auto sm:right-0 mt-1.5 w-full sm:w-80 max-h-80 bg-theme-surface rounded-2xl shadow-2xl border border-theme-border z-50 flex flex-col overflow-hidden text-xs font-body">
+                                     class="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-full sm:w-80 max-h-80 bg-theme-surface rounded-2xl shadow-2xl border border-theme-border z-50 flex flex-col overflow-hidden text-xs font-body">
                                     <div class="p-2 border-b border-theme-border bg-theme-base/60">
                                         <div class="relative">
                                             <i class="ph-bold ph-magnifying-glass absolute left-2.5 top-2 text-theme-body/40 text-xs"></i>
@@ -1078,13 +1078,13 @@
     <!-- ============================================================= -->
     <template x-teleport="body">
         <div x-show="addScheduleModal" x-cloak
-            class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
             <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="addScheduleModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity">
+            <div @click="addScheduleModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;">
             </div>
 
             <!-- Modal Dialog Box (Torn-Docket aesthetic) -->
-            <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10"
+            <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;"
                 @keydown.escape.window="addScheduleModal = false">
                 <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4">
                 <div class="flex items-center justify-between pb-3 border-b border-theme-border">
@@ -1475,12 +1475,12 @@
     <!-- MODAL: Add / Edit Tournament Link                             -->
     <!-- ============================================================= -->
     <template x-teleport="body">
-        <div x-show="linkModalOpen" x-cloak class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+        <div x-show="linkModalOpen" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
             <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="linkModalOpen = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+            <div @click="linkModalOpen = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
             <!-- Modal Dialog Box (Torn-Docket aesthetic) -->
-            <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10"
+            <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;"
                 @keydown.escape.window="linkModalOpen = false">
                 <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4 font-body">
                 <div class="flex items-center justify-between pb-3 border-b border-theme-border">
@@ -1592,12 +1592,12 @@
     <!-- ============================================================= -->
     <template x-teleport="body">
         <div x-show="deleteLinkModalOpen" x-cloak
-            class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
             <!-- Full Viewport Backdrop Starting at Top: 0 -->
-            <div @click="deleteLinkModalOpen = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity">
+            <div @click="deleteLinkModalOpen = false" class="kwuo-modal-backdrop" style="z-index: 99998;">
             </div>
 
-            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10"
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;"
                 @keydown.escape.window="deleteLinkModalOpen = false">
                 <article class="kwuo-torn-docket !p-6 space-y-4 font-body border-2 border-rose-300 dark:border-rose-900">
                 <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
@@ -1637,9 +1637,9 @@
     <!-- ============================================================= -->
     <template x-teleport="body">
         <div x-show="addDivisionModal" x-cloak
-            class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
-            <div @click="addDivisionModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
-            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10"
+            class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <div @click="addDivisionModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;"
                 @keydown.escape.window="addDivisionModal = false">
                 <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4 font-body">
                     <div class="flex items-center justify-between pb-3 border-b border-theme-border">
@@ -1693,9 +1693,9 @@
     <!-- ============================================================= -->
     <template x-teleport="body">
         <div x-show="editDivisionModal" x-cloak
-            class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
-            <div @click="editDivisionModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
-            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10"
+            class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <div @click="editDivisionModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;"
                 @keydown.escape.window="editDivisionModal = false">
                 <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4 font-body">
                     <div class="flex items-center justify-between pb-3 border-b border-theme-border">
@@ -1750,9 +1750,9 @@
     <!-- ============================================================= -->
     <template x-teleport="body">
         <div x-show="deleteDivisionModal" x-cloak
-            class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
-            <div @click="deleteDivisionModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
-            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10"
+            class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <div @click="deleteDivisionModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper kwuo-modal-docket" style="z-index: 99999;"
                 @keydown.escape.window="deleteDivisionModal = false">
                 <article class="kwuo-torn-docket !p-6 space-y-4 font-body border-2 border-rose-300 dark:border-rose-900">
                     <div class="flex items-center gap-3 pb-3 border-b border-theme-border">

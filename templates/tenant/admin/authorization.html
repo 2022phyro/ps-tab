@@ -537,50 +537,133 @@
     <!-- ========================================================================= -->
 
     <!-- MODAL 1: Add Custom Role Modal -->
-    <div x-show="addRoleModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-        <div class="kwuo-torn-docket-wrapper w-full max-w-xl" @click.outside="addRoleModal = false">
-            <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[88vh] font-body">
-                <!-- Modal Fixed Header -->
-                <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
-                    <div class="flex items-center gap-2">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
-                            <i class="ph-bold ph-shield-plus text-base"></i>
+    <template x-teleport="body">
+        <div x-show="addRoleModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="addRoleModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
+
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-xl kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="addRoleModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[85vh] font-body">
+                    <!-- Modal Fixed Header -->
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                        <div class="flex items-center gap-2">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                                <i class="ph-bold ph-shield-plus text-base"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">Create Custom Role</h3>
+                                <p class="text-[11px] text-theme-body/60">Define authority boundaries and permission sets</p>
+                            </div>
                         </div>
+                        <button type="button" @click="addRoleModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-base"></i>
+                        </button>
+                    </div>
+
+                    <!-- Modal Scrollable Content Area -->
+                    <form @submit.prevent="submitNewRole()" class="flex-1 overflow-y-auto py-3 space-y-4 pr-1 min-h-0">
                         <div>
-                            <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">Create Custom Role</h3>
-                            <p class="text-[11px] text-theme-body/60">Define authority boundaries and permission sets</p>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Role Name *
+                            </label>
+                            <input type="text" x-model="newRole.name" required placeholder="e.g. Deputy Equity Director"
+                                   class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze">
                         </div>
-                    </div>
-                    <button type="button" @click="addRoleModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
-                        <i class="ph-bold ph-x text-base"></i>
-                    </button>
-                </div>
 
-                <!-- Modal Scrollable Content Area -->
-                <form @submit.prevent="submitNewRole()" class="flex-1 overflow-y-auto py-3 space-y-4 pr-1 min-h-0">
-                    <div>
-                        <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
-                            Role Name *
-                        </label>
-                        <input type="text" x-model="newRole.name" required placeholder="e.g. Deputy Equity Director"
-                               class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
-                            Description
-                        </label>
-                        <textarea x-model="newRole.description" rows="2" placeholder="Brief outline of responsibilities..."
-                                  class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze"></textarea>
-                    </div>
-
-                    <!-- Grouped Permissions Matrix -->
-                    <div class="space-y-3 pt-1">
-                        <div class="text-[11px] font-bold uppercase tracking-wider text-theme-heading flex items-center justify-between">
-                            <span>Grant Permissions</span>
-                            <span class="text-[10px] text-theme-body/60">Categorized boundaries</span>
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Description
+                            </label>
+                            <textarea x-model="newRole.description" rows="2" placeholder="Brief outline of responsibilities..."
+                                      class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze"></textarea>
                         </div>
+
+                        <!-- Grouped Permissions Matrix -->
+                        <div class="space-y-3 pt-1">
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-theme-heading flex items-center justify-between">
+                                <span>Grant Permissions</span>
+                                <span class="text-[10px] text-theme-body/60">Categorized boundaries</span>
+                            </div>
+
+                            <div class="space-y-3">
+                                {% for cat, perms in permissions_by_category.items() %}
+                                {% set cat_codes = perms|map(attribute='code')|list %}
+                                <div class="p-3 rounded-xl border border-theme-border bg-theme-base space-y-2">
+                                    <div class="flex items-center justify-between pb-1 border-b border-theme-border/60">
+                                        <span class="text-[11px] font-bold uppercase text-kwuo-bronze font-heading tracking-wider">
+                                            {{ cat }}
+                                        </span>
+                                        <button type="button"
+                                                @click="toggleNewRoleCategoryPerms({{ cat_codes|tojson|forceescape }}, !isNewRoleCategoryFullySelected({{ cat_codes|tojson|forceescape }}))"
+                                                class="text-[10px] font-semibold text-kwuo-bronze hover:underline">
+                                            <span x-text="isNewRoleCategoryFullySelected({{ cat_codes|tojson|forceescape }}) ? 'Deselect Category' : 'Select All'"></span>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {% for p in perms %}
+                                        <label class="flex items-start gap-2 text-xs text-theme-heading cursor-pointer hover:bg-theme-surface p-1.5 rounded-lg transition">
+                                            <input type="checkbox" value="{{ p.code }}"
+                                                   x-model="newRole.permission_codes"
+                                                   class="mt-0.5 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                            <div>
+                                                <div class="font-semibold text-xs leading-snug">{{ p.name }}</div>
+                                                <div class="text-[10px] text-theme-body/60 leading-tight">{{ p.description }}</div>
+                                            </div>
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Modal Fixed Footer -->
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
+                        <button type="button" @click="addRoleModal = false"
+                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                            Cancel
+                        </button>
+                        <button type="button" @click="submitNewRole()" :disabled="saving"
+                                class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany disabled:opacity-50 transition font-body shadow-sm flex items-center gap-1.5">
+                            <i class="ph-bold" :class="saving ? 'ph-spinner animate-spin' : 'ph-plus-circle'"></i>
+                            <span x-text="saving ? 'Creating...' : 'Create Role'"></span>
+                        </button>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </template>
+
+    <!-- MODAL 2: Edit Role Permissions Modal (Fixed Height Docket) -->
+    <template x-teleport="body">
+        <div x-show="editRoleModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="editRoleModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
+
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-xl kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="editRoleModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[85vh] font-body">
+                    <!-- Modal Fixed Header -->
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                        <div class="flex items-center gap-2">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                                <i class="ph-bold ph-key text-base"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">
+                                    Edit Role Permissions
+                                </h3>
+                                <p class="text-[11px] text-theme-body/60 font-semibold" x-text="activeRole.name"></p>
+                            </div>
+                        </div>
+                        <button type="button" @click="editRoleModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-base"></i>
+                        </button>
+                    </div>
+
+                    <!-- Modal Scrollable Content Area -->
+                    <form @submit.prevent="saveRolePermissions()" class="flex-1 overflow-y-auto py-3 space-y-4 pr-1 min-h-0">
+                        <p class="text-xs text-theme-body/70" x-text="activeRole.description || 'System/Custom permission scope.'"></p>
 
                         <div class="space-y-3">
                             {% for cat, perms in permissions_by_category.items() %}
@@ -591,16 +674,16 @@
                                         {{ cat }}
                                     </span>
                                     <button type="button"
-                                            @click="toggleNewRoleCategoryPerms({{ cat_codes|tojson|forceescape }}, !isNewRoleCategoryFullySelected({{ cat_codes|tojson|forceescape }}))"
+                                            @click="toggleCategoryPerms({{ cat_codes|tojson|forceescape }}, !isCategoryFullySelected({{ cat_codes|tojson|forceescape }}))"
                                             class="text-[10px] font-semibold text-kwuo-bronze hover:underline">
-                                        <span x-text="isNewRoleCategoryFullySelected({{ cat_codes|tojson|forceescape }}) ? 'Deselect Category' : 'Select All'"></span>
+                                        <span x-text="isCategoryFullySelected({{ cat_codes|tojson|forceescape }}) ? 'Deselect Category' : 'Select All'"></span>
                                     </button>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {% for p in perms %}
                                     <label class="flex items-start gap-2 text-xs text-theme-heading cursor-pointer hover:bg-theme-surface p-1.5 rounded-lg transition">
                                         <input type="checkbox" value="{{ p.code }}"
-                                               x-model="newRole.permission_codes"
+                                               x-model="activeRole.permissions"
                                                class="mt-0.5 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
                                         <div>
                                             <div class="font-semibold text-xs leading-snug">{{ p.name }}</div>
@@ -612,168 +695,97 @@
                             </div>
                             {% endfor %}
                         </div>
-                    </div>
-                </form>
+                    </form>
 
-                <!-- Modal Fixed Footer -->
-                <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
-                    <button type="button" @click="addRoleModal = false"
-                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
-                        Cancel
-                    </button>
-                    <button type="button" @click="submitNewRole()" :disabled="saving"
-                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany disabled:opacity-50 transition font-body shadow-sm flex items-center gap-1.5">
-                        <i class="ph-bold" :class="saving ? 'ph-spinner animate-spin' : 'ph-plus-circle'"></i>
-                        <span x-text="saving ? 'Creating...' : 'Create Role'"></span>
-                    </button>
-                </div>
-            </article>
+                    <!-- Modal Fixed Footer -->
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
+                        <button type="button" @click="editRoleModal = false"
+                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                            Cancel
+                        </button>
+                        <button type="button" @click="saveRolePermissions()" :disabled="saving"
+                                class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany disabled:opacity-50 transition font-body shadow-sm flex items-center gap-1.5">
+                            <i class="ph-bold" :class="saving ? 'ph-spinner animate-spin' : 'ph-check'"></i>
+                            <span x-text="saving ? 'Saving...' : 'Save Permissions'"></span>
+                        </button>
+                    </div>
+                </article>
+            </div>
         </div>
-    </div>
-
-    <!-- MODAL 2: Edit Role Permissions Modal (Fixed Height Docket) -->
-    <div x-show="editRoleModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-        <div class="kwuo-torn-docket-wrapper w-full max-w-xl" @click.outside="editRoleModal = false">
-            <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[88vh] font-body">
-                <!-- Modal Fixed Header -->
-                <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
-                    <div class="flex items-center gap-2">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
-                            <i class="ph-bold ph-key text-base"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">
-                                Edit Role Permissions
-                            </h3>
-                            <p class="text-[11px] text-theme-body/60 font-semibold" x-text="activeRole.name"></p>
-                        </div>
-                    </div>
-                    <button type="button" @click="editRoleModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
-                        <i class="ph-bold ph-x text-base"></i>
-                    </button>
-                </div>
-
-                <!-- Modal Scrollable Content Area -->
-                <form @submit.prevent="saveRolePermissions()" class="flex-1 overflow-y-auto py-3 space-y-4 pr-1 min-h-0">
-                    <p class="text-xs text-theme-body/70" x-text="activeRole.description || 'System/Custom permission scope.'"></p>
-
-                    <div class="space-y-3">
-                        {% for cat, perms in permissions_by_category.items() %}
-                        {% set cat_codes = perms|map(attribute='code')|list %}
-                        <div class="p-3 rounded-xl border border-theme-border bg-theme-base space-y-2">
-                            <div class="flex items-center justify-between pb-1 border-b border-theme-border/60">
-                                <span class="text-[11px] font-bold uppercase text-kwuo-bronze font-heading tracking-wider">
-                                    {{ cat }}
-                                </span>
-                                <button type="button"
-                                        @click="toggleCategoryPerms({{ cat_codes|tojson|forceescape }}, !isCategoryFullySelected({{ cat_codes|tojson|forceescape }}))"
-                                        class="text-[10px] font-semibold text-kwuo-bronze hover:underline">
-                                    <span x-text="isCategoryFullySelected({{ cat_codes|tojson|forceescape }}) ? 'Deselect Category' : 'Select All'"></span>
-                                </button>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {% for p in perms %}
-                                <label class="flex items-start gap-2 text-xs text-theme-heading cursor-pointer hover:bg-theme-surface p-1.5 rounded-lg transition">
-                                    <input type="checkbox" value="{{ p.code }}"
-                                           x-model="activeRole.permissions"
-                                           class="mt-0.5 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
-                                    <div>
-                                        <div class="font-semibold text-xs leading-snug">{{ p.name }}</div>
-                                        <div class="text-[10px] text-theme-body/60 leading-tight">{{ p.description }}</div>
-                                    </div>
-                                </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </form>
-
-                <!-- Modal Fixed Footer -->
-                <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
-                    <button type="button" @click="editRoleModal = false"
-                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
-                        Cancel
-                    </button>
-                    <button type="button" @click="saveRolePermissions()" :disabled="saving"
-                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany disabled:opacity-50 transition font-body shadow-sm flex items-center gap-1.5">
-                        <i class="ph-bold" :class="saving ? 'ph-spinner animate-spin' : 'ph-check'"></i>
-                        <span x-text="saving ? 'Saving...' : 'Save Permissions'"></span>
-                    </button>
-                </div>
-            </article>
-        </div>
-    </div>
+    </template>
 
     <!-- MODAL 3: Assign Staff Roles Modal (Fixed Height Docket) -->
-    <div x-show="assignModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-        <div class="kwuo-torn-docket-wrapper w-full max-w-md" @click.outside="assignModal = false">
-            <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[85vh] font-body">
-                <!-- Modal Fixed Header -->
-                <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
-                    <div class="flex items-center gap-2">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
-                            <i class="ph-bold ph-shield-check text-base"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">
-                                Assign Official Roles
-                            </h3>
-                            <p class="text-[11px] text-theme-body/60 font-semibold" x-text="activeOfficial.name + ' (' + activeOfficial.email + ')'"></p>
-                        </div>
-                    </div>
-                    <button type="button" @click="assignModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
-                        <i class="ph-bold ph-x text-base"></i>
-                    </button>
-                </div>
+    <template x-teleport="body">
+        <div x-show="assignModal" x-cloak class="kwuo-modal-container flex items-center justify-center p-3 sm:p-4 font-body" style="z-index: 99999;">
+            <!-- Full Viewport Backdrop Covering Entire Viewport, Sidebar & Header -->
+            <div @click="assignModal = false" class="kwuo-modal-backdrop" style="z-index: 99998;"></div>
 
-                <!-- Modal Scrollable Content Area -->
-                <form @submit.prevent="saveOfficialRoles()" class="flex-1 overflow-y-auto py-3 space-y-3 pr-1 min-h-0">
-                    <div class="text-[11px] font-bold uppercase tracking-wider text-theme-heading">
-                        Select Scoped Roles
-                    </div>
-                    <div class="space-y-2">
-                        {% for r in roles %}
-                        <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface cursor-pointer transition">
-                            <input type="checkbox" value="{{ r.id }}"
-                                   x-model="activeOfficial.role_ids"
-                                   class="mt-1 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-4 w-4">
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="font-heading font-bold text-xs text-theme-heading">{{ r.name }}</span>
-                                    {% if r.is_system %}
-                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze">System</span>
-                                    {% endif %}
-                                </div>
-                                <div class="text-[11px] text-theme-body/70 mt-0.5 leading-snug">
-                                    {{ r.description or 'Custom role' }}
-                                </div>
-                                <div class="text-[10px] text-kwuo-bronze mt-1 font-semibold flex items-center gap-1">
-                                    <i class="ph-bold ph-key text-[10px]"></i>
-                                    <span>{{ r.permissions|length }} permissions</span>
-                                </div>
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-md kwuo-modal-docket" style="z-index: 99999;" @keydown.escape.window="assignModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[85vh] font-body">
+                    <!-- Modal Fixed Header -->
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                        <div class="flex items-center gap-2">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                                <i class="ph-bold ph-shield-check text-base"></i>
                             </div>
-                        </label>
-                        {% endfor %}
+                            <div>
+                                <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">
+                                    Assign Official Roles
+                                </h3>
+                                <p class="text-[11px] text-theme-body/60 font-semibold" x-text="activeOfficial.name + ' (' + activeOfficial.email + ')'"></p>
+                            </div>
+                        </div>
+                        <button type="button" @click="assignModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-base"></i>
+                        </button>
                     </div>
-                </form>
 
-                <!-- Modal Fixed Footer -->
-                <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
-                    <button type="button" @click="assignModal = false"
-                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
-                        Cancel
-                    </button>
-                    <button type="button" @click="saveOfficialRoles()" :disabled="saving"
-                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany disabled:opacity-50 transition font-body shadow-sm flex items-center gap-1.5">
-                        <i class="ph-bold" :class="saving ? 'ph-spinner animate-spin' : 'ph-check'"></i>
-                        <span x-text="saving ? 'Saving...' : 'Save Assignments'"></span>
-                    </button>
-                </div>
-            </article>
+                    <!-- Modal Scrollable Content Area -->
+                    <form @submit.prevent="saveOfficialRoles()" class="flex-1 overflow-y-auto py-3 space-y-3 pr-1 min-h-0">
+                        <div class="text-[11px] font-bold uppercase tracking-wider text-theme-heading">
+                            Select Scoped Roles
+                        </div>
+                        <div class="space-y-2">
+                            {% for r in roles %}
+                            <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface cursor-pointer transition">
+                                <input type="checkbox" value="{{ r.id }}"
+                                       x-model="activeOfficial.role_ids"
+                                       class="mt-1 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-4 w-4">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-heading font-bold text-xs text-theme-heading">{{ r.name }}</span>
+                                        {% if r.is_system %}
+                                        <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze">System</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-[11px] text-theme-body/70 mt-0.5 leading-snug">
+                                        {{ r.description or 'Custom role' }}
+                                    </div>
+                                    <div class="text-[10px] text-kwuo-bronze mt-1 font-semibold flex items-center gap-1">
+                                        <i class="ph-bold ph-key text-[10px]"></i>
+                                        <span>{{ r.permissions|length }} permissions</span>
+                                    </div>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </form>
+
+                    <!-- Modal Fixed Footer -->
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
+                        <button type="button" @click="assignModal = false"
+                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                            Cancel
+                        </button>
+                        <button type="button" @click="saveOfficialRoles()" :disabled="saving"
+                                class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany disabled:opacity-50 transition font-body shadow-sm flex items-center gap-1.5">
+                            <i class="ph-bold" :class="saving ? 'ph-spinner animate-spin' : 'ph-check'"></i>
+                            <span x-text="saving ? 'Saving...' : 'Save Assignments'"></span>
+                        </button>
+                    </div>
+                </article>
+            </div>
         </div>
-    </div>
+    </template>
 </div>
 {% endblock %}

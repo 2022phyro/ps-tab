@@ -62,7 +62,7 @@
             --color-surface-subtle: #FAF7F0;
             --color-border: #E4D6A9;
             --color-border-subtle: rgba(228, 214, 169, 0.4);
-            --color-text-heading: #622B14;
+            --color-text-heading: #995F2F;
             --color-text-body: #1e293b;
             --color-text-muted: #978F66;
             --color-interactive: #995F2F;
@@ -82,6 +82,29 @@
             --color-interactive: #995F2F;
             --color-interactive-hover: #622B14;
             --color-interactive-text: #E4D6A9;
+        }
+
+        /* Universal Form Inversion in Dark Mode */
+        .dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+        .dark select,
+        .dark textarea {
+            background-color: #1E1614 !important;
+            border-color: #3D2D23 !important;
+            color: #FAF8F5 !important;
+        }
+        .dark input:disabled,
+        .dark select:disabled,
+        .dark textarea:disabled {
+            background-color: #16110F !important;
+            border-color: #2A1F18 !important;
+            color: #A89B91 !important;
+        }
+        .dark label {
+            color: #FAF8F5 !important;
+        }
+        .dark input::placeholder,
+        .dark textarea::placeholder {
+            color: rgba(200, 190, 183, 0.5) !important;
         }
 
         [x-cloak] {
@@ -209,42 +232,41 @@
            --------------------------------------------------------------------- */
         .kwuo-nav-tab {
             position: relative;
-            padding-top: 0.375rem;
-            padding-bottom: 0.375rem;
+            padding: 0.375rem 0.5rem;
             font-size: 0.875rem;
             font-weight: 500;
-            color: #64748B;
+            color: #716259;
             border-bottom: 2px solid transparent;
             text-decoration: none;
             white-space: nowrap;
-            transition: color 200ms ease, border-color 200ms ease;
+            transition: color 180ms ease, border-color 180ms ease;
         }
 
         .kwuo-nav-tab:hover {
             color: #995F2F;
-            border-bottom-color: rgba(153, 95, 47, 0.35);
+            border-bottom-color: rgba(153, 95, 47, 0.4);
         }
 
         .kwuo-nav-tab.is-active {
-            font-weight: 700;
-            color: #995F2F;
-            border-bottom-color: #995F2F;
+            font-weight: 800 !important;
+            color: #995F2F !important;
+            border-bottom: 2.5px solid #995F2F !important;
         }
 
         .dark .kwuo-nav-tab {
-            color: #94A3B8;
+            color: #9E9289;
             border-bottom-color: transparent;
         }
 
         .dark .kwuo-nav-tab:hover {
-            color: #FAF7F0;
-            border-bottom-color: rgba(192, 125, 83, 0.5);
+            color: #FAF8F5;
+            border-bottom-color: rgba(228, 214, 169, 0.4);
         }
 
         .dark .kwuo-nav-tab.is-active {
-            font-weight: 700;
-            color: #FAF7F0;
-            border-bottom-color: #C07D53;
+            font-weight: 800 !important;
+            color: #FAF8F5 !important;
+            border-bottom: 2.5px solid #C07D53 !important;
         }
             color: #FFFFFF;
             border-bottom-color: rgba(192, 125, 83, 0.4);
@@ -1362,6 +1384,199 @@
         }
         window.showToast = function (message, type = 'success', duration = 4500) {
             window.dispatchEvent(new CustomEvent('toast', { detail: { message, type, duration } }));
+        };
+
+        // Universal Profile Country & Timezone Alpine Dropdown Factories
+        window.phoneCountryDropdown = function (initialCode) {
+            let countries = window.__kwuo_countries || [];
+            if (!countries || !countries.length) {
+                try {
+                    countries = JSON.parse(document.getElementById("kwuo-countries-data")?.textContent || "[]");
+                } catch (e) { countries = []; }
+            }
+
+            const initCode = initialCode || "+234";
+            const found = countries.find(c => c.code === initCode);
+
+            return {
+                selectedCode: initCode,
+                selectedFlag: found ? found.flag : "🇳🇬",
+                countries: countries,
+                open: false,
+                search: "",
+
+                init() {
+                    if (!this.countries || !this.countries.length) {
+                        try {
+                            this.countries = window.__kwuo_countries || JSON.parse(document.getElementById("kwuo-countries-data")?.textContent || "[]");
+                            const match = this.countries.find(c => c.code === this.selectedCode);
+                            if (match) this.selectedFlag = match.flag;
+                        } catch (e) {}
+                    }
+                },
+
+                get filteredCountries() {
+                    const q = this.search.trim().toLowerCase();
+                    if (!q) return this.countries;
+                    return this.countries.filter(c =>
+                        c.name.toLowerCase().includes(q) ||
+                        c.code.toLowerCase().includes(q)
+                    );
+                },
+
+                toggle() {
+                    this.open = !this.open;
+                    if (this.open) {
+                        if (!this.countries || !this.countries.length) {
+                            this.init();
+                        }
+                        this.search = "";
+                        this.$nextTick(() => {
+                            this.$refs.countrySearch?.focus();
+                        });
+                    }
+                },
+
+                select(c) {
+                    this.selectedCode = c.code;
+                    this.selectedFlag = c.flag;
+                    this.open = false;
+                    document.getElementById("phone_number_local")?.focus();
+                },
+
+                selectFirst() {
+                    if (this.filteredCountries.length > 0) {
+                        this.select(this.filteredCountries[0]);
+                    }
+                }
+            };
+        };
+
+        window.timezoneSearchableDropdown = function (initialId) {
+            let timezones = window.__kwuo_timezones || {};
+            if (!timezones || Object.keys(timezones).length === 0) {
+                try {
+                    timezones = JSON.parse(document.getElementById("kwuo-timezones-data")?.textContent || "{}");
+                } catch (e) { timezones = {}; }
+            }
+
+            const initId = initialId || "Africa/Lagos";
+            let initLabel = `(GMT) ${initId}`;
+            for (const region in timezones) {
+                for (const tz of timezones[region]) {
+                    if (tz.id === initId) {
+                        initLabel = tz.label;
+                        break;
+                    }
+                }
+            }
+
+            return {
+                selectedId: initId,
+                selectedLabel: initLabel,
+                timezones: timezones,
+                open: false,
+                search: "",
+
+                init() {
+                    if (!this.timezones || Object.keys(this.timezones).length === 0) {
+                        try {
+                            this.timezones = window.__kwuo_timezones || JSON.parse(document.getElementById("kwuo-timezones-data")?.textContent || "{}");
+                            for (const region in this.timezones) {
+                                for (const tz of this.timezones[region]) {
+                                    if (tz.id === this.selectedId) {
+                                        this.selectedLabel = tz.label;
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                },
+
+                get filteredGroups() {
+                    const q = this.search.trim().toLowerCase();
+                    const result = {};
+                    for (const region in this.timezones) {
+                        const list = this.timezones[region];
+                        if (!q) {
+                            result[region] = list;
+                        } else {
+                            const matched = list.filter(tz =>
+                                tz.label.toLowerCase().includes(q) ||
+                                tz.id.toLowerCase().includes(q)
+                            );
+                            if (matched.length > 0) {
+                                result[region] = matched;
+                            }
+                        }
+                    }
+                    return result;
+                },
+
+                get totalFilteredCount() {
+                    let count = 0;
+                    for (const region in this.filteredGroups) {
+                        count += this.filteredGroups[region].length;
+                    }
+                    return count;
+                },
+
+                get currentTime12() {
+                    try {
+                        return new Intl.DateTimeFormat('en-US', {
+                            timeZone: this.selectedId,
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        }).format(new Date());
+                    } catch (e) {
+                        return '';
+                    }
+                },
+
+                getTime12(tzId) {
+                    try {
+                        return new Intl.DateTimeFormat('en-US', {
+                            timeZone: tzId,
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        }).format(new Date());
+                    } catch (e) {
+                        return '';
+                    }
+                },
+
+                toggle() {
+                    this.open = !this.open;
+                    if (this.open) {
+                        if (!this.timezones || Object.keys(this.timezones).length === 0) {
+                            this.init();
+                        }
+                        this.search = "";
+                        this.$nextTick(() => {
+                            this.$refs.tzSearch?.focus();
+                        });
+                    }
+                },
+
+                select(tz) {
+                    this.selectedId = tz.id;
+                    this.selectedLabel = tz.label;
+                    this.open = false;
+                },
+
+                selectFirst() {
+                    for (const region in this.filteredGroups) {
+                        const list = this.filteredGroups[region];
+                        if (list.length > 0) {
+                            this.select(list[0]);
+                            return;
+                        }
+                    }
+                }
+            };
         };
 
         function removeCloak(target) {
