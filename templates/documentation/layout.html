@@ -5,6 +5,7 @@
 {% block content %}
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6" x-data="{
         docsSidebarOpen: false,
+        tocOpen: false,
         readingProgress: 0,
         activeSection: '',
         updateProgress() {
@@ -15,36 +16,43 @@
             }
         },
         initScrollspy() {
-            const headings = Array.from(document.querySelectorAll('h2[id], h3[id]'));
+            const headings = Array.from(document.querySelectorAll('.doc-prose h2[id], .doc-prose h3[id]'));
             if (!headings.length) return;
-            const observer = new IntersectionObserver((entries) => {
-                for (const entry of entries) {
-                    if (entry.isIntersecting) {
-                        this.activeSection = entry.target.id;
-                        break;
+            const updateSpy = () => {
+                const scrollPos = window.scrollY + 120;
+                let current = '';
+                for (const h of headings) {
+                    const top = h.getBoundingClientRect().top + window.scrollY;
+                    if (top <= scrollPos) {
+                        current = h.id;
                     }
                 }
-            }, { rootMargin: '-60px 0px -55% 0px' });
-            headings.forEach(h => observer.observe(h));
+                if (current) this.activeSection = current;
+                else if (headings.length > 0 && window.scrollY < 200) this.activeSection = headings[0].id;
+            };
+            window.addEventListener('scroll', updateSpy, { passive: true });
+            updateSpy();
         }
     }" x-init="
-        window.addEventListener('scroll', () => updateProgress());
-        setTimeout(() => { updateProgress(); initScrollspy(); }, 150);
+        window.addEventListener('scroll', () => updateProgress(), { passive: true });
+        setTimeout(() => { updateProgress(); initScrollspy(); }, 100);
     ">
 
     <!-- Mobile Navigation Toggle Bar -->
     <div class="lg:hidden flex items-center justify-between border-b border-theme-border pb-3 mb-4">
         <button @click="docsSidebarOpen = true" type="button"
-            class="inline-flex items-center gap-2 rounded-lg border border-theme-border bg-theme-surface px-3 py-1.5 text-xs font-semibold text-theme-heading shadow-sm">
+            class="inline-flex items-center gap-2 rounded-lg border border-theme-border bg-theme-surface px-3 py-1.5 text-xs font-semibold text-theme-heading shadow-sm font-body">
             <i class="ph-bold ph-list-dashes text-sm"></i>
             <span>Documentation Index</span>
         </button>
-        <span class="text-xs text-slate-500 dark:text-kwuo-sage">
-            <span x-text="readingProgress">0</span>% completed
-        </span>
+        <button @click="tocOpen = !tocOpen" type="button"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 text-xs font-bold font-body">
+            <i class="ph-bold ph-list-bullets text-xs"></i>
+            <span x-text="`${readingProgress}% Outline`">0% Outline</span>
+        </button>
     </div>
 
-    <!-- 3-Column Layout: Left Nav | Center Document | Right Floating Outline -->
+    <!-- 2-Column Maximized Layout: Left Nav (col-span-3) | Center Maximized Document (col-span-9) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
         <!-- ========================================== -->
@@ -55,7 +63,7 @@
         <div x-show="docsSidebarOpen" x-cloak class="lg:hidden fixed inset-0 z-50 flex">
             <div @click="docsSidebarOpen = false" class="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity">
             </div>
-            <div class="relative flex w-full max-w-xs flex-1 flex-col bg-theme-surface p-5 shadow-2xl overflow-y-auto">
+            <div class="relative flex w-full max-w-xs flex-1 flex-col bg-theme-surface p-5 shadow-2xl overflow-y-auto font-body">
                 <div class="flex items-center justify-between pb-3 border-b border-theme-border">
                     <span class="font-heading font-bold text-base text-theme-heading">Documentation</span>
                     <button @click="docsSidebarOpen = false" type="button"
@@ -67,7 +75,7 @@
                     {% for section in tree %}
                     <div x-data="{ open: true }" class="space-y-1">
                         <button @click="open = !open"
-                            class="flex w-full items-center justify-between text-xs font-bold uppercase tracking-wider text-theme-heading py-1.5 hover:text-kwuo-bronze">
+                            class="flex w-full items-center justify-between text-xs font-bold uppercase tracking-wider text-theme-heading py-1.5 hover:text-kwuo-bronze font-body">
                             <span>{{ section.title }}</span>
                             <i class="ph-bold ph-caret-right text-xs transform transition-transform"
                                 :class="open ? 'rotate-90' : ''"></i>
@@ -75,7 +83,7 @@
                         <div x-show="open" class="space-y-1 pl-2 border-l border-theme-border-subtle">
                             {% for item in section.items %}
                             <a href="/documentation/{{ item.slug }}"
-                                class="block rounded-md px-2.5 py-1.5 text-xs transition {% if item.slug == doc.slug %}bg-kwuo-bronze/15 dark:bg-kwuo-bronze/25 text-theme-heading font-bold border-l-2 border-kwuo-bronze{% else %}text-slate-600 dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white{% endif %}">
+                                class="block rounded-md px-2.5 py-1.5 text-xs transition font-body {% if item.slug == doc.slug %}bg-kwuo-bronze/15 dark:bg-kwuo-bronze/25 text-theme-heading font-bold border-l-2 border-kwuo-bronze{% else %}text-slate-600 dark:text-kwuo-gold hover:text-kwuo-mahogany dark:hover:text-white{% endif %}">
                                 {{ item.title }}
                             </a>
                             {% endfor %}
@@ -88,7 +96,7 @@
 
         <!-- Desktop Sidebar Sticky Column -->
         <aside
-            class="hidden lg:block lg:col-span-3 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-3 space-y-5 select-none">
+            class="hidden lg:block lg:col-span-3 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-3 space-y-5 select-none font-body">
             <div class="border-b border-theme-border pb-2">
                 <span
                     class="text-xs font-bold font-heading uppercase tracking-wider text-slate-500 dark:text-kwuo-sage">
@@ -97,48 +105,27 @@
             </div>
 
             <!-- Navigation Sections Accordion -->
-            <div class="space-y-4 text-xs">
+            <div class="space-y-4 text-xs font-body">
                 {% for section in tree %}
-                <div x-data="{ open: true }" class="space-y-1.5">
+                <div x-data="{ open: true }" class="space-y-1">
                     <button @click="open = !open"
-                        class="flex w-full items-center justify-between font-heading font-bold text-xs uppercase tracking-wide text-theme-heading py-1 hover:text-kwuo-bronze transition">
+                        class="flex w-full items-center justify-between font-heading font-bold uppercase tracking-wider text-[11px] text-theme-heading py-1.5 hover:text-kwuo-bronze transition">
                         <span>{{ section.title }}</span>
-                        <i class="ph-bold ph-caret-right text-xs text-slate-400 transform transition-transform duration-150"
+                        <i class="ph-bold ph-caret-right text-xs transform transition-transform"
                             :class="open ? 'rotate-90' : ''"></i>
                     </button>
-
-                    <div x-show="open" class="space-y-0.5 pl-2.5 border-l-2 border-theme-border-subtle">
+                    <div x-show="open" class="space-y-1 pl-2 border-l border-theme-border-subtle">
                         {% for item in section.items %}
                         <a href="/documentation/{{ item.slug }}"
-                            class="flex items-center justify-between rounded-md px-2 py-1.5 text-xs transition {% if item.slug == doc.slug %}bg-kwuo-bronze/15 dark:bg-kwuo-bronze/30 text-theme-heading font-bold border-l-2 -ml-[11px] border-kwuo-bronze{% else %}text-slate-600 dark:text-kwuo-gold hover:text-theme-heading hover:bg-kwuo-sand/20 dark:hover:bg-kwuo-dark-surface{% endif %}">
+                            class="group flex items-center justify-between rounded-lg px-2.5 py-2 transition font-body {% if item.slug == doc.slug %}bg-kwuo-bronze/15 dark:bg-kwuo-bronze/25 text-theme-heading font-bold border-l-2 border-kwuo-bronze{% else %}text-slate-600 dark:text-kwuo-gold hover:bg-theme-surface hover:text-theme-heading{% endif %}">
                             <span class="truncate">{{ item.title }}</span>
                             {% if item.badge %}
                             <span
-                                class="rounded bg-kwuo-sand/70 dark:bg-kwuo-dark-border text-kwuo-mahogany dark:text-kwuo-sand px-1.5 py-0.2 text-[9px] font-semibold">
+                                class="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-theme-surface-subtle border border-theme-border-subtle text-slate-500 group-hover:text-theme-heading ml-1.5">
                                 {{ item.badge }}
                             </span>
                             {% endif %}
                         </a>
-                        {% endfor %}
-
-                        <!-- Subsections if nested -->
-                        {% for sub in section.subsections %}
-                        <div x-data="{ subOpen: true }" class="pt-1.5 space-y-1">
-                            <button @click="subOpen = !subOpen"
-                                class="flex w-full items-center justify-between font-semibold text-[11px] text-slate-700 dark:text-kwuo-gold pl-1 hover:text-kwuo-bronze">
-                                <span>{{ sub.title }}</span>
-                                <i class="ph-bold ph-caret-right text-[10px] text-slate-400 transform transition-transform"
-                                    :class="subOpen ? 'rotate-90' : ''"></i>
-                            </button>
-                            <div x-show="subOpen" class="pl-2 border-l border-theme-border-subtle space-y-0.5">
-                                {% for sub_item in sub.items %}
-                                <a href="/documentation/{{ sub_item.slug }}"
-                                    class="block rounded px-2 py-1 text-[11px] transition {% if sub_item.slug == doc.slug %}text-theme-heading font-bold bg-kwuo-bronze/15{% else %}text-slate-500 dark:text-kwuo-sage hover:text-slate-900 dark:hover:text-white{% endif %}">
-                                    {{ sub_item.title }}
-                                </a>
-                                {% endfor %}
-                            </div>
-                        </div>
                         {% endfor %}
                     </div>
                 </div>
@@ -147,31 +134,45 @@
         </aside>
 
         <!-- ========================================== -->
-        <!-- 2. CENTER: Main Document Content           -->
+        <!-- 2. CENTER: Maximized Main Document Content -->
         <!-- ========================================== -->
-        <main class="lg:col-span-6 min-w-0">
-            <!-- Breadcrumbs -->
-            <nav class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-kwuo-sage mb-3">
-                {% for label, url in doc.breadcrumbs %}
-                {% if url %}
-                <a href="{{ url }}" class="hover:text-theme-heading transition">{{ label }}</a>
-                {% else %}
-                <span>{{ label }}</span>
+        <main class="lg:col-span-9 min-w-0">
+            <!-- Header bar with Breadcrumbs & Outline Toggle Button -->
+            <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                <nav class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-kwuo-sage font-body">
+                    {% for label, url in doc.breadcrumbs %}
+                    {% if url %}
+                    <a href="{{ url }}" class="hover:text-theme-heading transition">{{ label }}</a>
+                    {% else %}
+                    <span>{{ label }}</span>
+                    {% endif %}
+                    {% if not loop.last %}
+                    <i class="ph-bold ph-caret-right text-[10px]"></i>
+                    {% endif %}
+                    {% endfor %}
+                </nav>
+
+                <!-- Floating Outline Toggle Button (Inline on Desktop) -->
+                {% if doc.toc %}
+                <button @click="tocOpen = !tocOpen" type="button"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-theme-border bg-theme-surface text-xs font-semibold text-theme-heading hover:border-kwuo-bronze hover:text-kwuo-bronze transition shadow-2xs font-body"
+                    title="Toggle Floating Table of Contents">
+                    <i class="ph-bold ph-list-bullets text-kwuo-bronze text-sm"></i>
+                    <span>On This Page</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-kwuo-bronze/10 text-kwuo-bronze font-bold"
+                          x-text="`${readingProgress}%`">0%</span>
+                </button>
                 {% endif %}
-                {% if not loop.last %}
-                <i class="ph-bold ph-caret-right text-[10px]"></i>
-                {% endif %}
-                {% endfor %}
-            </nav>
+            </div>
 
             <!-- Document Card / Surface -->
             <article
-                class="rounded-2xl border border-theme-border bg-theme-surface p-6 sm:p-10 shadow-sm transition-colors">
+                class="rounded-2xl border border-theme-border bg-theme-surface p-6 sm:p-10 lg:p-12 shadow-sm transition-colors">
                 <!-- Header Badge -->
                 {% if doc.metadata.badge %}
                 <div class="mb-4">
                     <span
-                        class="inline-flex items-center rounded-md bg-kwuo-sand/60 dark:bg-kwuo-dark-accent px-2.5 py-1 text-xs font-bold text-kwuo-mahogany dark:text-kwuo-sand border border-kwuo-sage/30">
+                        class="inline-flex items-center rounded-md bg-kwuo-sand/60 dark:bg-kwuo-dark-accent px-2.5 py-1 text-xs font-bold text-kwuo-bronze dark:text-kwuo-sand border border-kwuo-bronze/30 font-body">
                         ✦ {{ doc.metadata.badge }}
                     </span>
                 </div>
@@ -185,7 +186,7 @@
                     prose-h3:text-lg prose-h3:font-semibold prose-h3:mt-6 prose-h3:mb-2
                     prose-a:text-kwuo-bronze dark:prose-a:text-kwuo-gold prose-a:font-semibold hover:prose-a:underline
                     prose-pre:bg-kwuo-dark-surface prose-pre:border prose-pre:border-kwuo-dark-border prose-pre:rounded-xl
-                    prose-code:text-kwuo-mahogany dark:prose-code:text-kwuo-gold prose-code:bg-theme-surface-subtle dark:prose-code:bg-kwuo-dark-surface prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-body prose-code:text-xs
+                    prose-code:text-kwuo-bronze dark:prose-code:text-kwuo-gold prose-code:bg-theme-surface-subtle dark:prose-code:bg-kwuo-dark-surface prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-body prose-code:text-xs
                     prose-table:border-collapse prose-table:w-full prose-table:text-sm
                     prose-th:bg-theme-surface-subtle dark:prose-th:bg-kwuo-dark-surface prose-th:p-3 prose-th:text-left prose-th:font-heading prose-th:border prose-th:border-theme-border
                     prose-td:p-3 prose-td:border prose-td:border-theme-border-subtle
@@ -194,12 +195,12 @@
                 </div>
 
                 <!-- Previous / Next Pagination -->
-                <div class="mt-12 pt-6 border-t border-theme-border flex flex-col sm:flex-row justify-between gap-4">
+                <div class="mt-12 pt-6 border-t border-theme-border flex flex-col sm:flex-row justify-between gap-4 font-body">
                     {% if doc.prev_item %}
                     <a href="/documentation/{{ doc.prev_item.slug }}"
                         class="group flex flex-col items-start rounded-xl border border-theme-border p-4 hover:border-kwuo-bronze transition w-full sm:w-1/2">
                         <span
-                            class="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-kwuo-bronze flex items-center gap-1">
+                            class="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-kwuo-bronze flex items-center gap-1 font-body">
                             <i class="ph-bold ph-arrow-left"></i>
                             <span>Previous Section</span>
                         </span>
@@ -215,7 +216,7 @@
                     <a href="/documentation/{{ doc.next_item.slug }}"
                         class="group flex flex-col items-end rounded-xl border border-theme-border p-4 hover:border-kwuo-bronze transition w-full sm:w-1/2 text-right">
                         <span
-                            class="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-kwuo-bronze flex items-center gap-1">
+                            class="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-kwuo-bronze flex items-center gap-1 font-body">
                             <span>Next Section</span>
                             <i class="ph-bold ph-arrow-right"></i>
                         </span>
@@ -227,65 +228,78 @@
                 </div>
             </article>
         </main>
+    </div>
 
-        <!-- ========================================== -->
-        <!-- 3. RIGHT: Floating Outline & Reading Progress Tracker -->
-        <!-- ========================================== -->
-        <aside
-            class="hidden lg:block lg:col-span-3 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pl-2 space-y-4 select-none">
+    <!-- ========================================== -->
+    <!-- 3. FLOATING TOGGLEABLE OUTLINE & PROGRESS DRAWER -->
+    <!-- ========================================== -->
+    <!-- Floating Bottom-Right Trigger Button -->
+    <button @click="tocOpen = !tocOpen" type="button"
+        class="fixed bottom-6 right-6 z-40 px-4 py-2.5 rounded-full shadow-xl border border-theme-border bg-theme-surface/95 backdrop-blur-md flex items-center gap-2.5 text-xs font-bold text-theme-heading hover:text-kwuo-bronze hover:border-kwuo-bronze transition font-body group">
+        <i class="ph-bold ph-list-bullets text-base text-kwuo-bronze group-hover:scale-110 transition-transform"></i>
+        <span>Outline &amp; Progress</span>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-kwuo-bronze text-white text-[10px] font-extrabold"
+              x-text="`${readingProgress}%`">0%</span>
+    </button>
 
-            <!-- Reading Progress Widget -->
-            <div class="rounded-xl border border-theme-border bg-theme-surface p-4 shadow-sm">
-                <div class="flex items-center justify-between text-xs font-bold font-heading text-theme-heading mb-2">
-                    <span class="flex items-center gap-1.5">
-                        <span class="h-2 w-2 rounded-full bg-kwuo-bronze"></span>
-                        <span>Reading Progress</span>
-                    </span>
-                    <span class="font-body text-[11px] text-kwuo-bronze dark:text-kwuo-gold"
-                        x-text="`${readingProgress}%`">0%</span>
-                </div>
-                <!-- Progress Bar Track -->
-                <div class="h-1.5 w-full bg-slate-100 dark:bg-kwuo-dark-surface rounded-full overflow-hidden">
-                    <div class="h-full bg-gradient-to-r from-kwuo-bronze to-kwuo-mahogany dark:to-kwuo-sand transition-all duration-100"
-                        :style="`width: ${readingProgress}%`"></div>
-                </div>
+    <!-- Floating Outline Popup Card -->
+    <div x-show="tocOpen" x-cloak
+        @click.outside="tocOpen = false"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 translate-y-4 scale-95"
+        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+        x-transition:leave-end="opacity-0 translate-y-4 scale-95"
+        class="fixed bottom-20 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-88 max-h-[70vh] bg-theme-surface/95 backdrop-blur-md rounded-2xl shadow-2xl border-2 border-theme-border p-5 overflow-y-auto space-y-4 font-body">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+            <div class="flex items-center gap-2">
+                <span class="h-2.5 w-2.5 rounded-full bg-kwuo-bronze animate-pulse"></span>
+                <span class="font-heading font-extrabold text-sm text-theme-heading">Reading Progress</span>
             </div>
+            <div class="flex items-center gap-2">
+                <span class="font-heading font-extrabold text-xs text-kwuo-bronze" x-text="`${readingProgress}%`">0%</span>
+                <button @click="tocOpen = false" type="button" class="p-1 rounded-lg text-theme-body/50 hover:text-theme-heading hover:bg-theme-base transition">
+                    <i class="ph-bold ph-x text-sm"></i>
+                </button>
+            </div>
+        </div>
 
-            <!-- On This Page Outline -->
-            {% if doc.toc %}
-            <div class="rounded-xl border border-theme-border bg-theme-surface p-4 shadow-sm">
-                <div
-                    class="text-xs font-bold font-heading uppercase tracking-wider text-slate-400 dark:text-kwuo-sage mb-3 pb-2 border-b border-theme-border-subtle">
-                    On This Page
-                </div>
+        <!-- Progress Bar Track -->
+        <div class="h-2 w-full bg-theme-base rounded-full overflow-hidden border border-theme-border/60">
+            <div class="h-full bg-gradient-to-r from-kwuo-bronze to-kwuo-mahogany transition-all duration-100 rounded-full"
+                :style="`width: ${readingProgress}%`"></div>
+        </div>
 
-                <nav class="space-y-1.5 text-xs">
-                    {% for heading in doc.toc %}
-                    <a href="#{{ heading.anchor }}" @click.prevent="
-                            document.getElementById('{{ heading.anchor }}')?.scrollIntoView({ behavior: 'smooth' });
+        <!-- On This Page Outline -->
+        {% if doc.toc %}
+        <div class="space-y-2 pt-1">
+            <div class="text-[11px] font-bold font-heading uppercase tracking-wider text-theme-body/60">
+                On This Page
+            </div>
+            <nav class="space-y-1 text-xs">
+                {% for heading in doc.toc %}
+                <a href="#{{ heading.anchor }}" @click.prevent="
+                        const el = document.getElementById('{{ heading.anchor }}');
+                        if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                             activeSection = '{{ heading.anchor }}';
-                        "
-                        class="block transition-all duration-150 {% if heading.level == 3 %}pl-3 text-[11px]{% else %}font-medium{% endif %}"
-                        :class="activeSection === '{{ heading.anchor }}' 
-                            ? 'text-kwuo-bronze dark:text-kwuo-gold font-bold border-l-2 border-kwuo-bronze pl-2 -ml-[9px]' 
-                            : 'text-slate-600 dark:text-kwuo-sage hover:text-theme-heading'">
-                        {{ heading.title }}
-                    </a>
-                    {% endfor %}
-                </nav>
-            </div>
-            {% endif %}
-
-            <!-- Quick Help Box -->
-            <div
-                class="rounded-xl border border-dashed border-kwuo-sage/40 p-4 text-xs text-slate-500 dark:text-kwuo-sage bg-theme-surface-subtle/60">
-                <div class="font-bold text-theme-heading mb-1">Editing Documentation</div>
-                <p>Documents live in <code
-                        class="font-body text-[10px] bg-theme-surface px-1 py-0.5 rounded border border-theme-border-subtle">documentation/</code>
-                    as Markdown files. Edits auto-reload instantly.</p>
-            </div>
-        </aside>
-
+                            history.replaceState(null, null, '#{{ heading.anchor }}');
+                        }
+                        if (window.innerWidth < 640) tocOpen = false;
+                    "
+                    class="block py-1.5 px-2 rounded-lg transition-all duration-150 font-body {% if heading.level == 3 %}pl-4 text-[11px]{% else %}font-medium{% endif %}"
+                    :class="activeSection === '{{ heading.anchor }}' 
+                        ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold border-l-2 border-kwuo-bronze pl-2.5' 
+                        : 'text-theme-body/80 hover:bg-theme-base hover:text-theme-heading'">
+                    {{ heading.title }}
+                </a>
+                {% endfor %}
+            </nav>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

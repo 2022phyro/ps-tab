@@ -4,9 +4,127 @@
 {% block title %}Schedule & Timetable — {{ tournament.name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+<script id="kwuo-timezones-data" type="application/json">{{ grouped_timezones | tojson | safe }}</script>
+<script>
+    function scheduleTimezoneManager(tournamentTz) {
+        let timezones = {};
+        try {
+            timezones = JSON.parse(document.getElementById("kwuo-timezones-data")?.textContent || "{}");
+        } catch (e) { timezones = {}; }
+
+        const initialCustom = localStorage.getItem('kwuo_sched_custom_tz') || 'UTC';
+        return {
+            tournamentTz: tournamentTz || 'UTC',
+            userTz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+            customTz: initialCustom,
+            activeMode: localStorage.getItem('kwuo_sched_tz_mode') || 'tournament',
+            timezones: timezones,
+            customDropdownOpen: false,
+            search: '',
+
+            setMode(mode) {
+                this.activeMode = mode;
+                localStorage.setItem('kwuo_sched_tz_mode', mode);
+            },
+            setCustomTz(tzId) {
+                this.customTz = tzId;
+                this.activeMode = 'custom';
+                localStorage.setItem('kwuo_sched_custom_tz', tzId);
+                localStorage.setItem('kwuo_sched_tz_mode', 'custom');
+                this.customDropdownOpen = false;
+            },
+            get currentTz() {
+                if (this.activeMode === 'tournament') return this.tournamentTz;
+                if (this.activeMode === 'local') return this.userTz;
+                return this.customTz || 'UTC';
+            },
+            get isSameTimezone() {
+                return this.tournamentTz === this.currentTz;
+            },
+            get currentTz12() {
+                try {
+                    return new Intl.DateTimeFormat('en-US', {
+                        timeZone: this.currentTz,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).format(new Date());
+                } catch (e) { return ''; }
+            },
+            getTime12(tzId) {
+                try {
+                    return new Intl.DateTimeFormat('en-US', {
+                        timeZone: tzId,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).format(new Date());
+                } catch (e) { return ''; }
+            },
+            get filteredGroups() {
+                const q = this.search.trim().toLowerCase();
+                const result = {};
+                for (const reg in this.timezones) {
+                    const list = this.timezones[reg];
+                    if (!q) {
+                        result[reg] = list;
+                    } else {
+                        const matched = list.filter(z =>
+                            z.label.toLowerCase().includes(q) ||
+                            z.id.toLowerCase().includes(q)
+                        );
+                        if (matched.length > 0) result[reg] = matched;
+                    }
+                }
+                return result;
+            },
+            get totalFilteredCount() {
+                let count = 0;
+                for (const reg in this.filteredGroups) {
+                    count += this.filteredGroups[reg].length;
+                }
+                return count;
+            },
+            formatTimeRange(startIso, endIso) {
+                if (!startIso) return '';
+                try {
+                    const startDate = new Date(startIso);
+                    const tz = this.currentTz;
+                    const datePart = new Intl.DateTimeFormat('en-US', {
+                        timeZone: tz,
+                        month: 'short',
+                        day: 'numeric'
+                    }).format(startDate);
+                    const startTimePart = new Intl.DateTimeFormat('en-US', {
+                        timeZone: tz,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).format(startDate);
+
+                    if (!endIso) {
+                        return `${datePart}, ${startTimePart}`;
+                    }
+                    const endDate = new Date(endIso);
+                    const endTimePart = new Intl.DateTimeFormat('en-US', {
+                        timeZone: tz,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).format(endDate);
+                    return `${datePart}, ${startTimePart} – ${endTimePart}`;
+                } catch (e) {
+                    return startIso;
+                }
+            }
+        };
+    }
+</script>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10"
+     x-data="scheduleTimezoneManager('{{ tournament.timezone or 'UTC' }}')">
     <!-- Header Banner -->
-    <div class="kwuo-torn-docket-wrapper">
+    <div class="kwuo-torn-docket-wrapper mb-6">
         <article class="kwuo-torn-docket !p-6 sm:!p-8">
             <div class="flex items-center justify-between flex-wrap gap-4">
                 <div class="flex items-center gap-3">
@@ -17,7 +135,7 @@
                         <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
                             Master Schedule &amp; Timetable
                         </h1>
-                        <p class="text-xs sm:text-sm text-theme-body/70 mt-1">
+                        <p class="text-xs sm:text-sm text-theme-body/70 mt-1 font-body">
                             Timeline of registration check-in windows, rounds, deliberations, and awards ceremonies.
                         </p>
                     </div>
@@ -27,7 +145,7 @@
                 <a href="/schedule/download.ics"
                    download="{{ tournament.slug }}-schedule.ics"
                    hx-boost="false"
-                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm font-body"
                    title="Download calendar event file (.ics) for Google Calendar, Apple Calendar, and Outlook">
                     <i class="ph-bold ph-calendar-plus text-base"></i>
                     <span>Add to Calendar (.ics)</span>
@@ -36,9 +154,85 @@
         </article>
     </div>
 
+    <!-- Timezone Banner & Multi-Switch Toolbar (Sticky) -->
+    <div class="sticky top-[70px] z-30 bg-theme-base/95 backdrop-blur-md pt-3 pb-3 border-b border-theme-border/60 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-body" style="top: 70px; margin-top: 0; background-color: var(--color-bg-base);">
+        <div class="flex items-center gap-2 text-xs text-theme-heading">
+            <i class="ph-bold ph-globe-hemisphere-west text-kwuo-bronze text-base shrink-0"></i>
+            <div>
+                <span x-show="activeMode === 'tournament'">All event rounds published in <strong class="text-kwuo-bronze font-bold">Official Tournament Time ({{ tournament.timezone or 'UTC' }})</strong>.</span>
+                <span x-show="activeMode === 'local'">Viewing schedule converted in your device timezone: <strong class="text-kwuo-bronze font-bold" x-text="userTz"></strong> (<span x-text="currentTz12"></span>)</span>
+                <span x-show="activeMode === 'custom'">Viewing schedule converted in custom timezone: <strong class="text-kwuo-bronze font-bold" x-text="customTz"></strong> (<span x-text="currentTz12"></span>)</span>
+            </div>
+        </div>
+
+        <!-- Descriptive Multi-Timezone View Switcher with Searchable Dropdown -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <div class="grid grid-cols-2 sm:inline-flex p-0.5 rounded-xl border border-theme-border bg-theme-base text-xs font-medium shrink-0">
+                <button type="button" @click="setMode('tournament')"
+                        class="px-2.5 py-1.5 rounded-lg transition flex items-center justify-center sm:justify-start gap-1.5 font-body truncate"
+                        :class="activeMode === 'tournament' ? 'bg-kwuo-bronze text-white font-bold shadow-xs' : 'text-theme-body/70 hover:text-theme-heading'">
+                    <i class="ph-bold ph-globe text-xs"></i>
+                    <span class="truncate">Official ({{ tournament.timezone or 'UTC' }})</span>
+                </button>
+                <button type="button" @click="setMode('local')"
+                        class="px-2.5 py-1.5 rounded-lg transition flex items-center justify-center sm:justify-start gap-1.5 font-body truncate"
+                        :class="activeMode === 'local' ? 'bg-kwuo-bronze text-white font-bold shadow-xs' : 'text-theme-body/70 hover:text-theme-heading'">
+                    <i class="ph-bold ph-clock text-xs"></i>
+                    <span class="truncate">Your Device Time</span>
+                </button>
+            </div>
+
+            <!-- Custom Other Timezone Searchable Dropdown Trigger -->
+            <div class="relative w-full sm:w-auto" @click.outside="customDropdownOpen = false">
+                <button type="button" @click="customDropdownOpen = !customDropdownOpen"
+                        class="w-full sm:w-auto px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center justify-between sm:justify-start gap-2 font-body shadow-2xs"
+                        :class="activeMode === 'custom' ? 'border-kwuo-bronze bg-kwuo-bronze text-white font-bold shadow-xs' : 'border-theme-border bg-theme-base text-theme-heading hover:bg-theme-surface'">
+                    <span class="inline-flex items-center gap-1.5 truncate min-w-0">
+                        <i class="ph-bold ph-faders text-xs shrink-0"></i>
+                        <span x-text="activeMode === 'custom' ? customTz : 'Other Timezone...'" class="truncate"></span>
+                    </span>
+                    <i class="ph-bold ph-caret-down text-[10px] shrink-0 transition-transform duration-200" :class="{ 'rotate-180': customDropdownOpen }"></i>
+                </button>
+
+                <!-- Floating Searchable Dropdown Popup -->
+                <div x-show="customDropdownOpen" x-cloak
+                     class="absolute left-0 right-0 sm:left-auto sm:right-0 mt-1.5 w-full sm:w-80 max-h-80 bg-theme-surface rounded-2xl shadow-2xl border border-theme-border z-50 flex flex-col overflow-hidden text-xs font-body">
+                    <div class="p-2 border-b border-theme-border bg-theme-base/60">
+                        <div class="relative">
+                            <i class="ph-bold ph-magnifying-glass absolute left-2.5 top-2 text-theme-body/40 text-xs"></i>
+                            <input type="text" x-model="search"
+                                   placeholder="Search timezone (e.g. London, New York, Tokyo)..."
+                                   class="w-full rounded-lg border border-theme-border bg-theme-surface pl-7 pr-2.5 py-1 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto max-h-60 p-1.5 space-y-2">
+                        <template x-for="(tzs, region) in filteredGroups" :key="region">
+                            <div x-show="tzs.length > 0">
+                                <div class="text-[9px] font-bold uppercase tracking-wider text-theme-body/50 px-2 py-0.5" x-text="'—— ' + region + ' ——'"></div>
+                                <div class="space-y-0.5 mt-0.5">
+                                    <template x-for="tz in tzs" :key="tz.id">
+                                        <button type="button" @click="setCustomTz(tz.id)"
+                                                class="w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-left text-xs transition font-body gap-2"
+                                                :class="customTz === tz.id && activeMode === 'custom' ? 'bg-kwuo-bronze text-white font-semibold' : 'text-theme-heading hover:bg-theme-base'">
+                                            <span x-text="tz.label" class="truncate min-w-0 flex-1"></span>
+                                            <span class="text-[10px] opacity-75 font-body shrink-0 ml-1.5" x-text="getTime12(tz.id)"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="totalFilteredCount === 0" class="p-3 text-center text-xs text-theme-body/50">
+                            No matching timezone found
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Timeline Container (Torn-Docket) -->
-    <div class="kwuo-torn-docket-wrapper">
-        <article class="kwuo-torn-docket !p-6 sm:!p-8">
+    <div class="kwuo-torn-docket-wrapper mt-6">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8 font-body">
             {% if tournament.schedule_items %}
             <div class="space-y-6 divide-y divide-theme-border">
                 {% for item in tournament.schedule_items %}
@@ -49,9 +243,15 @@
                     <div class="flex-grow space-y-1">
                         <div class="flex items-center justify-between flex-wrap gap-2">
                             <h3 class="font-heading font-bold text-base sm:text-lg text-theme-heading">{{ item.title }}</h3>
-                            <span class="text-xs font-heading font-bold text-kwuo-bronze">
-                                {{ item.start_time.strftime('%b %d, %H:%M') }}{% if item.end_time %} – {{ item.end_time.strftime('%H:%M') }}{% endif %}
-                            </span>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-base sm:text-lg font-heading font-extrabold text-kwuo-bronze tracking-tight"
+                                      x-text="formatTimeRange('{{ item.start_time.isoformat() }}', '{{ item.end_time.isoformat() if item.end_time else '' }}')">
+                                    {{ item.start_time.strftime('%b %d, %I:%M %p') }}{% if item.end_time %} – {{ item.end_time.strftime('%I:%M %p') }}{% endif %}
+                                </span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-theme-base border border-theme-border text-theme-body/80 shadow-2xs"
+                                      x-text="activeMode === 'tournament' ? 'Official' : (activeMode === 'local' ? 'Device' : customTz)">
+                                </span>
+                            </div>
                         </div>
                         {% if item.location %}
                         <div class="text-xs text-theme-body/70 flex items-center gap-1.5">
@@ -65,6 +265,16 @@
                     </div>
                 </div>
                 {% endfor %}
+            </div>
+            {% else %}
+            <div class="py-12 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-kwuo-bronze/10 text-kwuo-bronze text-2xl flex items-center justify-center mx-auto">
+                    <i class="ph-bold ph-calendar-blank"></i>
+                </div>
+                <h3 class="font-heading font-bold text-base text-theme-heading">No Milestones Published</h3>
+                <p class="text-xs text-theme-body/60 max-w-sm mx-auto">
+                    The tournament schedule is being configured by the organizers. Check back soon for roll calls, briefings, and round start times.
+                </p>
             </div>
             {% endif %}
         </article>

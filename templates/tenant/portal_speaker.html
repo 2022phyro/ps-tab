@@ -20,12 +20,29 @@
                             </span>
                             <span class="text-xs text-theme-body/60 font-body">{{ participant.id }}</span>
                         </div>
-                        <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading mt-1">
-                            {{ participant.name }}
-                        </h1>
-                        <p class="text-xs text-theme-body/70 mt-0.5">
-                            {{ participant.institution_name }} • {% for d in participant.division_names %}{{ d }}{% if not loop.last %}, {% endif %}{% else %}Open Division{% endfor %}
-                        </p>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                            <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
+                                {{ participant.name }}
+                            </h1>
+                            {% if speaker and speaker.pronouns %}
+                            <span class="text-xs text-theme-body/60 font-body px-2 py-0.5 rounded-md bg-theme-base border border-theme-border">
+                                {{ speaker.pronouns }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap text-xs text-theme-body/70 font-body">
+                            <span class="font-semibold text-theme-heading">{{ participant.institution_name }}</span>
+                            <span>&bull;</span>
+                            <div class="flex items-center gap-1">
+                                {% for d in participant.division_names %}
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                    {{ d }}
+                                </span>
+                                {% else %}
+                                <span class="text-[10px] text-theme-body/50">Open Division</span>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -4,15 +4,328 @@
 {% block title %}Tournament Settings — Tab Room{% endblock %}
 
 {% block admin_content %}
+<script id="kwuo-timezones-data" type="application/json">{{ grouped_timezones | tojson | safe }}</script>
+<script>
+    function timezoneSearchableDropdown(initialId) {
+        let timezones = {};
+        try {
+            timezones = JSON.parse(document.getElementById("kwuo-timezones-data")?.textContent || "{}");
+        } catch (e) { timezones = {}; }
+
+        const initId = initialId || "UTC";
+        let initLabel = `(GMT) ${initId}`;
+        for (const region in timezones) {
+            for (const tz of timezones[region]) {
+                if (tz.id === initId) {
+                    initLabel = tz.label;
+                    break;
+                }
+            }
+        }
+
+        return {
+            selectedId: initId,
+            selectedLabel: initLabel,
+            timezones: timezones,
+            open: false,
+            search: "",
+
+            get filteredGroups() {
+                const q = this.search.trim().toLowerCase();
+                const result = {};
+                for (const region in this.timezones) {
+                    const list = this.timezones[region];
+                    if (!q) {
+                        result[region] = list;
+                    } else {
+                        const matched = list.filter(tz =>
+                            tz.label.toLowerCase().includes(q) ||
+                            tz.id.toLowerCase().includes(q)
+                        );
+                        if (matched.length > 0) result[region] = matched;
+                    }
+                }
+                return result;
+            },
+
+            get totalFilteredCount() {
+                let count = 0;
+                for (const region in this.filteredGroups) {
+                    count += this.filteredGroups[region].length;
+                }
+                return count;
+            },
+
+            toggle() {
+                this.open = !this.open;
+                if (this.open) {
+                    this.search = "";
+                    this.$nextTick(() => { this.$refs.tzSearch?.focus(); });
+                }
+            },
+
+            select(tz) {
+                this.selectedId = tz.id;
+                this.selectedLabel = tz.label;
+                this.open = false;
+            },
+
+            selectFirst() {
+                for (const region in this.filteredGroups) {
+                    if (this.filteredGroups[region].length > 0) {
+                        this.select(this.filteredGroups[region][0]);
+                        return;
+                    }
+                }
+            },
+
+            get currentTime12() {
+                try {
+                    return new Intl.DateTimeFormat('en-US', {
+                        timeZone: this.selectedId,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).format(new Date());
+                } catch (e) { return ''; }
+            },
+
+            getTime12(tzId) {
+                try {
+                    return new Intl.DateTimeFormat('en-US', {
+                        timeZone: tzId,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).format(new Date());
+                } catch (e) { return ''; }
+            }
+        };
+    }
+
+    function scheduleTimezoneManager(tournamentTz) {
+        let timezones = {};
+        try {
+            timezones = JSON.parse(document.getElementById("kwuo-timezones-data")?.textContent || "{}");
+        } catch (e) { timezones = {}; }
+
+        const initialCustom = localStorage.getItem('kwuo_sched_custom_tz') || 'UTC';
+        return {
+            tournamentTz: tournamentTz || 'UTC',
+            userTz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+            customTz: initialCustom,
+            activeMode: localStorage.getItem('kwuo_sched_tz_mode') || 'tournament',
+            timezones: timezones,
+            customDropdownOpen: false,
+            search: '',
+
+            setMode(mode) {
+                this.activeMode = mode;
+                localStorage.setItem('kwuo_sched_tz_mode', mode);
+            },
+            setCustomTz(tzId) {
+                this.customTz = tzId;
+                this.activeMode = 'custom';
+                localStorage.setItem('kwuo_sched_custom_tz', tzId);
+                localStorage.setItem('kwuo_sched_tz_mode', 'custom');
+                this.customDropdownOpen = false;
+            },
+            get currentTz() {
+                if (this.activeMode === 'tournament') return this.tournamentTz;
+                if (this.activeMode === 'local') return this.userTz;
+                return this.customTz || 'UTC';
+            },
+            get isSameTimezone() {
+                return this.tournamentTz === this.currentTz;
+            },
+            get currentTz12() {
+                try {
+                    return new Intl.DateTimeFormat('en-US', {
+                        timeZone: this.currentTz,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).format(new Date());
+                } catch (e) { return ''; }
+            },
+            getTime12(tzId) {
+                try {
+                    return new Intl.DateTimeFormat('en-US', {
+                        timeZone: tzId,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).format(new Date());
+                } catch (e) { return ''; }
+            },
+            get filteredGroups() {
+                const q = this.search.trim().toLowerCase();
+                const result = {};
+                for (const reg in this.timezones) {
+                    const list = this.timezones[reg];
+                    if (!q) {
+                        result[reg] = list;
+                    } else {
+                        const matched = list.filter(z =>
+                            z.label.toLowerCase().includes(q) ||
+                            z.id.toLowerCase().includes(q)
+                        );
+                        if (matched.length > 0) result[reg] = matched;
+                    }
+                }
+                return result;
+            },
+            get totalFilteredCount() {
+                let count = 0;
+                for (const reg in this.filteredGroups) {
+                    count += this.filteredGroups[reg].length;
+                }
+                return count;
+            },
+            formatTimeRange(startIso, endIso) {
+                if (!startIso) return '';
+                try {
+                    const startDate = new Date(startIso);
+                    const tz = this.currentTz;
+                    const datePart = new Intl.DateTimeFormat('en-US', {
+                        timeZone: tz,
+                        month: 'short',
+                        day: 'numeric'
+                    }).format(startDate);
+                    const startTimePart = new Intl.DateTimeFormat('en-US', {
+                        timeZone: tz,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).format(startDate);
+
+                    if (!endIso) {
+                        return `${datePart}, ${startTimePart}`;
+                    }
+                    const endDate = new Date(endIso);
+                    const endTimePart = new Intl.DateTimeFormat('en-US', {
+                        timeZone: tz,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).format(endDate);
+                    return `${datePart}, ${startTimePart} – ${endTimePart}`;
+                } catch (e) {
+                    return startIso;
+                }
+            }
+        };
+    }
+</script>
 <div x-data="{
     currentTab: (function() {
         const t = new URLSearchParams(window.location.search).get('tab');
         if (t === 'config' || t === 'rules') return 'config';
         if (t === 'schedule') return 'schedule';
+        if (t === 'links') return 'links';
         return 'setup';
     })(),
-    addScheduleModal: false
-}" class="max-w-5xl mx-auto space-y-6">
+    addScheduleModal: false,
+    linkModalOpen: false,
+    deleteLinkModalOpen: false,
+    deleteLinkId: '',
+    deleteLinkLabel: '',
+    addDivisionModal: false,
+    editDivisionModal: false,
+    deleteDivisionModal: false,
+    editingDivision: {
+        id: '',
+        name: '',
+        description: ''
+    },
+    deleteDivisionId: '',
+    deleteDivisionName: '',
+    deleteDivisionParticipantCount: 0,
+    openAddDivision() {
+        this.editingDivision = {
+            id: '',
+            name: '',
+            description: ''
+        };
+        this.addDivisionModal = true;
+    },
+    openEditDivision(item) {
+        this.editingDivision = {
+            id: item.id,
+            name: item.name,
+            description: item.description || ''
+        };
+        this.editDivisionModal = true;
+    },
+    openDeleteDivision(id, name, count) {
+        this.deleteDivisionId = id;
+        this.deleteDivisionName = name;
+        this.deleteDivisionParticipantCount = count || 0;
+        this.deleteDivisionModal = true;
+    },
+    editingLink: {
+        id: '',
+        preset: 'whatsapp',
+        label: '',
+        url: '',
+        description: '',
+        is_public: true
+    },
+    presets: {{ link_presets|tojson|forceescape if link_presets else '{}' }},
+    openAddLink(preset = 'whatsapp', defaultLabel = '') {
+        const pInfo = this.presets[preset] || {};
+        this.editingLink = {
+            id: '',
+            preset: preset,
+            label: defaultLabel || pInfo.name || '',
+            url: '',
+            description: '',
+            is_public: true
+        };
+        this.linkModalOpen = true;
+    },
+    openEditLink(item) {
+        this.editingLink = {
+            id: item.id,
+            preset: item.preset || 'custom',
+            label: item.label,
+            url: item.url,
+            description: item.description || '',
+            is_public: item.is_public !== false
+        };
+        this.linkModalOpen = true;
+    },
+    openDeleteLink(id, label) {
+        this.deleteLinkId = id;
+        this.deleteLinkLabel = label;
+        this.deleteLinkModalOpen = true;
+    },
+    onPresetChange() {
+        const pInfo = this.presets[this.editingLink.preset];
+        if (pInfo && (!this.editingLink.label || Object.values(this.presets).some(p => p.name === this.editingLink.label))) {
+            this.editingLink.label = pInfo.name;
+        }
+    },
+    judgeWeightTest: {{ tournament.judge_weight_test }},
+    judgeWeightCV: {{ tournament.judge_weight_cv }},
+    judgeWeightFeedback: {{ tournament.judge_weight_feedback }},
+    get computedJudgeRatio() {
+        let t = Math.round(Number(this.judgeWeightTest) || 0);
+        let c = Math.round(Number(this.judgeWeightCV) || 0);
+        let f = Math.round(Number(this.judgeWeightFeedback) || 0);
+        const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+        let pos = [t, c, f].filter(x => x > 0);
+        if (pos.length > 0) {
+            let g = pos[0];
+            for (let i = 1; i < pos.length; i++) g = gcd(g, pos[i]);
+            if (g > 1) {
+                return `${Math.round(t / g)}:${Math.round(c / g)}:${Math.round(f / g)}`;
+            }
+        }
+        return `${t}:${c}:${f}`;
+    }
+}"
+    class="max-w-5xl mx-auto space-y-6">
     <!-- Breadcrumb & Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
@@ -32,47 +345,59 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <a href="/schedule" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
+            <a href="/schedule" target="_blank"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
                 <i class="ph-bold ph-calendar text-sm"></i>
                 <span>Public Schedule</span>
             </a>
-            <a href="/schedule/download.ics"
-               download="{{ tournament.slug }}-schedule.ics"
-               hx-boost="false"
-               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-kwuo-bronze hover:bg-kwuo-bronze/10 transition"
-               title="Export schedule as iCalendar file">
+            <a href="/schedule/download.ics" download="{{ tournament.slug }}-schedule.ics" hx-boost="false"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-kwuo-bronze hover:bg-kwuo-bronze/10 transition"
+                title="Export schedule as iCalendar file">
                 <i class="ph-bold ph-download-simple text-sm"></i>
                 <span>Download .ics</span>
             </a>
         </div>
     </div>
 
-    <!-- Main Navigation Tabs for Settings: Setup, Config, Schedule -->
+    <!-- Main Navigation Tabs for Settings: Setup, Config, Schedule, Links -->
     <div class="flex flex-flow justify-evenly items-stretch gap-2 border-b border-theme-border overflow-x-auto pb-1">
         <button type="button" @click="currentTab = 'setup'"
-                class="px-4 py-2 rounded-xl text-xs flex-row font-bold transition flex items-center gap-2 whitespace-nowrap w-full justify-center"
-                :class="currentTab === 'setup' ? 'bg-kwuo-bronze text-white shadow-sm' : 'text-theme-heading/70 hover:bg-theme-surface hover:text-theme-heading'">
-            <i class="ph-bold ph-gear text-sm"></i>
+            class="px-4 py-2 rounded-xl text-xs flex-row font-bold transition flex items-center gap-2 whitespace-nowrap w-full justify-center font-body"
+            :class="currentTab === 'setup' ? 'bg-kwuo-bronze text-white shadow-sm' : 'text-theme-heading/70 hover:bg-theme-surface hover:text-theme-heading'">
+            <i class="hidden min-[460px]:inline-block ph-bold ph-gear text-sm"></i>
             <span>Setup</span>
         </button>
 
         <button type="button" @click="currentTab = 'config'"
-                class="px-4 py-2 rounded-xl text-xs flex-row font-bold transition flex items-center gap-2 whitespace-nowrap w-full justify-center"
-                :class="currentTab === 'config' ? 'bg-kwuo-bronze text-white shadow-sm' : 'text-theme-heading/70 hover:bg-theme-surface hover:text-theme-heading'">
-            <i class="ph-bold ph-sliders text-sm"></i>
+            class="px-4 py-2 rounded-xl text-xs flex-row font-bold transition flex items-center gap-2 whitespace-nowrap w-full justify-center font-body"
+            :class="currentTab === 'config' ? 'bg-kwuo-bronze text-white shadow-sm' : 'text-theme-heading/70 hover:bg-theme-surface hover:text-theme-heading'">
+            <i class="hidden min-[460px]:inline-block hidden min-[460px]:inline-block ph-bold ph-sliders text-sm"></i>
             <span>Config</span>
         </button>
 
         <button type="button" @click="currentTab = 'schedule'"
-                class="px-4 py-2 rounded-xl text-xs flex-row font-bold transition flex items-center gap-2 whitespace-nowrap w-full justify-center"
-                :class="currentTab === 'schedule' ? 'bg-kwuo-bronze text-white shadow-sm' : 'text-theme-heading/70 hover:bg-theme-surface hover:text-theme-heading'">
-            <i class="ph-bold ph-calendar text-sm"></i>
+            class="px-4 py-2 rounded-xl text-xs flex-row font-bold transition flex items-center gap-2 whitespace-nowrap w-full justify-center font-body"
+            :class="currentTab === 'schedule' ? 'bg-kwuo-bronze text-white shadow-sm' : 'text-theme-heading/70 hover:bg-theme-surface hover:text-theme-heading'">
+            <i class="hidden min-[460px]:inline-block ph-bold ph-calendar text-sm"></i>
             <span>Schedule</span>
+        </button>
+
+        <button type="button" @click="currentTab = 'links'"
+            class="px-4 py-2 rounded-xl text-xs flex-row font-bold transition flex items-center gap-2 whitespace-nowrap w-full justify-center font-body"
+            :class="currentTab === 'links' ? 'bg-kwuo-bronze text-white shadow-sm' : 'text-theme-heading/70 hover:bg-theme-surface hover:text-theme-heading'">
+            <i class="hidden min-[460px]:inline-block ph-bold ph-link text-sm"></i>
+            <span>Links</span>
+            {% if tournament.formatted_links %}
+            <span class=" hidden min-[460px]:inline-block px-1.5 py-0.2 rounded-full text-[10px] font-bold"
+                :class="currentTab === 'links' ? 'bg-white/20 text-white' : 'bg-theme-base border border-theme-border text-theme-heading'">
+                {{ tournament.formatted_links|length }}
+            </span>
+            {% endif %}
         </button>
     </div>
 
     <!-- TAB 1 & 2: Combined Base Settings and Rules Form -->
-    <form method="POST" action="/admin/settings" class="space-y-6">
+    <form method="POST" action="/admin/settings" hx-boost="false" class="space-y-6">
         <!-- Input field to retain active tab upon submit -->
         <input type="hidden" name="active_tab" :value="currentTab">
 
@@ -94,14 +419,15 @@
                                 Tournament Name *
                             </label>
                             <input type="text" name="name" required value="{{ tournament.name }}"
-                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
                                 Tenant Subdomain
                             </label>
-                            <div class="px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base/60 text-theme-body/70 text-sm font-body flex items-center justify-between">
+                            <div
+                                class="px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base/60 text-theme-body/70 text-sm font-body flex items-center justify-between">
                                 <span>{{ tournament.slug }}.kwuo.com</span>
                                 <span class="text-[10px] uppercase font-bold text-theme-body/50">Tenant Key</span>
                             </div>
@@ -115,14 +441,14 @@
                                 Location Type *
                             </label>
                             {{ edit.custom_select(
-                                name="location_type",
-                                value=tournament.location_type.value,
-                                required=true,
-                                options=[
-                                    {"value": "physical", "label": "Physical / In-Person", "icon": "ph-map-pin"},
-                                    {"value": "virtual", "label": "Virtual / Online", "icon": "ph-video-camera"},
-                                    {"value": "hybrid", "label": "Hybrid (Campus & Remote)", "icon": "ph-globe"}
-                                ]
+                            name="location_type",
+                            value=tournament.location_type.value,
+                            required=true,
+                            options=[
+                            {"value": "physical", "label": "Physical / In-Person", "icon": "ph-map-pin"},
+                            {"value": "virtual", "label": "Virtual / Online", "icon": "ph-video-camera"},
+                            {"value": "hybrid", "label": "Hybrid (Campus & Remote)", "icon": "ph-globe"}
+                            ]
                             ) }}
                         </div>
 
@@ -131,8 +457,8 @@
                                 Location / Venue / Virtual Access Details
                             </label>
                             <input type="text" name="location" value="{{ tournament.location or '' }}"
-                                   placeholder="e.g. Accra International Conference Centre or Zoom / Discord Main Server"
-                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
+                                placeholder="e.g. Accra International Conference Centre or Zoom / Discord Main Server"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
                         </div>
                     </div>
 
@@ -142,15 +468,17 @@
                             <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
                                 Start Date
                             </label>
-                            <input type="date" name="start_date" value="{{ tournament.start_date.strftime('%Y-%m-%d') if tournament.start_date else '' }}"
-                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
+                            <input type="date" name="start_date"
+                                value="{{ tournament.start_date.strftime('%Y-%m-%d') if tournament.start_date else '' }}"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
                                 End Date
                             </label>
-                            <input type="date" name="end_date" value="{{ tournament.end_date.strftime('%Y-%m-%d') if tournament.end_date else '' }}"
-                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
+                            <input type="date" name="end_date"
+                                value="{{ tournament.end_date.strftime('%Y-%m-%d') if tournament.end_date else '' }}"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">
                         </div>
                     </div>
 
@@ -161,14 +489,16 @@
                                 Status *
                             </label>
                             {{ edit.custom_select(
-                                name="status",
-                                value=tournament.status.value,
-                                required=true,
-                                options=[
-                                    {"value": "draft", "label": "Draft", "icon": "ph-pencil-line"},
-                                    {"value": "active", "label": "Active", "icon": "ph-broadcast"},
-                                    {"value": "concluded", "label": "Concluded", "icon": "ph-check-circle"}
-                                ]
+                            name="status",
+                            value=tournament.status.value,
+                            required=true,
+                            options=[
+                            {"value": "draft", "label": "Draft", "icon": "ph-pencil-line"},
+                            {"value": "registration", "label": "Registration", "icon": "ph-user-plus"},
+                            {"value": "active", "label": "Active", "icon": "ph-broadcast"},
+                            {"value": "concluded", "label": "Concluded", "icon": "ph-check-circle"},
+                            {"value": "archived", "label": "Archived", "icon": "ph-archive"}
+                            ]
                             ) }}
                         </div>
 
@@ -177,8 +507,8 @@
                                 Description &amp; Event Overview
                             </label>
                             <textarea name="description" rows="2"
-                                      placeholder="Public overview and welcome guidance for attendees..."
-                                      class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">{{ tournament.description or '' }}</textarea>
+                                placeholder="Public overview and welcome guidance for attendees..."
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40">{{ tournament.description or '' }}</textarea>
                         </div>
                     </div>
                 </article>
@@ -192,8 +522,10 @@
             <div class="kwuo-torn-docket-wrapper">
                 <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-6">
                     <div class="pb-3 border-b border-theme-border">
-                        <h2 class="text-base font-heading font-bold text-theme-heading">Rules &amp; Draw Configuration</h2>
-                        <p class="text-xs text-theme-body/60">Balloting mechanics, room sizing constraints, panel allocations, and ghost policies</p>
+                        <h2 class="text-base font-heading font-bold text-theme-heading">Rules &amp; Draw Configuration
+                        </h2>
+                        <p class="text-xs text-theme-body/60">Balloting mechanics, room sizing constraints, panel
+                            allocations, and ghost policies</p>
                     </div>
 
                     <!-- Ballot Scoring Mode & Draw Methodology (Semantically Paired) -->
@@ -203,15 +535,18 @@
                                 Ballot Scoring Mode *
                             </label>
                             {{ edit.custom_select(
-                                name="ballot_mode",
-                                value=tournament.ballot_mode.value,
-                                required=true,
-                                options=[
-                                    {"value": "strict", "label": "Strict Mode (Chair Override Permitted)", "icon": "ph-shield-check"},
-                                    {"value": "democracy", "label": "Democracy Mode (Equal Weight Panel)", "icon": "ph-users-three"}
-                                ]
+                            name="ballot_mode",
+                            value=tournament.ballot_mode.value,
+                            required=true,
+                            options=[
+                            {"value": "strict", "label": "Strict Mode (Chair Override Permitted)", "icon":
+                            "ph-shield-check"},
+                            {"value": "democracy", "label": "Democracy Mode (Equal Weight Panel)", "icon":
+                            "ph-users-three"}
+                            ]
                             ) }}
-                            <p class="text-[11px] text-theme-body/60 mt-1">Controls individual score card validation and chair override permissions.</p>
+                            <p class="text-[11px] text-theme-body/60 mt-1">Controls individual score card validation and
+                                chair override permissions.</p>
                         </div>
 
                         <div>
@@ -219,16 +554,17 @@
                                 Draw Seeding Methodology *
                             </label>
                             {{ edit.custom_select(
-                                name="draw_method",
-                                value=tournament.draw_method.value,
-                                required=true,
-                                options=[
-                                    {"value": "power_matched", "label": "Power-Matched", "icon": "ph-trend-up"},
-                                    {"value": "random", "label": "Random Matrix", "icon": "ph-shuffle"},
-                                    {"value": "equal", "label": "Equal Spread", "icon": "ph-equals"}
-                                ]
+                            name="draw_method",
+                            value=tournament.draw_method.value,
+                            required=true,
+                            options=[
+                            {"value": "power_matched", "label": "Power-Matched", "icon": "ph-trend-up"},
+                            {"value": "random", "label": "Random Matrix", "icon": "ph-shuffle"},
+                            {"value": "equal", "label": "Equal Spread", "icon": "ph-equals"}
+                            ]
                             ) }}
-                            <p class="text-[11px] text-theme-body/60 mt-1">Algorithm used when generating section matrix pairings.</p>
+                            <p class="text-[11px] text-theme-body/60 mt-1">Algorithm used when generating section matrix
+                                pairings.</p>
                         </div>
                     </div>
 
@@ -238,8 +574,9 @@
                             <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
                                 Min Room Size *
                             </label>
-                            <input type="number" min="2" max="12" name="min_room_size" required value="{{ tournament.min_room_size }}"
-                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <input type="number" min="2" max="12" name="min_room_size" required
+                                value="{{ tournament.min_room_size }}"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
                             <p class="text-[11px] text-theme-body/60 mt-1">Minimum speakers per room.</p>
                         </div>
 
@@ -247,8 +584,9 @@
                             <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
                                 Max Room Size *
                             </label>
-                            <input type="number" min="3" max="20" name="max_room_size" required value="{{ tournament.max_room_size }}"
-                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <input type="number" min="3" max="20" name="max_room_size" required
+                                value="{{ tournament.max_room_size }}"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
                             <p class="text-[11px] text-theme-body/60 mt-1">Maximum speakers per room.</p>
                         </div>
 
@@ -257,13 +595,14 @@
                                 Room Sizing Preference *
                             </label>
                             {{ edit.custom_select(
-                                name="room_size_preference",
-                                value=tournament.room_size_preference.value,
-                                required=true,
-                                options=[
-                                    {"value": "fewest_rooms", "label": "Fewest Rooms (Larger Rooms)", "icon": "ph-arrows-in"},
-                                    {"value": "smaller_rooms", "label": "Smaller Rooms (Disperse Evenly)", "icon": "ph-arrows-out"}
-                                ]
+                            name="room_size_preference",
+                            value=tournament.room_size_preference.value,
+                            required=true,
+                            options=[
+                            {"value": "fewest_rooms", "label": "Fewest Rooms (Larger Rooms)", "icon": "ph-arrows-in"},
+                            {"value": "smaller_rooms", "label": "Smaller Rooms (Disperse Evenly)", "icon":
+                            "ph-arrows-out"}
+                            ]
                             ) }}
                             <p class="text-[11px] text-theme-body/60 mt-1">Headcount distribution strategy.</p>
                         </div>
@@ -275,8 +614,9 @@
                             <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
                                 Standard Panel Size *
                             </label>
-                            <input type="number" min="1" max="9" name="panel_size" required value="{{ tournament.panel_size }}"
-                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <input type="number" min="1" max="9" name="panel_size" required
+                                value="{{ tournament.panel_size }}"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
                             <p class="text-[11px] text-theme-body/60 mt-1">Target judge panel count.</p>
                         </div>
 
@@ -284,21 +624,26 @@
                             <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
                                 Minimum Panel Size *
                             </label>
-                            <input type="number" min="1" max="5" name="minimum_panel_size" required value="{{ tournament.minimum_panel_size }}"
-                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <input type="number" min="1" max="5" name="minimum_panel_size" required
+                                value="{{ tournament.minimum_panel_size }}"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
                             <p class="text-[11px] text-theme-body/60 mt-1">Emergency solo-judge floor.</p>
                         </div>
 
                         <!-- GHOST ACTION (GHOST POLICY) -->
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 flex items-center justify-between">
+                            <label
+                                class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 flex items-center justify-between">
                                 <span>Ghost Action (Rounds) *</span>
-                                <span class="text-[10px] text-kwuo-bronze font-bold uppercase tracking-wider">Auto-Cut</span>
+                                <span
+                                    class="text-[10px] text-kwuo-bronze font-bold uppercase tracking-wider">Auto-Cut</span>
                             </label>
-                            <input type="number" name="ghost_round_limit" min="1" max="10" required value="{{ tournament.ghost_round_limit }}"
-                                   class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40 font-bold">
+                            <input type="number" name="ghost_round_limit" min="1" max="10" required
+                                value="{{ tournament.ghost_round_limit }}"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm focus:ring-2 focus:ring-kwuo-bronze/40 font-bold">
                             <p class="text-[11px] text-theme-body/60 mt-1">
-                                Consecutive missed rounds before a speaker/judge is deemed a "ghost", removed from draws, and records expunged.
+                                Consecutive missed rounds before a speaker/judge is deemed a "ghost", removed from
+                                draws, and records expunged.
                             </p>
                         </div>
                     </div>
@@ -306,22 +651,181 @@
                     <!-- Preliminary Ties -->
                     <div class="pt-1">
                         <div class="flex items-center gap-2">
-                            <input type="checkbox" name="allow_prelim_ties" id="allow_prelim_ties" value="true"
-                                   {% if tournament.allow_prelim_ties %}checked{% endif %}
-                                   class="rounded text-kwuo-bronze focus:ring-kwuo-bronze">
+                            <input type="checkbox" name="allow_prelim_ties" id="allow_prelim_ties" value="true" {% if
+                                tournament.allow_prelim_ties %}checked{% endif %}
+                                class="rounded text-kwuo-bronze focus:ring-kwuo-bronze">
                             <label for="allow_prelim_ties" class="text-xs font-semibold text-theme-heading">
                                 Allow Preliminary Ties
                             </label>
                         </div>
-                        <p class="text-[11px] text-theme-body/60 mt-1">If unchecked, requires ballot tie-breaks before tab release.</p>
+                        <p class="text-[11px] text-theme-body/60 mt-1">If unchecked, requires ballot tie-breaks before
+                            tab release.</p>
                     </div>
+                </article>
+            </div>
+
+            <!-- Adjudicator Scoring Standard & Weight Ratios -->
+            <div class="kwuo-torn-docket-wrapper font-body">
+                <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-6">
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border flex-wrap gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg shrink-0">
+                                <i class="ph-bold ph-scales"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-heading font-bold text-theme-heading">Adjudicator Scoring Standard &amp; Weight Ratios</h2>
+                                <p class="text-xs text-theme-body/60 font-body">Three-pronged judge evaluation model (Test, CV vetting, in-round Feedback). All individual factor scores capped at 10.0.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-theme-body/70">Ratio (Test : CV : Feedback):</span>
+                            <span class="px-2.5 py-1 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 text-xs font-bold font-body"
+                                  x-text="computedJudgeRatio">
+                                {{ tournament.judge_weight_ratio_str }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Test Score Weight *
+                            </label>
+                            <input type="number" step="any" min="0" max="100" name="judge_weight_test" required
+                                x-model.number="judgeWeightTest"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <p class="text-[11px] text-theme-body/60 mt-1">Weight for judge test score (0–10 scale).</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                CV Score Weight *
+                            </label>
+                            <input type="number" step="any" min="0" max="100" name="judge_weight_cv" required
+                                x-model.number="judgeWeightCV"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <p class="text-[11px] text-theme-body/60 mt-1">Weight for CV vetting accreditation score (0–10 scale).</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Feedback Score Weight *
+                            </label>
+                            <input type="number" step="any" min="0" max="100" name="judge_weight_feedback" required
+                                x-model.number="judgeWeightFeedback"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-sm font-bold">
+                            <p class="text-[11px] text-theme-body/60 mt-1">Weight for live in-round feedback average (0–10 scale).</p>
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl bg-theme-base border border-theme-border flex items-start gap-3">
+                        <i class="ph-bold ph-info text-kwuo-bronze text-base shrink-0 mt-0.5"></i>
+                        <p class="text-xs text-theme-body/80 leading-relaxed">
+                            Composite judge score formula: <strong class="text-theme-heading">(W_test &times; S_test + W_cv &times; S_cv + W_fb &times; S_fb) &divide; (W_test + W_cv + W_fb)</strong>.
+                            If round feedback is pending, the composite score automatically balances over available accredited components.
+                        </p>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Competitive Divisions Card -->
+            <div class="kwuo-torn-docket-wrapper font-body">
+                <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-6">
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border flex-wrap gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg shrink-0">
+                                <i class="ph-bold ph-tag"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-heading font-bold text-theme-heading">Competitive Divisions</h2>
+                                <p class="text-xs text-theme-body/60 font-body">Eligibility categories, break flights, and speaker awards (e.g. Open, Novice, ESL, Junior)</p>
+                            </div>
+                        </div>
+
+                        <button type="button" @click="openAddDivision()"
+                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center gap-2 shadow-sm font-body">
+                            <i class="ph-bold ph-plus-circle text-base"></i>
+                            <span>Add Division</span>
+                        </button>
+                    </div>
+
+                    {% if divisions %}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                        {% for div in divisions %}
+                        <div class="p-4 rounded-xl border border-theme-border bg-theme-base/60 hover:bg-theme-base hover:border-kwuo-bronze/30 transition flex flex-col justify-between gap-3 shadow-2xs">
+                            <div class="space-y-1.5">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <h3 class="font-heading font-bold text-sm text-theme-heading truncate">{{ div.name }}</h3>
+                                        {% if div.name.lower() == 'open' %}
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 uppercase tracking-wider font-body shrink-0">
+                                            Default
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% if div.description %}
+                                <p class="text-xs text-theme-body/70 leading-snug font-body line-clamp-2">{{ div.description }}</p>
+                                {% else %}
+                                <p class="text-xs text-theme-body/40 italic font-body">No description specified.</p>
+                                {% endif %}
+                            </div>
+
+                            <div class="pt-2.5 border-t border-theme-border/60 flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2 text-[11px] font-semibold text-theme-body/70 font-body">
+                                    <span class="inline-flex items-center gap-1">
+                                        <i class="ph-bold ph-microphone-stage text-kwuo-bronze"></i>
+                                        <span>{{ div.speakers|length }}</span>
+                                    </span>
+                                    <span>•</span>
+                                    <span class="inline-flex items-center gap-1">
+                                        <i class="ph-bold ph-scales text-kwuo-bronze"></i>
+                                        <span>{{ div.judges|length }}</span>
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center gap-1.5">
+                                    <button type="button"
+                                        @click="openEditDivision({ id: '{{ div.id }}', name: '{{ div.name|e }}', description: '{{ (div.description or '')|e }}' })"
+                                        class="p-1.5 rounded-lg border border-theme-border hover:bg-theme-surface text-theme-heading transition text-xs"
+                                        title="Edit Division">
+                                        <i class="ph-bold ph-pencil-simple text-sm"></i>
+                                    </button>
+                                    <button type="button"
+                                        @click="openDeleteDivision('{{ div.id }}', '{{ div.name|e }}', {{ div.participants|length }})"
+                                        class="p-1.5 rounded-lg border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition text-xs"
+                                        title="Delete Division">
+                                        <i class="ph-bold ph-trash text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="py-8 text-center space-y-3 font-body">
+                        <div class="w-12 h-12 rounded-2xl bg-kwuo-bronze/10 text-kwuo-bronze text-2xl flex items-center justify-center mx-auto">
+                            <i class="ph-bold ph-tag"></i>
+                        </div>
+                        <p class="text-xs text-theme-body/60 max-w-sm mx-auto font-body">
+                            No competitive divisions configured yet. Create categories such as Open, Novice, or ESL to segment break eligibility and speaker awards.
+                        </p>
+                        <button type="button" @click="openAddDivision()"
+                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition inline-flex items-center gap-2 shadow-sm font-body">
+                            <i class="ph-bold ph-plus"></i>
+                            <span>Add Division</span>
+                        </button>
+                    </div>
+                    {% endif %}
                 </article>
             </div>
         </div>
 
         <!-- Pinned Save Bar for Setup & Config -->
         <div x-show="currentTab === 'setup' || currentTab === 'config'" class="pt-4 flex items-center justify-end">
-            <button type="submit" class="px-6 py-2.5 rounded-xl bg-kwuo-bronze text-white font-semibold text-xs shadow-md hover:bg-kwuo-mahogany transition flex items-center gap-2">
+            <button type="submit"
+                class="px-6 py-2.5 rounded-xl bg-kwuo-bronze text-white font-semibold text-xs shadow-md hover:bg-kwuo-mahogany transition flex items-center gap-2">
                 <i class="ph-bold ph-floppy-disk text-base"></i>
                 <span>Save Tournament Settings</span>
             </button>
@@ -331,7 +835,103 @@
     <!-- ============================================================= -->
     <!-- TAB 3: Schedule & Timetable                                   -->
     <!-- ============================================================= -->
-    <div x-show="currentTab === 'schedule'" class="space-y-6">
+    <div x-show="currentTab === 'schedule'" class="space-y-6"
+         x-data="scheduleTimezoneManager('{{ tournament.timezone or 'UTC' }}')">
+        
+        <!-- TIMEZONE CONFIGURATION CARD -->
+        <div class="kwuo-torn-docket-wrapper">
+            <article class="kwuo-torn-docket !p-5 sm:!p-6 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-theme-border">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
+                            <i class="ph-bold ph-globe-hemisphere-west"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-sm text-theme-heading">Master Schedule Timezone</h3>
+                            <p class="text-xs text-theme-body/60">Schedules are created and stored relative to this official event timezone</p>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 shrink-0 font-body">
+                        {{ tournament.timezone or 'UTC' }}
+                    </span>
+                </div>
+
+                <form method="POST" action="/admin/settings/schedule/timezone" class="space-y-3 font-body">
+                    <div class="relative" x-data="timezoneSearchableDropdown('{{ tournament.timezone or 'UTC' }}')">
+                        <!-- Trigger Button -->
+                        <button type="button" @click="toggle()" @click.outside="open = false"
+                            class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2.5 text-xs text-theme-heading shadow-xs flex items-center justify-between cursor-pointer focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                            <div class="flex items-center gap-2 truncate">
+                                <i class="ph-bold ph-globe text-kwuo-bronze shrink-0"></i>
+                                <span x-text="selectedLabel" class="truncate font-semibold"></span>
+                            </div>
+                            <i class="ph-bold ph-caret-down text-theme-body/50 transition-transform duration-200"
+                                :class="{ 'rotate-180': open }"></i>
+                        </button>
+
+                        <input type="hidden" name="schedule_timezone" :value="selectedId">
+
+                        <!-- Floating Searchable Dropdown Popup -->
+                        <div x-show="open" x-cloak
+                            class="absolute top-full left-0 right-0 mt-1.5 max-h-80 bg-theme-surface rounded-2xl shadow-2xl border border-theme-border z-50 flex flex-col overflow-hidden">
+                            <div class="p-2.5 border-b border-theme-border bg-theme-base/60">
+                                <div class="relative">
+                                    <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-theme-body/40 text-xs"></i>
+                                    <input type="text" x-model="search" x-ref="tzSearch"
+                                        @keydown.enter.prevent.stop="selectFirst()"
+                                        placeholder="Search official tournament timezone (e.g. Harare, Lagos, London, Nairobi, UTC)..."
+                                        class="w-full rounded-lg border border-theme-border bg-theme-surface pl-8 pr-3 py-1.5 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                </div>
+                            </div>
+
+                            <div class="overflow-y-auto max-h-64 p-2 space-y-3">
+                                <template x-for="(tzs, region) in filteredGroups" :key="region">
+                                    <div x-show="tzs.length > 0">
+                                        <div class="text-[10px] font-bold uppercase tracking-wider text-theme-body/50 px-2 py-1"
+                                            x-text="'—— ' + region + ' ——'"></div>
+                                        <div class="space-y-0.5 mt-0.5">
+                                            <template x-for="tz in tzs" :key="tz.id">
+                                                <button type="button" @click="select(tz)"
+                                                    class="w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-left text-xs transition font-body"
+                                                    :class="tz.id === selectedId ? 'bg-kwuo-bronze text-white font-semibold' : 'text-theme-heading hover:bg-theme-base'">
+                                                    <span x-text="tz.label" class="truncate"></span>
+                                                    <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                                                        <span class="text-[10px] opacity-75 font-body" x-text="getTime12(tz.id)"></span>
+                                                        <i x-show="tz.id === selectedId" class="ph-bold ph-check text-xs"></i>
+                                                    </div>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div x-show="totalFilteredCount === 0" class="p-4 text-center text-xs text-theme-body/50">
+                                    No matching timezone found
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Current Time in selected Master timezone -->
+                        <div class="mt-2 flex items-center justify-between px-3 py-2 rounded-xl bg-theme-base border border-theme-border text-xs font-body">
+                            <div class="flex items-center gap-2 text-theme-body/70">
+                                <i class="ph-bold ph-clock text-kwuo-bronze text-sm"></i>
+                                <span>Current Time in this Zone:</span>
+                            </div>
+                            <span class="font-bold text-theme-heading" x-text="currentTime12"></span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit"
+                            class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-xs flex items-center gap-1.5">
+                            <i class="ph-bold ph-floppy-disk text-sm"></i>
+                            <span>Save Master Timezone</span>
+                        </button>
+                    </div>
+                </form>
+            </article>
+        </div>
+
+        <!-- MASTER SCHEDULE TIMETABLE -->
         <div class="kwuo-torn-docket-wrapper">
             <article class="kwuo-torn-docket !p-6 sm:!p-8">
                 <div class="flex items-center justify-between pb-4 border-b border-theme-border mb-6 flex-wrap gap-4">
@@ -340,12 +940,77 @@
                         <p class="text-xs text-theme-body/60">Manage master timeline, flight milestones, and roll call checkpoints</p>
                     </div>
 
-                    <!-- Trigger Button for Add Schedule Modal -->
-                    <button type="button" @click="addScheduleModal = true"
-                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center gap-2 shadow-sm">
-                        <i class="ph-bold ph-plus-circle text-base"></i>
-                        <span>Add Schedule</span>
-                    </button>
+                    <div class="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                        <!-- Multi-Timezone View Switcher (Official vs Device vs Other Timezone) -->
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                            <div class="grid grid-cols-2 sm:inline-flex p-0.5 rounded-xl border border-theme-border bg-theme-base text-xs font-medium">
+                                <button type="button" @click="setMode('tournament')"
+                                        class="px-2.5 py-1.5 rounded-lg transition flex items-center justify-center sm:justify-start gap-1.5 font-body truncate"
+                                        :class="activeMode === 'tournament' ? 'bg-kwuo-bronze text-white font-bold shadow-xs' : 'text-theme-body/70 hover:text-theme-heading'">
+                                    <i class="ph-bold ph-globe text-xs"></i>
+                                    <span class="truncate">Official ({{ tournament.timezone or 'UTC' }})</span>
+                                </button>
+                                <button type="button" @click="setMode('local')"
+                                        class="px-2.5 py-1.5 rounded-lg transition flex items-center justify-center sm:justify-start gap-1.5 font-body truncate"
+                                        :class="activeMode === 'local' ? 'bg-kwuo-bronze text-white font-bold shadow-xs' : 'text-theme-body/70 hover:text-theme-heading'">
+                                    <i class="ph-bold ph-clock text-xs"></i>
+                                    <span class="truncate">Your Device Time</span>
+                                </button>
+                            </div>
+
+                            <!-- Other Timezone Dropdown Trigger -->
+                            <div class="relative w-full sm:w-auto" @click.outside="customDropdownOpen = false">
+                                <button type="button" @click="customDropdownOpen = !customDropdownOpen"
+                                        class="w-full sm:w-auto px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center justify-between sm:justify-start gap-2 font-body shadow-2xs"
+                                        :class="activeMode === 'custom' ? 'border-kwuo-bronze bg-kwuo-bronze text-white font-bold shadow-xs' : 'border-theme-border bg-theme-base text-theme-heading hover:bg-theme-surface'">
+                                    <span class="inline-flex items-center gap-1.5 truncate min-w-0">
+                                        <i class="ph-bold ph-faders text-xs shrink-0"></i>
+                                        <span x-text="activeMode === 'custom' ? customTz : 'Other Timezone...'" class="truncate"></span>
+                                    </span>
+                                    <i class="ph-bold ph-caret-down text-[10px] shrink-0 transition-transform duration-200" :class="{ 'rotate-180': customDropdownOpen }"></i>
+                                </button>
+
+                                <div x-show="customDropdownOpen" x-cloak
+                                     class="absolute left-0 right-0 sm:left-auto sm:right-0 mt-1.5 w-full sm:w-80 max-h-80 bg-theme-surface rounded-2xl shadow-2xl border border-theme-border z-50 flex flex-col overflow-hidden text-xs font-body">
+                                    <div class="p-2 border-b border-theme-border bg-theme-base/60">
+                                        <div class="relative">
+                                            <i class="ph-bold ph-magnifying-glass absolute left-2.5 top-2 text-theme-body/40 text-xs"></i>
+                                            <input type="text" x-model="search"
+                                                   placeholder="Search timezone (e.g. London, New York, Tokyo)..."
+                                                   class="w-full rounded-lg border border-theme-border bg-theme-surface pl-7 pr-2.5 py-1 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+                                        </div>
+                                    </div>
+                                    <div class="overflow-y-auto max-h-60 p-1.5 space-y-2">
+                                        <template x-for="(tzs, region) in filteredGroups" :key="region">
+                                            <div x-show="tzs.length > 0">
+                                                <div class="text-[9px] font-bold uppercase tracking-wider text-theme-body/50 px-2 py-0.5" x-text="'—— ' + region + ' ——'"></div>
+                                                <div class="space-y-0.5 mt-0.5">
+                                                    <template x-for="tz in tzs" :key="tz.id">
+                                                        <button type="button" @click="setCustomTz(tz.id)"
+                                                                class="w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-left text-xs transition font-body gap-2"
+                                                                :class="customTz === tz.id && activeMode === 'custom' ? 'bg-kwuo-bronze text-white font-semibold' : 'text-theme-heading hover:bg-theme-base'">
+                                                            <span x-text="tz.label" class="truncate min-w-0 flex-1"></span>
+                                                            <span class="text-[10px] opacity-75 font-body shrink-0 ml-1.5" x-text="getTime12(tz.id)"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <div x-show="totalFilteredCount === 0" class="p-3 text-center text-xs text-theme-body/50">
+                                            No matching timezone found
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Trigger Button for Add Schedule Modal -->
+                        <button type="button" @click="addScheduleModal = true"
+                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center gap-2 shadow-sm font-body">
+                            <i class="ph-bold ph-plus-circle text-base"></i>
+                            <span>Add Milestone</span>
+                        </button>
+                    </div>
                 </div>
 
                 {% if tournament.schedule_items %}
@@ -353,26 +1018,34 @@
                     {% for item in tournament.schedule_items %}
                     <div class="py-4 flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
                         <div class="space-y-1">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-xs font-heading font-extrabold text-kwuo-bronze">
-                                    {{ item.start_time.strftime('%b %d, %H:%M') }}
-                                    {% if item.end_time %}– {{ item.end_time.strftime('%H:%M') }}{% endif %}
+                            <div class="flex items-center gap-2 flex-wrap font-body">
+                                <span class="text-base sm:text-lg font-heading font-extrabold text-kwuo-bronze tracking-tight"
+                                      x-text="formatTimeRange('{{ item.start_time.isoformat() }}', '{{ item.end_time.isoformat() if item.end_time else '' }}')">
+                                    {{ item.start_time.strftime('%b %d, %I:%M %p') }}
+                                    {% if item.end_time %}– {{ item.end_time.strftime('%I:%M %p') }}{% endif %}
+                                </span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-theme-base border border-theme-border text-theme-body/80 shadow-2xs"
+                                      x-text="activeMode === 'tournament' ? 'Official' : (activeMode === 'local' ? 'Local' : customTz)">
                                 </span>
                                 {% if item.location %}
-                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-theme-base border border-theme-border text-theme-body/75">
+                                <span
+                                    class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-theme-base border border-theme-border text-theme-body/75">
                                     <i class="ph-bold ph-map-pin text-[9px]"></i> {{ item.location }}
                                 </span>
                                 {% endif %}
                             </div>
                             <h3 class="font-heading font-bold text-base text-theme-heading">{{ item.title }}</h3>
                             {% if item.description %}
-                            <p class="text-xs text-theme-body/75 leading-relaxed">{{ item.description }}</p>
+                            <p class="text-xs text-theme-body/75 leading-relaxed font-body">{{ item.description }}</p>
                             {% endif %}
                         </div>
 
-                        <div class="shrink-0 flex items-center gap-2">
-                            <form method="POST" action="/admin/settings/schedule/{{ item.id }}/delete" onsubmit="return confirm('Delete this schedule milestone?');">
-                                <button type="submit" class="p-2 rounded-lg border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 text-rose-600 hover:bg-rose-100 transition text-xs" title="Delete Milestone">
+                        <div class="shrink-0 flex items-center gap-2 font-body">
+                            <form method="POST" action="/admin/settings/schedule/{{ item.id }}/delete"
+                                onsubmit="return confirm('Delete this schedule milestone?');">
+                                <button type="submit"
+                                    class="p-2 rounded-lg border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 text-rose-600 hover:bg-rose-100 transition text-xs"
+                                    title="Delete Milestone">
                                     <i class="ph-bold ph-trash"></i>
                                 </button>
                             </form>
@@ -381,17 +1054,18 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="py-12 text-center space-y-3">
-                    <div class="w-12 h-12 rounded-2xl bg-kwuo-bronze/10 text-kwuo-bronze text-2xl flex items-center justify-center mx-auto">
+                <div class="py-12 text-center space-y-3 font-body">
+                    <div
+                        class="w-12 h-12 rounded-2xl bg-kwuo-bronze/10 text-kwuo-bronze text-2xl flex items-center justify-center mx-auto">
                         <i class="ph-bold ph-calendar-blank"></i>
                     </div>
                     <p class="text-xs text-theme-body/60 max-w-sm mx-auto">
                         No schedules have been added yet. Click the button below to add roll calls, briefings, and round start times.
                     </p>
                     <button type="button" @click="addScheduleModal = true"
-                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition inline-flex items-center gap-2">
+                        class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition inline-flex items-center gap-2">
                         <i class="ph-bold ph-plus"></i>
-                        <span>add schedule</span>
+                        <span>Add Schedule</span>
                     </button>
                 </div>
                 {% endif %}
@@ -402,50 +1076,219 @@
     <!-- ============================================================= -->
     <!-- MODAL: Add Schedule Milestone                                -->
     <!-- ============================================================= -->
-    <div x-show="addScheduleModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-        <!-- Backdrop -->
-        <div @click="addScheduleModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+    <template x-teleport="body">
+        <div x-show="addScheduleModal" x-cloak
+            class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="addScheduleModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity">
+            </div>
 
-        <!-- Modal Dialog Box (Torn-Docket aesthetic) -->
-        <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10" @keydown.escape.window="addScheduleModal = false">
-            <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4">
+            <!-- Modal Dialog Box (Torn-Docket aesthetic) -->
+            <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10"
+                @keydown.escape.window="addScheduleModal = false">
+                <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4">
                 <div class="flex items-center justify-between pb-3 border-b border-theme-border">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
                             <i class="ph-bold ph-calendar-plus"></i>
                         </div>
                         <h3 class="font-heading font-bold text-lg text-theme-heading">Add Schedule</h3>
                     </div>
-                    <button type="button" @click="addScheduleModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                    <button type="button" @click="addScheduleModal = false"
+                        class="text-theme-body/60 hover:text-theme-heading p-1">
                         <i class="ph-bold ph-x text-lg"></i>
                     </button>
                 </div>
 
                 <form method="POST" action="/admin/settings/schedule" class="space-y-4">
+                    <div class="p-2.5 rounded-lg bg-theme-base border border-theme-border flex items-center gap-2 text-xs text-theme-body/80 font-body">
+                        <i class="ph-bold ph-info text-kwuo-bronze text-sm shrink-0"></i>
+                        <span>Times will be scheduled in the official tournament timezone: <strong class="text-theme-heading">{{ tournament.timezone or 'UTC' }}</strong>.</span>
+                    </div>
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
                             Title *
                         </label>
-                        <input type="text" name="title" required placeholder="e.g. Round 1 Briefing &amp; Motion Release"
-                               class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs focus:ring-1 focus:ring-kwuo-bronze">
+                        <input type="text" name="title" required
+                            placeholder="e.g. Round 1 Briefing &amp; Motion Release"
+                            class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs focus:ring-1 focus:ring-kwuo-bronze">
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
-                                Start Date &amp; Time *
+                    <div class="space-y-4">
+                        <!-- 12-Hour Start Date & Time Picker -->
+                        <div x-data="{
+                            date: new Date().toISOString().split('T')[0],
+                            hour: '09',
+                            minute: '00',
+                            ampm: 'AM',
+                            get isoValue() {
+                                if (!this.date) return '';
+                                let h = parseInt(this.hour, 10);
+                                if (this.ampm === 'PM' && h < 12) h += 12;
+                                if (this.ampm === 'AM' && h === 12) h = 0;
+                                const hh = String(h).padStart(2, '0');
+                                const mm = String(this.minute).padStart(2, '0');
+                                return `${this.date}T${hh}:${mm}`;
+                            },
+                            get display12() {
+                                if (!this.date) return '';
+                                const parts = this.date.split('-');
+                                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                                const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                return `${dateStr} at ${this.hour}:${this.minute} ${this.ampm}`;
+                            }
+                        }" class="space-y-1.5 font-body">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading">
+                                Start Date &amp; Time (12-Hour Format) *
                             </label>
-                            <input type="datetime-local" name="start_time" required
-                                   class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs">
+                            <div class="grid grid-cols-12 gap-2 items-center">
+                                <div class="col-span-12 sm:col-span-6">
+                                    <input type="date" x-model="date" required
+                                        class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-1 focus:ring-kwuo-bronze">
+                                </div>
+                                <div class="col-span-4 sm:col-span-2">
+                                    <select x-model="hour" class="kwuo-select w-full px-2.5 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body font-semibold">
+                                        <option value="01">01</option>
+                                        <option value="02">02</option>
+                                        <option value="03">03</option>
+                                        <option value="04">04</option>
+                                        <option value="05">05</option>
+                                        <option value="06">06</option>
+                                        <option value="07">07</option>
+                                        <option value="08">08</option>
+                                        <option value="09">09</option>
+                                        <option value="10">10</option>
+                                        <option value="11">11</option>
+                                        <option value="12">12</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-4 sm:col-span-2">
+                                    <select x-model="minute" class="kwuo-select w-full px-2.5 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body font-semibold">
+                                        <option value="00">:00</option>
+                                        <option value="05">:05</option>
+                                        <option value="10">:10</option>
+                                        <option value="15">:15</option>
+                                        <option value="20">:20</option>
+                                        <option value="25">:25</option>
+                                        <option value="30">:30</option>
+                                        <option value="35">:35</option>
+                                        <option value="40">:40</option>
+                                        <option value="45">:45</option>
+                                        <option value="50">:50</option>
+                                        <option value="55">:55</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-4 sm:col-span-2 flex rounded-xl border border-theme-border bg-theme-base p-0.5">
+                                    <button type="button" @click="ampm = 'AM'"
+                                        :class="ampm === 'AM' ? 'bg-kwuo-bronze text-white font-bold' : 'text-theme-body/70 hover:text-theme-heading'"
+                                        class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition text-center">
+                                        AM
+                                    </button>
+                                    <button type="button" @click="ampm = 'PM'"
+                                        :class="ampm === 'PM' ? 'bg-kwuo-bronze text-white font-bold' : 'text-theme-body/70 hover:text-theme-heading'"
+                                        class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition text-center">
+                                        PM
+                                    </button>
+                                </div>
+                            </div>
+                            <input type="hidden" name="start_time" :value="isoValue">
+                            <div class="flex items-center gap-1.5 text-[11px] text-theme-body/60 pl-0.5">
+                                <i class="ph-bold ph-clock text-kwuo-bronze"></i>
+                                <span>Starts: <strong class="text-theme-heading" x-text="display12"></strong> ({{ tournament.timezone or 'UTC' }})</span>
+                            </div>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
-                                End Time (Optional)
-                            </label>
-                            <input type="datetime-local" name="end_time"
-                                   class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs">
+                        <!-- 12-Hour End Date & Time Picker (Optional) -->
+                        <div x-data="{
+                            enabled: false,
+                            date: new Date().toISOString().split('T')[0],
+                            hour: '10',
+                            minute: '30',
+                            ampm: 'AM',
+                            get isoValue() {
+                                if (!this.enabled || !this.date) return '';
+                                let h = parseInt(this.hour, 10);
+                                if (this.ampm === 'PM' && h < 12) h += 12;
+                                if (this.ampm === 'AM' && h === 12) h = 0;
+                                const hh = String(h).padStart(2, '0');
+                                const mm = String(this.minute).padStart(2, '0');
+                                return `${this.date}T${hh}:${mm}`;
+                            },
+                            get display12() {
+                                if (!this.enabled || !this.date) return 'None';
+                                const parts = this.date.split('-');
+                                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                                const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                return `${dateStr} at ${this.hour}:${this.minute} ${this.ampm}`;
+                            }
+                        }" class="space-y-1.5 font-body">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading">
+                                    End Date &amp; Time (Optional)
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 text-xs text-theme-body/70 cursor-pointer">
+                                    <input type="checkbox" x-model="enabled" class="rounded border-theme-border text-kwuo-bronze focus:ring-0">
+                                    <span>Set end time</span>
+                                </label>
+                            </div>
+                            <div x-show="enabled" x-collapse.duration.150ms class="space-y-1.5">
+                                <div class="grid grid-cols-12 gap-2 items-center">
+                                    <div class="col-span-12 sm:col-span-6">
+                                        <input type="date" x-model="date"
+                                            class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-1 focus:ring-kwuo-bronze">
+                                    </div>
+                                    <div class="col-span-4 sm:col-span-2">
+                                        <select x-model="hour" class="kwuo-select w-full px-2.5 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body font-semibold">
+                                            <option value="01">01</option>
+                                            <option value="02">02</option>
+                                            <option value="03">03</option>
+                                            <option value="04">04</option>
+                                            <option value="05">05</option>
+                                            <option value="06">06</option>
+                                            <option value="07">07</option>
+                                            <option value="08">08</option>
+                                            <option value="09">09</option>
+                                            <option value="10">10</option>
+                                            <option value="11">11</option>
+                                            <option value="12">12</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-span-4 sm:col-span-2">
+                                        <select x-model="minute" class="kwuo-select w-full px-2.5 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body font-semibold">
+                                            <option value="00">:00</option>
+                                            <option value="05">:05</option>
+                                            <option value="10">:10</option>
+                                            <option value="15">:15</option>
+                                            <option value="20">:20</option>
+                                            <option value="25">:25</option>
+                                            <option value="30">:30</option>
+                                            <option value="35">:35</option>
+                                            <option value="40">:40</option>
+                                            <option value="45">:45</option>
+                                            <option value="50">:50</option>
+                                            <option value="55">:55</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-span-4 sm:col-span-2 flex rounded-xl border border-theme-border bg-theme-base p-0.5">
+                                        <button type="button" @click="ampm = 'AM'"
+                                            :class="ampm === 'AM' ? 'bg-kwuo-bronze text-white font-bold' : 'text-theme-body/70 hover:text-theme-heading'"
+                                            class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition text-center">
+                                            AM
+                                        </button>
+                                        <button type="button" @click="ampm = 'PM'"
+                                            :class="ampm === 'PM' ? 'bg-kwuo-bronze text-white font-bold' : 'text-theme-body/70 hover:text-theme-heading'"
+                                            class="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition text-center">
+                                            PM
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-[11px] text-theme-body/60 pl-0.5">
+                                    <i class="ph-bold ph-clock text-kwuo-bronze"></i>
+                                    <span>Ends: <strong class="text-theme-heading" x-text="display12"></strong></span>
+                                </div>
+                            </div>
+                            <input type="hidden" name="end_time" :value="isoValue">
                         </div>
                     </div>
 
@@ -454,24 +1297,25 @@
                             Room / Venue / Online Link
                         </label>
                         <input type="text" name="location" placeholder="e.g. Main Auditorium or Zoom Room 1"
-                               class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs">
+                            class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs">
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1">
                             Description &amp; Attendee Instructions
                         </label>
-                        <textarea name="description" rows="2" placeholder="e.g. Mandatory roll call for all accredited judges and speakers."
-                                  class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs"></textarea>
+                        <textarea name="description" rows="2"
+                            placeholder="e.g. Mandatory roll call for all accredited judges and speakers."
+                            class="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs"></textarea>
                     </div>
 
                     <div class="pt-2 flex items-center justify-end gap-3 border-t border-theme-border">
                         <button type="button" @click="addScheduleModal = false"
-                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
                             Cancel
                         </button>
                         <button type="submit"
-                                class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm flex items-center gap-2">
+                            class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm flex items-center gap-2">
                             <i class="ph-bold ph-plus"></i>
                             <span>Update Schedule</span>
                         </button>
@@ -480,5 +1324,471 @@
             </article>
         </div>
     </div>
+    </template>
+    </template>
+
+    <!-- ============================================================= -->
+    <!-- TAB 4: Links & Communication Channels                         -->
+    <!-- ============================================================= -->
+    <div x-show="currentTab === 'links'" class="space-y-6">
+        <div class="kwuo-torn-docket-wrapper">
+            <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-6">
+                <!-- Header with Action Button -->
+                <div class="flex items-center justify-between pb-4 border-b border-theme-border flex-wrap gap-4">
+                    <div>
+                        <h2 class="text-base font-heading font-bold text-theme-heading">Tournament Communication
+                            Channels &amp; Links</h2>
+                        <p class="text-xs text-theme-body/60 font-body">Manage WhatsApp announcements, Discord server,
+                            Zoom links, YouTube stream, and Google Drive resources</p>
+                    </div>
+
+                    <button type="button" @click="openAddLink()"
+                        class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center gap-2 shadow-sm font-body">
+                        <i class="ph-bold ph-plus-circle text-base"></i>
+                        <span>Add Link</span>
+                    </button>
+                </div>
+
+                <!-- Quick Preset Launcher Bar -->
+                <div class="flex items-center gap-2 flex-wrap pb-2">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-theme-body/50 mr-1 font-body">Quick
+                        Presets:</span>
+                    <button type="button" @click="openAddLink('whatsapp', 'Official WhatsApp Announcements')"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold transition font-body">
+                        <i class="ph-bold ph-whatsapp-logo text-emerald-600"></i>
+                        <span>+ WhatsApp</span>
+                    </button>
+                    <button type="button" @click="openAddLink('discord', 'Tournament Discord Server')"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-semibold transition font-body">
+                        <i class="ph-bold ph-discord-logo text-indigo-600"></i>
+                        <span>+ Discord</span>
+                    </button>
+                    <button type="button" @click="openAddLink('telegram', 'Telegram Announcements Channel')"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 text-xs font-semibold transition font-body">
+                        <i class="ph-bold ph-telegram-logo text-sky-600"></i>
+                        <span>+ Telegram</span>
+                    </button>
+                    <button type="button" @click="openAddLink('zoom', 'Main Briefing & Motion Release')"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-semibold transition font-body">
+                        <i class="ph-bold ph-video-camera text-blue-600"></i>
+                        <span>+ Zoom</span>
+                    </button>
+                    <button type="button" @click="openAddLink('gdrive', 'Tournament Briefing Slides & Motions')"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold transition font-body">
+                        <i class="ph-bold ph-google-drive-logo text-amber-600"></i>
+                        <span>+ Drive</span>
+                    </button>
+                    <button type="button" @click="openAddLink('youtube', 'Tournament Livestream')"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 text-xs font-semibold transition font-body">
+                        <i class="ph-bold ph-youtube-logo text-rose-600"></i>
+                        <span>+ YouTube</span>
+                    </button>
+                </div>
+
+                {% if tournament.formatted_links %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for l in tournament.formatted_links %}
+                    <div
+                        class="p-4 rounded-xl border border-theme-border bg-theme-base/60 hover:bg-theme-base transition flex flex-col justify-between gap-3 shadow-2xs font-body">
+                        <div class="space-y-2">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <div
+                                        class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border {{ l.badge_color }}">
+                                        <i class="{{ l.icon }} text-lg {{ l.icon_color }}"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h3 class="font-heading font-bold text-sm text-theme-heading truncate">{{
+                                            l.label }}</h3>
+                                        <span class="text-[11px] text-theme-body/60 font-medium">{{ l.preset_name
+                                            }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="shrink-0 flex items-center gap-1.5">
+                                    {% if l.is_public %}
+                                    <span
+                                        class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                        Public
+                                    </span>
+                                    {% else %}
+                                    <span
+                                        class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-base text-theme-body/60 border border-theme-border">
+                                        Internal
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% if l.description %}
+                            <p class="text-xs text-theme-body/75 leading-relaxed">{{ l.description }}</p>
+                            {% endif %}
+
+                            <div class="pt-1">
+                                <a href="{{ l.url }}" target="_blank" rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-1.5 text-xs text-kwuo-bronze hover:underline truncate max-w-full font-medium">
+                                    <i class="ph-bold ph-arrow-square-out shrink-0"></i>
+                                    <span class="truncate">{{ l.url }}</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-theme-border flex items-center justify-between text-xs">
+                            <button type="button" @click='openEditLink({{ l|tojson|forceescape }})'
+                                class="inline-flex items-center gap-1 text-theme-heading hover:text-kwuo-bronze font-semibold transition">
+                                <i class="ph-bold ph-pencil-simple text-sm"></i>
+                                <span>Edit</span>
+                            </button>
+                            <button type="button"
+                                @click="openDeleteLink('{{ l.id }}', '{{ l.label|replace('\'', '\\\'') }}')"
+                                class="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 font-semibold transition">
+                                <i class="ph-bold ph-trash text-sm"></i>
+                                <span>Delete</span>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="py-12 text-center space-y-3 font-body">
+                    <div
+                        class="w-12 h-12 rounded-2xl bg-kwuo-bronze/10 text-kwuo-bronze text-2xl flex items-center justify-center mx-auto">
+                        <i class="ph-bold ph-link"></i>
+                    </div>
+                    <h3 class="font-heading font-bold text-base text-theme-heading">No links added yet</h3>
+                    <p class="text-xs text-theme-body/60 max-w-sm mx-auto">
+                        Add official WhatsApp groups, Discord server, video briefing rooms, or resource drives for your
+                        participants.
+                    </p>
+                    <button type="button" @click="openAddLink()"
+                        class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition inline-flex items-center gap-2">
+                        <i class="ph-bold ph-plus"></i>
+                        <span>Add First Link</span>
+                    </button>
+                </div>
+                {% endif %}
+            </article>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL: Add / Edit Tournament Link                             -->
+    <!-- ============================================================= -->
+    <template x-teleport="body">
+        <div x-show="linkModalOpen" x-cloak class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="linkModalOpen = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+            <!-- Modal Dialog Box (Torn-Docket aesthetic) -->
+            <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10"
+                @keydown.escape.window="linkModalOpen = false">
+                <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4 font-body">
+                <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                    <div class="flex items-center gap-2.5">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
+                            <i class="ph-bold ph-link-simple"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-lg text-theme-heading"
+                                x-text="editingLink.id ? 'Edit Tournament Link' : 'Add Tournament Link'"></h3>
+                            <p class="text-[11px] text-theme-body/60 font-body">Configure platform preset, display
+                                title, and URL</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="linkModalOpen = false"
+                        class="text-theme-body/60 hover:text-theme-heading p-1">
+                        <i class="ph-bold ph-x text-lg"></i>
+                    </button>
+                </div>
+
+                <form method="POST" action="/admin/settings/links" class="space-y-4">
+                    <input type="hidden" name="link_id" :value="editingLink.id">
+
+                    <!-- Platform Preset Selector -->
+                    <div>
+                        <label
+                            class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Platform Preset *
+                        </label>
+
+                        {% set link_opts = [] %}
+                        {% for key, preset in link_presets.items() %}
+                        {% set _ = link_opts.append({"value": key, "label": preset.name}) %}
+                        {% endfor %}
+                        {{ edit.custom_select(
+                        name="preset",
+                        value=(''),
+                        required=true,
+                        options=link_opts
+                        ) }}
+                    </div>
+
+                    <!-- Link Title / Label -->
+                    <div>
+                        <label
+                            class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Link Title / Label *
+                        </label>
+                        <input type="text" name="label" required x-model="editingLink.label"
+                            placeholder="e.g. Official WhatsApp Announcements Group"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs focus:ring-1 focus:ring-kwuo-bronze font-body">
+                    </div>
+
+                    <!-- Target URL -->
+                    <div>
+                        <label
+                            class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Destination URL *
+                        </label>
+                        <input type="text" name="url" required x-model="editingLink.url"
+                            placeholder="e.g. https://chat.whatsapp.com/... or https://discord.gg/..."
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs focus:ring-1 focus:ring-kwuo-bronze font-body">
+                    </div>
+
+                    <!-- Description / Scope -->
+                    <div>
+                        <label
+                            class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Description / Audience (Optional)
+                        </label>
+                        <textarea name="description" rows="2" x-model="editingLink.description"
+                            placeholder="e.g. Mandatory group for all debaters, judges, and tab updates"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body"></textarea>
+                    </div>
+
+                    <!-- Public Visibility Toggle -->
+                    <div class="pt-1">
+                        <label class="flex items-center gap-2.5 cursor-pointer">
+                            <input type="checkbox" name="is_public" value="true" :checked="editingLink.is_public"
+                                @change="editingLink.is_public = $event.target.checked"
+                                class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-4 w-4 border-theme-border">
+                            <span class="text-xs text-theme-heading font-semibold font-body">Show on public tournament
+                                home page &amp; attendee portals</span>
+                        </label>
+                    </div>
+
+                    <!-- Modal Actions -->
+                    <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border font-body">
+                        <button type="button" @click="linkModalOpen = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm flex items-center gap-2 font-body">
+                            <i class="ph-bold ph-check"></i>
+                            <span x-text="editingLink.id ? 'Save Changes' : 'Create Link'"></span>
+                        </button>
+                    </div>
+                </form>
+            </article>
+        </div>
+    </div>
+    </template>
+    </template>
+
+    <!-- ============================================================= -->
+    <!-- MODAL: Delete Link Confirmation                               -->
+    <!-- ============================================================= -->
+    <template x-teleport="body">
+        <div x-show="deleteLinkModalOpen" x-cloak
+            class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="deleteLinkModalOpen = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity">
+            </div>
+
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10"
+                @keydown.escape.window="deleteLinkModalOpen = false">
+                <article class="kwuo-torn-docket !p-6 space-y-4 font-body border-2 border-rose-300 dark:border-rose-900">
+                <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
+                    <div
+                        class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                        <i class="ph-bold ph-trash text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-bold text-base text-theme-heading">Delete Link</h3>
+                        <p class="text-[11px] text-theme-body/60 font-body">Remove channel from tournament</p>
+                    </div>
+                </div>
+
+                <p class="text-xs text-theme-body/80 leading-relaxed font-body">
+                    Are you sure you want to delete <strong class="text-theme-heading"
+                        x-text="deleteLinkLabel"></strong>? Attendees will no longer see this channel.
+                </p>
+
+                <form :action="'/admin/settings/links/' + deleteLinkId + '/delete'" method="POST"
+                    class="pt-2 flex items-center justify-end gap-3 border-t border-theme-border">
+                    <button type="button" @click="deleteLinkModalOpen = false"
+                        class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:text-theme-heading transition font-body">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition font-body">
+                        Confirm Delete
+                    </button>
+                </form>
+            </article>
+        </div>
+    </div>
+    </template>
+
+    <!-- ============================================================= -->
+    <!-- MODAL: Add Division                                          -->
+    <!-- ============================================================= -->
+    <template x-teleport="body">
+        <div x-show="addDivisionModal" x-cloak
+            class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <div @click="addDivisionModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10"
+                @keydown.escape.window="addDivisionModal = false">
+                <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4 font-body">
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
+                                <i class="ph-bold ph-tag-chevron"></i>
+                            </div>
+                            <h3 class="font-heading font-bold text-lg text-theme-heading">Add Division</h3>
+                        </div>
+                        <button type="button" @click="addDivisionModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-lg"></i>
+                        </button>
+                    </div>
+
+                    <form method="POST" action="/admin/settings/divisions" hx-boost="false" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Division Name *
+                            </label>
+                            <input type="text" name="name" required placeholder="e.g. Novice, ESL, Junior, Pro-Am"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-1 focus:ring-kwuo-bronze">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Description / Eligibility Rules (Optional)
+                            </label>
+                            <textarea name="description" rows="2" placeholder="e.g. Debaters in their first academic year of competitive speaking."
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body"></textarea>
+                        </div>
+
+                        <div class="pt-2 flex items-center justify-end gap-3 border-t border-theme-border">
+                            <button type="button" @click="addDivisionModal = false"
+                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm flex items-center gap-2 font-body">
+                                <i class="ph-bold ph-plus"></i>
+                                <span>Create Division</span>
+                            </button>
+                        </div>
+                    </form>
+                </article>
+            </div>
+        </div>
+    </template>
+
+    <!-- ============================================================= -->
+    <!-- MODAL: Edit Division                                         -->
+    <!-- ============================================================= -->
+    <template x-teleport="body">
+        <div x-show="editDivisionModal" x-cloak
+            class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <div @click="editDivisionModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10"
+                @keydown.escape.window="editDivisionModal = false">
+                <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-4 font-body">
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center text-lg">
+                                <i class="ph-bold ph-pencil-simple"></i>
+                            </div>
+                            <h3 class="font-heading font-bold text-lg text-theme-heading">Edit Division</h3>
+                        </div>
+                        <button type="button" @click="editDivisionModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-lg"></i>
+                        </button>
+                    </div>
+
+                    <form action="/admin/settings/divisions/update" method="POST" hx-boost="false" class="space-y-4">
+                        <input type="hidden" name="division_id" :value="editingDivision.id">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Division Name *
+                            </label>
+                            <input type="text" name="name" required x-model="editingDivision.name"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body focus:ring-1 focus:ring-kwuo-bronze">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Description / Eligibility Rules (Optional)
+                            </label>
+                            <textarea name="description" rows="2" x-model="editingDivision.description"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-body"></textarea>
+                        </div>
+
+                        <div class="pt-2 flex items-center justify-end gap-3 border-t border-theme-border">
+                            <button type="button" @click="editDivisionModal = false"
+                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                class="px-5 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition shadow-sm flex items-center gap-2 font-body">
+                                <i class="ph-bold ph-check"></i>
+                                <span>Save Changes</span>
+                            </button>
+                        </div>
+                    </form>
+                </article>
+            </div>
+        </div>
+    </template>
+
+    <!-- ============================================================= -->
+    <!-- MODAL: Delete Division Confirmation                          -->
+    <!-- ============================================================= -->
+    <template x-teleport="body">
+        <div x-show="deleteDivisionModal" x-cloak
+            class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <div @click="deleteDivisionModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10"
+                @keydown.escape.window="deleteDivisionModal = false">
+                <article class="kwuo-torn-docket !p-6 space-y-4 font-body border-2 border-rose-300 dark:border-rose-900">
+                    <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
+                        <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                            <i class="ph-bold ph-trash text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-base text-theme-heading">Delete Division</h3>
+                            <p class="text-[11px] text-theme-body/60 font-body">Remove division from tournament</p>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-theme-body/80 leading-relaxed font-body">
+                        Are you sure you want to delete <strong class="text-theme-heading" x-text="deleteDivisionName"></strong>?
+                        <template x-if="deleteDivisionParticipantCount > 0">
+                            <span class="block mt-1 text-rose-600 dark:text-rose-400 font-semibold">
+                                Warning: <span x-text="deleteDivisionParticipantCount"></span> participant(s) currently enrolled in this division will be unassigned from it.
+                            </span>
+                        </template>
+                    </p>
+
+                    <form :action="'/admin/settings/divisions/' + deleteDivisionId + '/delete'" method="POST" hx-boost="false"
+                        class="pt-2 flex items-center justify-end gap-3 border-t border-theme-border">
+                        <input type="hidden" name="division_id" :value="deleteDivisionId">
+                        <button type="button" @click="deleteDivisionModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:text-theme-heading transition font-body">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition font-body">
+                            Confirm Delete
+                        </button>
+                    </form>
+                </article>
+            </div>
+        </div>
+    </template>
 </div>
 {% endblock %}

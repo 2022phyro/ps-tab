@@ -39,6 +39,8 @@ packages = ["src/kwuo"]
 dev = "uvicorn kwuo.main:app --reload --host 0.0.0.0 --port 8000"
 worker = "arq kwuo.worker.tasks.WorkerSettings"
 test = "pytest"
+build-assets = "pnpm run build"
+watch-css = "pnpm run watch:css"
 
 [dependency-groups]
 dev = [

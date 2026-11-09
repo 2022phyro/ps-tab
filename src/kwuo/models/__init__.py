@@ -21,6 +21,9 @@ from kwuo.models.tournament import (
     OfficialRole,
     RubricCriterion,
     ScheduleItem,
+    Role,
+    Permission,
+    normalize_institution_name,
 )
 from kwuo.models.attachment import FileAttachment, AttachmentCategory
 
@@ -42,6 +45,7 @@ __all__ = [
     "DrawMethod",
     "RoomSizePreference",
     "Institution",
+    "normalize_institution_name",
     "ParticipantInstitution",
     "Participant",
     "ParticipantStatus",
@@ -51,6 +55,8 @@ __all__ = [
     "OfficialRole",
     "RubricCriterion",
     "ScheduleItem",
+    "Role",
+    "Permission",
     "FileAttachment",
     "AttachmentCategory",
 ]

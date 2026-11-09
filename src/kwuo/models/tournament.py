@@ -5,8 +5,9 @@ Participant, SpeakerProfile, JudgeProfile, OfficialProfile, RubricPreset, and Ru
 from datetime import datetime, timezone
 from enum import Enum
 import hashlib
+import re
 import secrets
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Set, Tuple, Dict
 
 from sqlalchemy import (
     String,
@@ -38,6 +39,7 @@ from kwuo.models.attachment import FileAttachment, AttachmentCategory
 class TournamentStatus(str, Enum):
     """Lifecycle state machine for a tournament."""
     DRAFT = "draft"
+    REGISTRATION = "registration"
     ACTIVE = "active"
     CONCLUDED = "concluded"
     ARCHIVED = "archived"
@@ -90,14 +92,23 @@ class OfficialRole(str, Enum):
 
 
 # =========================================================================
-# Core Entities
+# Core Entities & Helpers
 # =========================================================================
+
+def normalize_institution_name(name: str) -> str:
+    """Normalize institution name by lowercasing, stripping punctuation, and compressing whitespace."""
+    if not name:
+        return ""
+    cleaned = re.sub(r"[^\w\s]", "", name.lower())
+    return " ".join(cleaned.split())
+
 
 class Institution(Base, TimestampMixin):
     """School, university, or independent club.
     
     Operates on a grow-by-selection model: searched first via combobox,
-    created only when no existing match fits.
+    created only when no existing match fits. Every institution belongs strictly
+    to a single tournament in v1.
     """
     __tablename__ = "institutions"
 
@@ -106,19 +117,20 @@ class Institution(Base, TimestampMixin):
         primary_key=True,
         default=lambda: generate_typeid("inst"),
     )
-    tournament_id: Mapped[Optional[str]] = mapped_column(
+    tournament_id: Mapped[str] = mapped_column(
         TypeIDType("tourn"),
         ForeignKey("tournaments.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
     name: Mapped[str] = mapped_column(String(150), index=True, nullable=False)
+    name_normalized: Mapped[str] = mapped_column(String(150), index=True, nullable=False)
     code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     region: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Relationships
-    tournament: Mapped[Optional["Tournament"]] = relationship("Tournament", back_populates="institutions")
+    tournament: Mapped["Tournament"] = relationship("Tournament", back_populates="institutions")
     primary_participants: Mapped[List["Participant"]] = relationship(
         "Participant",
         back_populates="institution",
@@ -137,14 +149,21 @@ class Institution(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("tournament_id", "name", name="uq_institutions_tournament_name"),
+        UniqueConstraint("tournament_id", "name_normalized", name="uq_institutions_tournament_name_normalized"),
     )
+
+    def __init__(self, **kwargs: Any) -> None:
+        if "name" in kwargs and "name_normalized" not in kwargs:
+            kwargs["name_normalized"] = normalize_institution_name(kwargs["name"])
+        super().__init__(**kwargs)
 
 
 class ParticipantInstitution(Base, TimestampMixin):
     """Many-to-many affiliation linking a participant to one or more institutions.
     
     Forms the foundation for institutional clash spreading and conflicts of interest.
+    Separates 'represents' (single primary affiliation for competing/serving) from
+    'ties' (alumnus, coach, employee, former member) with associated clash policies.
     """
     __tablename__ = "participant_institutions"
 
@@ -165,20 +184,110 @@ class ParticipantInstitution(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    clash_type: Mapped[str] = mapped_column(
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    tie_type: Mapped[str] = mapped_column(
         String(50),
-        default="primary",  # e.g. "primary", "alumni", "coach", "grad", "former", "other"
+        default="represents",  # "represents", "alumnus", "coach", "employee", "former_member", "other"
         nullable=False,
     )
-    is_primary: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    clash_type: Mapped[str] = mapped_column(
+        String(50),
+        default="primary",  # Backward compatibility alias
+        nullable=False,
+    )
+    clash_policy: Mapped[str] = mapped_column(
+        String(20),
+        default="hard",  # "hard" (never allocate against) or "soft" (avoid, allow with approval)
+        nullable=False,
+    )
+    end_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     participant: Mapped["Participant"] = relationship("Participant", back_populates="affiliations")
     institution: Mapped["Institution"] = relationship("Institution", back_populates="affiliations")
 
     __table_args__ = (
-        UniqueConstraint("participant_id", "institution_id", name="uq_participant_institution"),
+        UniqueConstraint("participant_id", "institution_id", "tie_type", name="uq_participant_inst_tie"),
     )
+
+    def __init__(self, **kwargs: Any) -> None:
+        if "tie_type" in kwargs and "clash_type" not in kwargs:
+            kwargs["clash_type"] = kwargs["tie_type"]
+        elif "clash_type" in kwargs and "tie_type" not in kwargs:
+            kwargs["tie_type"] = kwargs["clash_type"]
+        if kwargs.get("tie_type") == "represents" or kwargs.get("clash_type") == "primary":
+            kwargs.setdefault("is_primary", True)
+        super().__init__(**kwargs)
+
+
+LINK_PRESETS: Dict[str, Dict[str, str]] = {
+    "whatsapp": {
+        "name": "WhatsApp",
+        "icon": "ph-bold ph-whatsapp-logo",
+        "badge_color": "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/20",
+        "icon_color": "text-emerald-600 dark:text-emerald-400",
+    },
+    "discord": {
+        "name": "Discord",
+        "icon": "ph-bold ph-discord-logo",
+        "badge_color": "text-indigo-700 dark:text-indigo-300 bg-indigo-500/10 border-indigo-500/20",
+        "icon_color": "text-indigo-600 dark:text-indigo-400",
+    },
+    "telegram": {
+        "name": "Telegram",
+        "icon": "ph-bold ph-telegram-logo",
+        "badge_color": "text-sky-700 dark:text-sky-300 bg-sky-500/10 border-sky-500/20",
+        "icon_color": "text-sky-600 dark:text-sky-400",
+    },
+    "slack": {
+        "name": "Slack",
+        "icon": "ph-bold ph-slack-logo",
+        "badge_color": "text-purple-700 dark:text-purple-300 bg-purple-500/10 border-purple-500/20",
+        "icon_color": "text-purple-600 dark:text-purple-400",
+    },
+    "zoom": {
+        "name": "Zoom",
+        "icon": "ph-bold ph-video-camera",
+        "badge_color": "text-blue-700 dark:text-blue-300 bg-blue-500/10 border-blue-500/20",
+        "icon_color": "text-blue-600 dark:text-blue-400",
+    },
+    "gdrive": {
+        "name": "Google Drive",
+        "icon": "ph-bold ph-google-drive-logo",
+        "badge_color": "text-amber-700 dark:text-amber-300 bg-amber-500/10 border-amber-500/20",
+        "icon_color": "text-amber-600 dark:text-amber-400",
+    },
+    "youtube": {
+        "name": "YouTube",
+        "icon": "ph-bold ph-youtube-logo",
+        "badge_color": "text-rose-700 dark:text-rose-300 bg-rose-500/10 border-rose-500/20",
+        "icon_color": "text-rose-600 dark:text-rose-400",
+    },
+    "x": {
+        "name": "X (Twitter)",
+        "icon": "ph-bold ph-x-logo",
+        "badge_color": "text-slate-800 dark:text-slate-200 bg-slate-500/10 border-slate-500/20",
+        "icon_color": "text-slate-800 dark:text-slate-200",
+    },
+    "instagram": {
+        "name": "Instagram",
+        "icon": "ph-bold ph-instagram-logo",
+        "badge_color": "text-pink-700 dark:text-pink-300 bg-pink-500/10 border-pink-500/20",
+        "icon_color": "text-pink-600 dark:text-pink-400",
+    },
+    "website": {
+        "name": "Website",
+        "icon": "ph-bold ph-globe",
+        "badge_color": "text-kwuo-bronze bg-kwuo-bronze/10 border-kwuo-bronze/20",
+        "icon_color": "text-kwuo-bronze",
+    },
+    "custom": {
+        "name": "Custom Link",
+        "icon": "ph-bold ph-link",
+        "badge_color": "text-kwuo-bronze bg-kwuo-bronze/10 border-kwuo-bronze/20",
+        "icon_color": "text-kwuo-bronze",
+    },
+}
 
 
 class Tournament(Base, TimestampMixin):
@@ -202,7 +311,7 @@ class Tournament(Base, TimestampMixin):
         index=True,
     )
     status: Mapped[TournamentStatus] = mapped_column(
-        SAEnum(TournamentStatus, name="tournament_status_enum", native_enum=False),
+        SAEnum(TournamentStatus, name="tournament_status_enum", native_enum=False, length=32),
         default=TournamentStatus.DRAFT,
         nullable=False,
         index=True,
@@ -215,10 +324,14 @@ class Tournament(Base, TimestampMixin):
         nullable=False,
     )
     location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    timezone: Mapped[str] = mapped_column(String(64), default="UTC", server_default="UTC", nullable=False)
     description: Mapped[Optional[Text]] = mapped_column(Text, nullable=True)
     feedback_window_closes_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Communication channels & external links (WhatsApp, Discord, Telegram, Zoom, Drive, etc.)
+    links: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, default=list, server_default="[]", nullable=False)
 
     # Operational defaults for rounds & draw generation
     ballot_mode: Mapped[BallotMode] = mapped_column(
@@ -248,9 +361,14 @@ class Tournament(Base, TimestampMixin):
     ceiling_score: Mapped[float] = mapped_column(Float, default=100.0, nullable=False)
     max_time_penalty: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
+    # Adjudicator scoring weights & composite ratio (e.g. 40, 20, 40 representing 4:2:4)
+    judge_weight_test: Mapped[float] = mapped_column(Float, default=40.0, server_default="40.0", nullable=False)
+    judge_weight_cv: Mapped[float] = mapped_column(Float, default=20.0, server_default="20.0", nullable=False)
+    judge_weight_feedback: Mapped[float] = mapped_column(Float, default=40.0, server_default="40.0", nullable=False)
+
     # Relationships
     organizer: Mapped["User"] = relationship("User")
-    divisions: Mapped[List["Division"]] = relationship("Division", back_populates="tournament", cascade="all, delete-orphan", lazy="selectin")
+    divisions: Mapped[List["Division"]] = relationship("Division", back_populates="tournament", cascade="all, delete-orphan", lazy="selectin", order_by="Division.name")
     participants: Mapped[List["Participant"]] = relationship("Participant", back_populates="tournament", cascade="all, delete-orphan", lazy="selectin")
     rubric_criteria: Mapped[List["RubricCriterion"]] = relationship(
         "RubricCriterion",
@@ -280,6 +398,13 @@ class Tournament(Base, TimestampMixin):
         order_by="Institution.name",
         lazy="selectin",
     )
+    roles: Mapped[List["Role"]] = relationship(
+        "Role",
+        back_populates="tournament",
+        cascade="all, delete-orphan",
+        order_by="Role.name",
+        lazy="selectin",
+    )
 
     @property
     def speakers(self) -> List["Participant"]:
@@ -295,6 +420,33 @@ class Tournament(Base, TimestampMixin):
     def officials(self) -> List["Participant"]:
         """Participants registered with an OfficialProfile."""
         return [p for p in self.participants if p.is_official]
+
+    @property
+    def formatted_links(self) -> List[Dict[str, Any]]:
+        """Return enriched list of tournament communication and external links."""
+        raw = self.links or []
+        enriched = []
+        for item in raw:
+            preset_key = item.get("preset", "custom")
+            preset_info = LINK_PRESETS.get(preset_key, LINK_PRESETS["custom"])
+            enriched.append({
+                "id": item.get("id", ""),
+                "label": item.get("label") or preset_info["name"],
+                "url": item.get("url", "#"),
+                "preset": preset_key,
+                "preset_name": preset_info["name"],
+                "icon": preset_info["icon"],
+                "badge_color": preset_info["badge_color"],
+                "icon_color": preset_info["icon_color"],
+                "description": item.get("description", ""),
+                "is_public": item.get("is_public", True),
+            })
+        return enriched
+
+    @property
+    def public_links(self) -> List[Dict[str, Any]]:
+        """Return only links marked for public visibility."""
+        return [l for l in self.formatted_links if l.get("is_public", True)]
 
     @property
     def total_speakers_count(self) -> int:
@@ -343,30 +495,6 @@ class Tournament(Base, TimestampMixin):
         return [a for a in self.attachments if a.is_public]
 
     @property
-    def total_speakers_count(self) -> int:
-        """Count of active or registered speakers."""
-        return len(self.speakers)
-
-    @property
-    def total_judges_count(self) -> int:
-        """Count of active or registered judges."""
-        return len(self.judges)
-
-    @property
-    def total_officials_count(self) -> int:
-        """Count of registered tournament officials."""
-        return len(self.officials)
-
-    @property
-    def total_institutions_count(self) -> int:
-        """Count of unique institutions represented in the tournament."""
-        insp = inspect(self)
-        if "participants" in insp.unloaded:
-            return 0
-        inst_ids = {p.institution_id for p in self.participants if p.institution_id}
-        return len(inst_ids)
-
-    @property
     def discretionary_points_sum(self) -> float:
         """Sum of point caps across all evaluated rubric criteria."""
         insp = inspect(self)
@@ -389,6 +517,31 @@ class Tournament(Base, TimestampMixin):
         """True if any round results or awards have been released."""
         return self.status in (TournamentStatus.ACTIVE, TournamentStatus.CONCLUDED)
 
+    @property
+    def judge_weights_tuple(self) -> Tuple[float, float, float]:
+        """Return (judge_weight_test, judge_weight_cv, judge_weight_feedback)."""
+        return (self.judge_weight_test, self.judge_weight_cv, self.judge_weight_feedback)
+
+    @property
+    def judge_weight_ratio_str(self) -> str:
+        """Return formatted ratio string (e.g. '4:2:4' or '0:5:5')."""
+        import math
+        w_t = round(self.judge_weight_test, 1)
+        w_c = round(self.judge_weight_cv, 1)
+        w_f = round(self.judge_weight_feedback, 1)
+        if w_t.is_integer() and w_c.is_integer() and w_f.is_integer():
+            it, ic, ifb = int(w_t), int(w_c), int(w_f)
+            # Find GCD if all > 0 or handling 0s
+            pos = [x for x in (it, ic, ifb) if x > 0]
+            if pos:
+                g = pos[0]
+                for val in pos[1:]:
+                    g = math.gcd(g, val)
+                if g > 1:
+                    return f"{it // g}:{ic // g}:{ifb // g}"
+            return f"{it}:{ic}:{ifb}"
+        return f"{w_t}:{w_c}:{w_f}"
+
 
 # Association table for multi-category / multi-division participant eligibility (speakers & judges)
 participant_divisions = Table(
@@ -407,6 +560,106 @@ participant_divisions = Table(
         primary_key=True,
     ),
 )
+
+
+# Association table for Role-Permission mapping
+role_permissions = Table(
+    "role_permissions",
+    Base.metadata,
+    Column(
+        "role_id",
+        TypeIDType("role"),
+        ForeignKey("roles.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "permission_id",
+        TypeIDType("perm"),
+        ForeignKey("permissions.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
+
+# Association table for Official-Role mapping
+official_role_assignments = Table(
+    "official_role_assignments",
+    Base.metadata,
+    Column(
+        "official_profile_id",
+        TypeIDType("off"),
+        ForeignKey("official_profiles.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "role_id",
+        TypeIDType("role"),
+        ForeignKey("roles.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
+
+class Permission(Base, TimestampMixin):
+    """Granular action capability within the tournament tab room."""
+    __tablename__ = "permissions"
+
+    id: Mapped[str] = mapped_column(
+        TypeIDType("perm"),
+        primary_key=True,
+        default=lambda: generate_typeid("perm"),
+    )
+    code: Mapped[str] = mapped_column(String(80), unique=True, index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    category: Mapped[str] = mapped_column(String(50), default="General", nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Relationships
+    roles: Mapped[List["Role"]] = relationship(
+        "Role",
+        secondary=role_permissions,
+        back_populates="permissions",
+        lazy="selectin",
+    )
+
+
+class Role(Base, TimestampMixin):
+    """Tournament-scoped role defining a collection of permissions."""
+    __tablename__ = "roles"
+
+    id: Mapped[str] = mapped_column(
+        TypeIDType("role"),
+        primary_key=True,
+        default=lambda: generate_typeid("role"),
+    )
+    tournament_id: Mapped[str] = mapped_column(
+        TypeIDType("tourn"),
+        ForeignKey("tournaments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Relationships
+    tournament: Mapped["Tournament"] = relationship("Tournament", back_populates="roles")
+    permissions: Mapped[List[Permission]] = relationship(
+        "Permission",
+        secondary=role_permissions,
+        back_populates="roles",
+        lazy="selectin",
+    )
+    officials: Mapped[List["OfficialProfile"]] = relationship(
+        "OfficialProfile",
+        secondary=official_role_assignments,
+        back_populates="roles",
+        lazy="selectin",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("tournament_id", "name", name="uq_roles_tournament_name"),
+    )
 
 
 class Division(Base, TimestampMixin):
@@ -761,6 +1014,10 @@ class JudgeProfile(Base, TimestampMixin):
     is_independent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     fatigue_cap_rounds_per_day: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
+    # 3-pronged evaluation components (each score capped at 10.0)
+    test_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.0, server_default="0.0")
+    cv_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.0, server_default="0.0")
+
     # Relationships
     participant: Mapped["Participant"] = relationship("Participant", back_populates="judge_profile")
 
@@ -771,6 +1028,55 @@ class JudgeProfile(Base, TimestampMixin):
     @property
     def division_names(self) -> List[str]:
         return self.participant.division_names if self.participant else []
+
+    def calculate_composite_score(
+        self,
+        weight_test: float = 40.0,
+        weight_cv: float = 20.0,
+        weight_feedback: float = 40.0,
+        feedback_avg: Optional[float] = None,
+    ) -> float:
+        """Calculate composite judge score based on 3-factor weighted model.
+        
+        Formula: (W_test * S_test + W_cv * S_cv + W_fb * S_fb) / (W_test + W_cv + W_fb)
+        All input scores are clamped to [0.0, 10.0].
+        """
+        s_test = min(10.0, max(0.0, float(self.test_score or 0.0)))
+        s_cv = min(10.0, max(0.0, float(self.cv_score or 0.0)))
+
+        total_weight = 0.0
+        weighted_sum = 0.0
+
+        if weight_test > 0:
+            weighted_sum += weight_test * s_test
+            total_weight += weight_test
+
+        if weight_cv > 0:
+            weighted_sum += weight_cv * s_cv
+            total_weight += weight_cv
+
+        if weight_feedback > 0 and feedback_avg is not None:
+            s_fb = min(10.0, max(0.0, float(feedback_avg)))
+            weighted_sum += weight_feedback * s_fb
+            total_weight += weight_feedback
+
+        if total_weight <= 0:
+            return round((s_test + s_cv) / 2.0, 2)
+
+        return round(weighted_sum / total_weight, 2)
+
+    @property
+    def composite_score(self) -> float:
+        """Compute composite score using tournament default weights or fallback."""
+        if self.participant and self.participant.tournament:
+            t = self.participant.tournament
+            return self.calculate_composite_score(
+                weight_test=t.judge_weight_test,
+                weight_cv=t.judge_weight_cv,
+                weight_feedback=t.judge_weight_feedback,
+                feedback_avg=None,
+            )
+        return self.calculate_composite_score()
 
 
 class OfficialProfile(Base, TimestampMixin):
@@ -789,24 +1095,104 @@ class OfficialProfile(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    role: Mapped[OfficialRole] = mapped_column(
+    role: Mapped[Optional[OfficialRole]] = mapped_column(
         SAEnum(OfficialRole, name="official_role_enum", native_enum=False),
-        default=OfficialRole.TAB,
-        nullable=False,
+        nullable=True,
         index=True,
     )
+    title: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    is_phone_public: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    display_order: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    reset_token_hash: Mapped[Optional[str]] = mapped_column(String(64), unique=True, index=True, nullable=True)
+    reset_token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Relationships
-    participant: Mapped["Participant"] = relationship("Participant", back_populates="official_profile")
+    participant: Mapped["Participant"] = relationship(
+        "Participant",
+        back_populates="official_profile",
+        lazy="selectin",
+    )
+    roles: Mapped[List[Role]] = relationship(
+        "Role",
+        secondary=official_role_assignments,
+        back_populates="officials",
+        lazy="selectin",
+    )
+
+    @property
+    def effective_title(self) -> str:
+        """Official title or primary assigned role name fallback."""
+        if self.title and self.title.strip():
+            return self.title.strip()
+        roles = self.role_names
+        if roles:
+            return roles[0]
+        if self.role:
+            return self.role.value.replace("_", " ").title()
+        return "Tab Staff"
+
+    @property
+    def effective_phone(self) -> Optional[str]:
+        """Direct official contact phone or participant phone number fallback."""
+        if self.phone and self.phone.strip():
+            return self.phone.strip()
+        insp = inspect(self)
+        if "participant" not in insp.unloaded and self.participant and self.participant.phone_number:
+            return self.participant.phone_number.strip()
+        return None
+
+    @property
+    def role_names(self) -> List[str]:
+        """Names of all assigned roles."""
+        insp = inspect(self)
+        if "roles" in insp.unloaded:
+            return [self.role.value.upper()] if self.role else []
+        names = [r.name for r in self.roles]
+        if not names and self.role:
+            names = [self.role.value.upper()]
+        return names
+
+    @property
+    def permission_codes(self) -> Set[str]:
+        """Set of all permission codes granted to this official across all roles."""
+        insp = inspect(self)
+        if "roles" in insp.unloaded:
+            return set()
+        codes: Set[str] = set()
+        for r in self.roles:
+            insp_r = inspect(r)
+            if "permissions" not in insp_r.unloaded:
+                for p in r.permissions:
+                    codes.add(p.code)
+        return codes
+
+    def has_permission(self, code: str) -> bool:
+        """Check if official possesses a given permission code."""
+        return code in self.permission_codes
+
+    @classmethod
+    def generate_reset_token(cls) -> Tuple[str, str]:
+        """Generate cryptographically secure raw URL token and its SHA-256 hash."""
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        return raw_token, token_hash
+
+    @classmethod
+    def hash_reset_token(cls, raw_token: str) -> str:
+        """Hash a candidate raw token using SHA-256 for database lookup."""
+        return hashlib.sha256(raw_token.strip().encode("utf-8")).hexdigest()
 
     def set_password(self, password: str) -> None:
-        """Hash and update official password."""
+        """Hash and update official password and clear any pending setup/reset token."""
         from kwuo.core.security import hash_password
         self.password_hash = hash_password(password)
+        self.reset_token_hash = None
+        self.reset_token_expires_at = None
 
     def verify_password(self, password: str) -> bool:
         """Verify plain password against official's password hash."""

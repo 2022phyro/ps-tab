@@ -62,7 +62,7 @@ async def seed_tournament(db_session: AsyncSession) -> Tournament:
     db_session.add_all([c1, c2, c3, c4])
 
     # Institution
-    inst = Institution(name="University of Ghana", code="UG")
+    inst = Institution(tournament_id=tournament.id, name="University of Ghana", code="UG")
     db_session.add(inst)
     await db_session.flush()
 

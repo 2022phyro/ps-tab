@@ -1,0 +1,779 @@
+{% extends "tenant/admin/layout.html" %}
+{% import "macros/editorial.html" as edit %}
+
+{% block title %}Roles & Authorization (RBAC) — Tab Room{% endblock %}
+
+{% block admin_content %}
+<script>
+    function authorizationManager() {
+        return {
+            addRoleModal: false,
+            editRoleModal: false,
+            assignModal: false,
+            viewMode: 'table',
+            saving: false,
+            searchQuery: '',
+
+            newRole: {
+                name: '',
+                description: '',
+                permission_codes: []
+            },
+
+            activeRole: {
+                id: '',
+                name: '',
+                description: '',
+                permissions: []
+            },
+
+            activeOfficial: {
+                id: '',
+                name: '',
+                email: '',
+                role_ids: []
+            },
+
+            openEditRole(id, name, description, permissionCodes) {
+                this.activeRole = {
+                    id: id,
+                    name: name,
+                    description: description || '',
+                    permissions: [...permissionCodes]
+                };
+                this.editRoleModal = true;
+            },
+
+            openAssignOfficial(id, name, email, roleIds) {
+                this.activeOfficial = {
+                    id: id,
+                    name: name,
+                    email: email,
+                    role_ids: [...roleIds]
+                };
+                this.assignModal = true;
+            },
+
+            toggleCategoryPerms(categoryCodes, checked) {
+                if (checked) {
+                    categoryCodes.forEach(c => {
+                        if (!this.activeRole.permissions.includes(c)) {
+                            this.activeRole.permissions.push(c);
+                        }
+                    });
+                } else {
+                    this.activeRole.permissions = this.activeRole.permissions.filter(c => !categoryCodes.includes(c));
+                }
+            },
+
+            isCategoryFullySelected(categoryCodes) {
+                return categoryCodes.length > 0 && categoryCodes.every(c => this.activeRole.permissions.includes(c));
+            },
+
+            toggleNewRoleCategoryPerms(categoryCodes, checked) {
+                if (checked) {
+                    categoryCodes.forEach(c => {
+                        if (!this.newRole.permission_codes.includes(c)) {
+                            this.newRole.permission_codes.push(c);
+                        }
+                    });
+                } else {
+                    this.newRole.permission_codes = this.newRole.permission_codes.filter(c => !categoryCodes.includes(c));
+                }
+            },
+
+            isNewRoleCategoryFullySelected(categoryCodes) {
+                return categoryCodes.length > 0 && categoryCodes.every(c => this.newRole.permission_codes.includes(c));
+            },
+
+            async submitNewRole() {
+                if (!this.newRole.name.trim()) return;
+                this.saving = true;
+                try {
+                    const res = await fetch('/admin/authorization/roles', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            name: this.newRole.name.trim(),
+                            description: this.newRole.description.trim(),
+                            permission_codes: this.newRole.permission_codes
+                        })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        if (window.showToast) window.showToast(data.message, 'success');
+                        this.addRoleModal = false;
+                        setTimeout(() => window.location.reload(), 400);
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Error creating role', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Network error creating role', 'error');
+                } finally {
+                    this.saving = false;
+                }
+            },
+
+            async saveRolePermissions() {
+                if (!this.activeRole.id) return;
+                this.saving = true;
+                try {
+                    const res = await fetch('/admin/authorization/roles/' + this.activeRole.id + '/permissions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            permission_codes: this.activeRole.permissions
+                        })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        if (window.showToast) window.showToast(data.message, 'success');
+                        this.editRoleModal = false;
+                        setTimeout(() => window.location.reload(), 400);
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Error saving permissions', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Network error saving permissions', 'error');
+                } finally {
+                    this.saving = false;
+                }
+            },
+
+            async saveOfficialRoles() {
+                if (!this.activeOfficial.id) return;
+                this.saving = true;
+                try {
+                    const res = await fetch('/admin/authorization/officials/' + this.activeOfficial.id + '/roles', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            role_ids: this.activeOfficial.role_ids
+                        })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        if (window.showToast) window.showToast(data.message, 'success');
+                        this.assignModal = false;
+                        setTimeout(() => window.location.reload(), 400);
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Error updating roles', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Network error updating roles', 'error');
+                } finally {
+                    this.saving = false;
+                }
+            }
+        };
+    }
+</script>
+
+<div x-data="authorizationManager()" class="max-w-6xl mx-auto space-y-6 font-body">
+    <!-- Breadcrumb & Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1">
+                <a href="/admin" class="hover:text-kwuo-bronze transition font-body">Tab Room</a>
+                <span>/</span>
+                <span class="font-body">Organization</span>
+                <span>/</span>
+                <span class="text-kwuo-bronze font-body">Authorization</span>
+            </div>
+            <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
+                Roles &amp; Authorization (RBAC)
+            </h1>
+            <p class="text-xs text-theme-body/70 mt-0.5 font-body">
+                Role-based access control, tournament authority boundaries, and granular permissions for Tab Room staff.
+            </p>
+        </div>
+
+        <!-- Controls: View Switcher & Add Custom Role -->
+        <div class="flex items-center gap-2">
+            <!-- View Switcher (Table vs Cards) -->
+            <div class="inline-flex items-center rounded-xl border border-theme-border bg-theme-base p-0.5 text-xs font-semibold shadow-xs shrink-0">
+                <button type="button" @click="viewMode = 'table'"
+                        :class="viewMode === 'table' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
+                        class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body"
+                        title="Table view">
+                    <i class="ph-bold ph-table text-xs"></i>
+                    <span class="hidden sm:inline">Table</span>
+                </button>
+                <button type="button" @click="viewMode = 'cards'"
+                        :class="viewMode === 'cards' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
+                        class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body"
+                        title="Cards view">
+                    <i class="ph-bold ph-squares-four text-xs"></i>
+                    <span class="hidden sm:inline">Cards</span>
+                </button>
+            </div>
+
+            <!-- Add Custom Role Button -->
+            <button type="button" @click="addRoleModal = true"
+                    class="px-3.5 py-1.5 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center gap-1.5 shadow-sm font-body shrink-0">
+                <i class="ph-bold ph-plus-circle text-sm"></i>
+                <span class="hidden sm:inline">Add Custom Role</span>
+                <span class="sm:hidden">New Role</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Stats Metrics -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="p-4 rounded-xl border border-theme-border bg-theme-surface shadow-xs flex items-center gap-3.5">
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze shrink-0">
+                <i class="ph-bold ph-shield-check text-xl"></i>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold uppercase tracking-wider text-theme-body/60 font-body">Tournament Roles</div>
+                <div class="text-xl font-heading font-extrabold text-theme-heading leading-tight">{{ roles|length }}</div>
+            </div>
+        </div>
+
+        <div class="p-4 rounded-xl border border-theme-border bg-theme-surface shadow-xs flex items-center gap-3.5">
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                <i class="ph-bold ph-key text-xl"></i>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold uppercase tracking-wider text-theme-body/60 font-body">System Permissions</div>
+                <div class="text-xl font-heading font-extrabold text-theme-heading leading-tight">{{ all_permissions|length }}</div>
+            </div>
+        </div>
+
+        <div class="p-4 rounded-xl border border-theme-border bg-theme-surface shadow-xs flex items-center gap-3.5">
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <i class="ph-bold ph-users-three text-xl"></i>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold uppercase tracking-wider text-theme-body/60 font-body">Staff Assignments</div>
+                <div class="text-xl font-heading font-extrabold text-theme-heading leading-tight">{{ officials|length }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 1: Tournament Roles & Permissions -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-5 sm:!p-7 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                <div class="flex items-center gap-2">
+                    <h2 class="font-heading font-bold text-base text-theme-heading">
+                        Roles &amp; Permission Boundaries
+                    </h2>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                        {{ roles|length }} Active
+                    </span>
+                </div>
+                <span class="text-[11px] text-theme-body/60 font-body hidden sm:inline">
+                    System and bespoke roles scoped to this tournament
+                </span>
+            </div>
+
+            <!-- VIEW 1: Roles Table Mode (Desktop & Wide View) -->
+            <div x-show="viewMode === 'table'" class="overflow-x-auto rounded-xl border border-theme-border bg-theme-surface">
+                <table class="w-full text-left text-xs border-collapse font-body">
+                    <thead>
+                        <tr class="border-b border-theme-border bg-theme-base/40 text-theme-body/70 text-[11px] font-bold">
+                            <th class="py-2.5 px-3 min-w-[160px]">Role Name</th>
+                            <th class="py-2.5 px-3 min-w-[200px]">Description</th>
+                            <th class="py-2.5 px-3 text-center">Permissions</th>
+                            <th class="py-2.5 px-3 text-center">Staff Count</th>
+                            <th class="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-theme-border">
+                        {% for r in roles %}
+                        {% set perm_codes = r.permissions|map(attribute='code')|list %}
+                        <tr class="hover:bg-theme-base/60 transition group font-body">
+                            <!-- Role Name & Status -->
+                            <td class="py-3 px-3">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-heading font-bold text-xs sm:text-sm text-theme-heading">
+                                        {{ r.name }}
+                                    </span>
+                                    {% if r.is_system %}
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-theme-base border border-theme-border text-kwuo-bronze">
+                                        System
+                                    </span>
+                                    {% else %}
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                        Custom
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- Description -->
+                            <td class="py-3 px-3 text-theme-body/80 text-xs">
+                                {{ r.description or '—' }}
+                            </td>
+
+                            <!-- Permissions count -->
+                            <td class="py-3 px-3 text-center">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                    <i class="ph-bold ph-key text-xs"></i>
+                                    <span>{{ r.permissions|length }} Granted</span>
+                                </span>
+                            </td>
+
+                            <!-- Staff Count -->
+                            <td class="py-3 px-3 text-center font-bold text-theme-heading text-xs">
+                                {{ r.officials|length }}
+                            </td>
+
+                            <!-- Action -->
+                            <td class="py-3 px-3 text-right whitespace-nowrap">
+                                <button type="button"
+                                        @click='openEditRole("{{ r.id }}", {{ r.name|tojson|forceescape }}, {{ (r.description or "")|tojson|forceescape }}, {{ perm_codes|tojson|forceescape }})'
+                                        class="px-2.5 py-1.5 rounded-lg border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze text-xs font-semibold transition inline-flex items-center gap-1 font-body">
+                                    <i class="ph-bold ph-pencil-simple"></i>
+                                    <span>Edit Permissions</span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- VIEW 2: Roles Cards Mode (Mobile-First & Compact Grid) -->
+            <div x-show="viewMode === 'cards'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for r in roles %}
+                {% set perm_codes = r.permissions|map(attribute='code')|list %}
+                <article class="p-4 rounded-xl border border-theme-border bg-theme-surface hover:border-kwuo-bronze/30 transition shadow-xs flex flex-col justify-between gap-3 font-body">
+                    <div class="space-y-2">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <h3 class="font-heading font-bold text-sm text-theme-heading leading-tight">
+                                    {{ r.name }}
+                                </h3>
+                                <p class="text-[11px] text-theme-body/70 mt-1 line-clamp-2">
+                                    {{ r.description or 'No role description provided.' }}
+                                </p>
+                            </div>
+                            {% if r.is_system %}
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-theme-base border border-theme-border text-kwuo-bronze shrink-0">
+                                System
+                            </span>
+                            {% else %}
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shrink-0">
+                                Custom
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <div class="flex items-center gap-2 pt-1">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                <i class="ph-bold ph-key text-[10px]"></i>
+                                <span>{{ r.permissions|length }} permissions</span>
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-base border border-theme-border text-theme-body/80">
+                                <i class="ph-bold ph-users text-[10px]"></i>
+                                <span>{{ r.officials|length }} staff</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-theme-border flex items-center justify-end">
+                        <button type="button"
+                                @click='openEditRole("{{ r.id }}", {{ r.name|tojson|forceescape }}, {{ (r.description or "")|tojson|forceescape }}, {{ perm_codes|tojson|forceescape }})'
+                                class="w-full py-2 px-3 rounded-xl border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze text-xs font-semibold transition flex items-center justify-center gap-1.5 font-body">
+                            <i class="ph-bold ph-pencil-simple"></i>
+                            <span>Edit Permissions</span>
+                        </button>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+
+    <!-- SECTION 2: Staff Role Assignments Matrix -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-5 sm:!p-7 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                <div class="flex items-center gap-2">
+                    <h2 class="font-heading font-bold text-base text-theme-heading">
+                        Staff Role Assignments
+                    </h2>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                        {{ officials|length }} Staff Members
+                    </span>
+                </div>
+                <a href="/admin/officials" class="text-xs font-semibold text-kwuo-bronze hover:underline font-body inline-flex items-center gap-1">
+                    <i class="ph-bold ph-arrow-square-out"></i>
+                    <span>Officials Directory</span>
+                </a>
+            </div>
+
+            <!-- VIEW 1: Staff Table Mode -->
+            <div x-show="viewMode === 'table'" class="overflow-x-auto rounded-xl border border-theme-border bg-theme-surface">
+                <table class="w-full text-left text-xs border-collapse font-body">
+                    <thead>
+                        <tr class="border-b border-theme-border bg-theme-base/40 text-theme-body/70 text-[11px] font-bold">
+                            <th class="py-2.5 px-3 min-w-[160px]">Official</th>
+                            <th class="py-2.5 px-3 min-w-[200px]">Assigned Roles</th>
+                            <th class="py-2.5 px-3 text-center">Permissions Count</th>
+                            <th class="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-theme-border">
+                        {% for off in officials %}
+                        {% set off_role_ids = off.roles|map(attribute='id')|list %}
+                        <tr class="hover:bg-theme-base/60 transition group font-body">
+                            <!-- Official Name & Email -->
+                            <td class="py-3 px-3">
+                                <div class="font-heading font-bold text-xs sm:text-sm text-theme-heading">
+                                    {{ off.participant.name }}
+                                </div>
+                                <div class="text-[11px] text-theme-body/60 mt-0.5">
+                                    {{ off.participant.email }}
+                                </div>
+                            </td>
+
+                            <!-- Assigned Roles Badges -->
+                            <td class="py-3 px-3">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    {% for r in off.roles %}
+                                    <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                        {{ r.name }}
+                                    </span>
+                                    {% endfor %}
+                                    {% if not off.roles %}
+                                    <span class="text-xs text-theme-body/40 italic">No roles assigned</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- Permissions Count -->
+                            <td class="py-3 px-3 text-center font-bold text-theme-heading text-xs">
+                                {{ off.permission_codes|length }}
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="py-3 px-3 text-right whitespace-nowrap">
+                                <button type="button"
+                                        @click='openAssignOfficial("{{ off.id }}", {{ off.participant.name|tojson|forceescape }}, {{ off.participant.email|tojson|forceescape }}, {{ off_role_ids|tojson|forceescape }})'
+                                        class="px-2.5 py-1.5 rounded-lg border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze text-xs font-semibold transition inline-flex items-center gap-1 font-body">
+                                    <i class="ph-bold ph-users"></i>
+                                    <span>Assign Roles</span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        {% if not officials %}
+                        <tr>
+                            <td colspan="4" class="py-8 text-center text-xs text-theme-body/60 font-body">
+                                No officials registered yet. <a href="/admin/officials" class="text-kwuo-bronze font-bold hover:underline">Add tournament staff</a> to assign roles.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- VIEW 2: Staff Cards Mode (Mobile-First) -->
+            <div x-show="viewMode === 'cards'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for off in officials %}
+                {% set off_role_ids = off.roles|map(attribute='id')|list %}
+                <article class="p-4 rounded-xl border border-theme-border bg-theme-surface hover:border-kwuo-bronze/30 transition shadow-xs flex flex-col justify-between gap-3 font-body">
+                    <div class="space-y-2">
+                        <div>
+                            <h3 class="font-heading font-bold text-sm text-theme-heading leading-tight">
+                                {{ off.participant.name }}
+                            </h3>
+                            <div class="text-[11px] text-theme-body/60 mt-0.5">
+                                {{ off.participant.email }}
+                            </div>
+                        </div>
+
+                        <!-- Roles Badges -->
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase text-theme-body/50">Assigned Roles:</div>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                {% for r in off.roles %}
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                    {{ r.name }}
+                                </span>
+                                {% endfor %}
+                                {% if not off.roles %}
+                                <span class="text-xs text-theme-body/40 italic">None</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Active permissions badge -->
+                        <div class="text-[11px] text-theme-body/70 flex items-center gap-1.5 pt-1">
+                            <i class="ph-bold ph-key text-kwuo-bronze text-xs"></i>
+                            <span><strong>{{ off.permission_codes|length }}</strong> total permissions active</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-theme-border">
+                        <button type="button"
+                                @click='openAssignOfficial("{{ off.id }}", {{ off.participant.name|tojson|forceescape }}, {{ off.participant.email|tojson|forceescape }}, {{ off_role_ids|tojson|forceescape }})'
+                                class="w-full py-2 px-3 rounded-xl border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze text-xs font-semibold transition flex items-center justify-center gap-1.5 font-body">
+                            <i class="ph-bold ph-users"></i>
+                            <span>Assign Roles</span>
+                        </button>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- DOCKET-STYLED FIXED HEIGHT MODALS WITH SCROLLABLE INTERIORS                -->
+    <!-- ========================================================================= -->
+
+    <!-- MODAL 1: Add Custom Role Modal -->
+    <div x-show="addRoleModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div class="kwuo-torn-docket-wrapper w-full max-w-xl" @click.outside="addRoleModal = false">
+            <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[88vh] font-body">
+                <!-- Modal Fixed Header -->
+                <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                    <div class="flex items-center gap-2">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                            <i class="ph-bold ph-shield-plus text-base"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">Create Custom Role</h3>
+                            <p class="text-[11px] text-theme-body/60">Define authority boundaries and permission sets</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="addRoleModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                        <i class="ph-bold ph-x text-base"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Scrollable Content Area -->
+                <form @submit.prevent="submitNewRole()" class="flex-1 overflow-y-auto py-3 space-y-4 pr-1 min-h-0">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                            Role Name *
+                        </label>
+                        <input type="text" x-model="newRole.name" required placeholder="e.g. Deputy Equity Director"
+                               class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                            Description
+                        </label>
+                        <textarea x-model="newRole.description" rows="2" placeholder="Brief outline of responsibilities..."
+                                  class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze"></textarea>
+                    </div>
+
+                    <!-- Grouped Permissions Matrix -->
+                    <div class="space-y-3 pt-1">
+                        <div class="text-[11px] font-bold uppercase tracking-wider text-theme-heading flex items-center justify-between">
+                            <span>Grant Permissions</span>
+                            <span class="text-[10px] text-theme-body/60">Categorized boundaries</span>
+                        </div>
+
+                        <div class="space-y-3">
+                            {% for cat, perms in permissions_by_category.items() %}
+                            {% set cat_codes = perms|map(attribute='code')|list %}
+                            <div class="p-3 rounded-xl border border-theme-border bg-theme-base space-y-2">
+                                <div class="flex items-center justify-between pb-1 border-b border-theme-border/60">
+                                    <span class="text-[11px] font-bold uppercase text-kwuo-bronze font-heading tracking-wider">
+                                        {{ cat }}
+                                    </span>
+                                    <button type="button"
+                                            @click="toggleNewRoleCategoryPerms({{ cat_codes|tojson|forceescape }}, !isNewRoleCategoryFullySelected({{ cat_codes|tojson|forceescape }}))"
+                                            class="text-[10px] font-semibold text-kwuo-bronze hover:underline">
+                                        <span x-text="isNewRoleCategoryFullySelected({{ cat_codes|tojson|forceescape }}) ? 'Deselect Category' : 'Select All'"></span>
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {% for p in perms %}
+                                    <label class="flex items-start gap-2 text-xs text-theme-heading cursor-pointer hover:bg-theme-surface p-1.5 rounded-lg transition">
+                                        <input type="checkbox" value="{{ p.code }}"
+                                               x-model="newRole.permission_codes"
+                                               class="mt-0.5 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                        <div>
+                                            <div class="font-semibold text-xs leading-snug">{{ p.name }}</div>
+                                            <div class="text-[10px] text-theme-body/60 leading-tight">{{ p.description }}</div>
+                                        </div>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Modal Fixed Footer -->
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
+                    <button type="button" @click="addRoleModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="button" @click="submitNewRole()" :disabled="saving"
+                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany disabled:opacity-50 transition font-body shadow-sm flex items-center gap-1.5">
+                        <i class="ph-bold" :class="saving ? 'ph-spinner animate-spin' : 'ph-plus-circle'"></i>
+                        <span x-text="saving ? 'Creating...' : 'Create Role'"></span>
+                    </button>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Edit Role Permissions Modal (Fixed Height Docket) -->
+    <div x-show="editRoleModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div class="kwuo-torn-docket-wrapper w-full max-w-xl" @click.outside="editRoleModal = false">
+            <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[88vh] font-body">
+                <!-- Modal Fixed Header -->
+                <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                    <div class="flex items-center gap-2">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                            <i class="ph-bold ph-key text-base"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">
+                                Edit Role Permissions
+                            </h3>
+                            <p class="text-[11px] text-theme-body/60 font-semibold" x-text="activeRole.name"></p>
+                        </div>
+                    </div>
+                    <button type="button" @click="editRoleModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                        <i class="ph-bold ph-x text-base"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Scrollable Content Area -->
+                <form @submit.prevent="saveRolePermissions()" class="flex-1 overflow-y-auto py-3 space-y-4 pr-1 min-h-0">
+                    <p class="text-xs text-theme-body/70" x-text="activeRole.description || 'System/Custom permission scope.'"></p>
+
+                    <div class="space-y-3">
+                        {% for cat, perms in permissions_by_category.items() %}
+                        {% set cat_codes = perms|map(attribute='code')|list %}
+                        <div class="p-3 rounded-xl border border-theme-border bg-theme-base space-y-2">
+                            <div class="flex items-center justify-between pb-1 border-b border-theme-border/60">
+                                <span class="text-[11px] font-bold uppercase text-kwuo-bronze font-heading tracking-wider">
+                                    {{ cat }}
+                                </span>
+                                <button type="button"
+                                        @click="toggleCategoryPerms({{ cat_codes|tojson|forceescape }}, !isCategoryFullySelected({{ cat_codes|tojson|forceescape }}))"
+                                        class="text-[10px] font-semibold text-kwuo-bronze hover:underline">
+                                    <span x-text="isCategoryFullySelected({{ cat_codes|tojson|forceescape }}) ? 'Deselect Category' : 'Select All'"></span>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {% for p in perms %}
+                                <label class="flex items-start gap-2 text-xs text-theme-heading cursor-pointer hover:bg-theme-surface p-1.5 rounded-lg transition">
+                                    <input type="checkbox" value="{{ p.code }}"
+                                           x-model="activeRole.permissions"
+                                           class="mt-0.5 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                    <div>
+                                        <div class="font-semibold text-xs leading-snug">{{ p.name }}</div>
+                                        <div class="text-[10px] text-theme-body/60 leading-tight">{{ p.description }}</div>
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </form>
+
+                <!-- Modal Fixed Footer -->
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
+                    <button type="button" @click="editRoleModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="button" @click="saveRolePermissions()" :disabled="saving"
+                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany disabled:opacity-50 transition font-body shadow-sm flex items-center gap-1.5">
+                        <i class="ph-bold" :class="saving ? 'ph-spinner animate-spin' : 'ph-check'"></i>
+                        <span x-text="saving ? 'Saving...' : 'Save Permissions'"></span>
+                    </button>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Assign Staff Roles Modal (Fixed Height Docket) -->
+    <div x-show="assignModal" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div class="kwuo-torn-docket-wrapper w-full max-w-md" @click.outside="assignModal = false">
+            <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[85vh] font-body">
+                <!-- Modal Fixed Header -->
+                <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                    <div class="flex items-center gap-2">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                            <i class="ph-bold ph-shield-check text-base"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">
+                                Assign Official Roles
+                            </h3>
+                            <p class="text-[11px] text-theme-body/60 font-semibold" x-text="activeOfficial.name + ' (' + activeOfficial.email + ')'"></p>
+                        </div>
+                    </div>
+                    <button type="button" @click="assignModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                        <i class="ph-bold ph-x text-base"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Scrollable Content Area -->
+                <form @submit.prevent="saveOfficialRoles()" class="flex-1 overflow-y-auto py-3 space-y-3 pr-1 min-h-0">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-theme-heading">
+                        Select Scoped Roles
+                    </div>
+                    <div class="space-y-2">
+                        {% for r in roles %}
+                        <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface cursor-pointer transition">
+                            <input type="checkbox" value="{{ r.id }}"
+                                   x-model="activeOfficial.role_ids"
+                                   class="mt-1 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-4 w-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="font-heading font-bold text-xs text-theme-heading">{{ r.name }}</span>
+                                    {% if r.is_system %}
+                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze">System</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-[11px] text-theme-body/70 mt-0.5 leading-snug">
+                                    {{ r.description or 'Custom role' }}
+                                </div>
+                                <div class="text-[10px] text-kwuo-bronze mt-1 font-semibold flex items-center gap-1">
+                                    <i class="ph-bold ph-key text-[10px]"></i>
+                                    <span>{{ r.permissions|length }} permissions</span>
+                                </div>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </form>
+
+                <!-- Modal Fixed Footer -->
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
+                    <button type="button" @click="assignModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="button" @click="saveOfficialRoles()" :disabled="saving"
+                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany disabled:opacity-50 transition font-body shadow-sm flex items-center gap-1.5">
+                        <i class="ph-bold" :class="saving ? 'ph-spinner animate-spin' : 'ph-check'"></i>
+                        <span x-text="saving ? 'Saving...' : 'Save Assignments'"></span>
+                    </button>
+                </div>
+            </article>
+        </div>
+    </div>
+</div>
+{% endblock %}

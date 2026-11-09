@@ -4,158 +4,1574 @@
 {% block title %}Speakers Roster — Tab Room{% endblock %}
 
 {% block admin_content %}
-<div class="max-w-6xl mx-auto space-y-6">
-    <!-- Breadcrumb & Header -->
-    <div class="flex items-center justify-between flex-wrap gap-4">
+<script>
+    function kwuoDropdown() {
+        return {
+            open: false,
+            menuStyle: '',
+            toggle() {
+                if (this.open) {
+                    this.close();
+                } else {
+                    this.open = true;
+                    this.$nextTick(() => { this.updatePos(); });
+                    this._reposition = () => { if (this.open) this.updatePos(); };
+                    window.addEventListener('scroll', this._reposition, true);
+                    window.addEventListener('resize', this._reposition);
+                }
+            },
+            close() {
+                this.open = false;
+                if (this._reposition) {
+                    window.removeEventListener('scroll', this._reposition, true);
+                    window.removeEventListener('resize', this._reposition);
+                    this._reposition = null;
+                }
+            },
+            updatePos() {
+                const btn = this.$refs.trigger;
+                if (!btn) return;
+                const rect = btn.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const minW = Math.max(rect.width, 240);
+                const maxH = 260;
+                let topCss = '';
+                if ((spaceBelow < 260 && rect.top > spaceBelow) || (rect.bottom > window.innerHeight * 0.65 && rect.top > 200)) {
+                    topCss = 'bottom: ' + Math.round(window.innerHeight - rect.top + 4) + 'px; max-height: ' + Math.min(maxH, Math.max(160, rect.top - 20)) + 'px;';
+                } else {
+                    topCss = 'top: ' + Math.round(rect.bottom + 4) + 'px; max-height: ' + Math.min(maxH, Math.max(160, spaceBelow - 20)) + 'px;';
+                }
+                let leftPos = rect.left;
+                if (leftPos + minW > window.innerWidth - 12) {
+                    leftPos = Math.max(12, window.innerWidth - minW - 12);
+                }
+                this.menuStyle = 'position: fixed; left: ' + Math.round(leftPos) + 'px; width: ' + Math.round(minW) + 'px; z-index: 999999; ' + topCss;
+            }
+        };
+    }
+
+    function speakersManager() {
+        return {
+            viewMode: window.innerWidth < 768 ? 'cards' : 'table',
+            searchQuery: '',
+            divisionFilter: '',
+            selectedIds: [],
+            selectAll: false,
+            actionsDropdownOpen: false,
+
+            sortCol: 'name',
+            sortAsc: true,
+            sortBy(col) {
+                if (this.sortCol === col) {
+                    this.sortAsc = !this.sortAsc;
+                } else {
+                    this.sortCol = col;
+                    this.sortAsc = true;
+                }
+            },
+
+            addModal: false,
+            editModal: false,
+            importModal: false,
+            deleteModal: false,
+            deleteTargetId: '',
+            deleteTargetName: '',
+
+            // Row-level inline editing state
+            editingRowId: null,
+            editRowData: {
+                name: '',
+                email: '',
+                phone: '',
+                pronouns: '',
+                institution_id: '',
+                division_ids: []
+            },
+            startInlineEdit(spk) {
+                this.editingRowId = spk.id;
+                this.instFilterText = '';
+                this.editRowData = {
+                    name: spk.name,
+                    email: spk.email,
+                    phone: spk.phone || '',
+                    pronouns: spk.pronouns || '',
+                    institution_id: spk.institution_id || '',
+                    division_ids: spk.division_ids ? [...spk.division_ids] : []
+                };
+            },
+            cancelInlineEdit() {
+                this.editingRowId = null;
+                this.instFilterText = '';
+            },
+            instFilterText: '',
+            getInstitutionName(id) {
+                if (!id) return 'Independent / Unaffiliated';
+                const found = this.institutions.find(i => i.id === id);
+                return found ? found.name : 'Independent / Unaffiliated';
+            },
+            get filteredInstitutionsForEdit() {
+                if (!this.instFilterText.trim()) return this.institutions;
+                const q = this.instFilterText.toLowerCase();
+                return this.institutions.filter(i => (i.name || '').toLowerCase().includes(q) || (i.code || '').toLowerCase().includes(q));
+            },
+            async saveRowInlineEdit(spk) {
+                const name = (this.editRowData.name || '').trim();
+                const email = (this.editRowData.email || '').trim().toLowerCase();
+                if (!name || !email) {
+                    if (window.showToast) window.showToast('Name and email are required.', 'error');
+                    return;
+                }
+                const phone = (this.editRowData.phone || '').trim();
+                const pronouns = (this.editRowData.pronouns || '').trim();
+                const payload = {
+                    name: name,
+                    email: email,
+                    phone: phone ? phone : null,
+                    pronouns: pronouns ? pronouns : null,
+                    institution_id: this.editRowData.institution_id || null,
+                    division_ids: this.editRowData.division_ids || []
+                };
+                try {
+                    const res = await fetch('/admin/speakers/' + spk.id + '/update', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        spk.name = data.speaker.name;
+                        spk.email = data.speaker.email;
+                        spk.phone = data.speaker.phone;
+                        spk.pronouns = data.speaker.pronouns;
+                        spk.institution_id = data.speaker.institution_id;
+                        spk.institution_name = data.speaker.institution_name;
+                        spk.division_ids = data.speaker.division_ids;
+                        spk.divisions = data.speaker.divisions;
+                        this.editingRowId = null;
+                        if (window.showToast) window.showToast('Updated ' + spk.name, 'success');
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Failed to update speaker.', 'error');
+                    }
+                } catch (err) {
+                    if (window.showToast) window.showToast('Network error while saving.', 'error');
+                }
+            },
+
+            // File selection for import modal
+            importFileName: '',
+
+            speakers: JSON.parse(document.getElementById('speakers-directory-data')?.textContent || '[]'),
+            institutions: JSON.parse(document.getElementById('speakers-institutions-data')?.textContent || '[]'),
+            divisionsList: JSON.parse(document.getElementById('tournament-divisions-data')?.textContent || '[]'),
+
+            addForm: {
+                name: '',
+                email: '',
+                phone: '',
+                pronouns: '',
+                division_ids: [{% if divisions %}'{{ divisions[0].id }}'{% endif %}],
+                institution_id: '',
+                instSearch: '',
+                instOpen: false,
+                isCreatingInst: false,
+                newInstName: '',
+                newInstCode: '',
+                newInstCountry: ''
+            },
+
+            editForm: {
+                id: '',
+                name: '',
+                email: '',
+                phone: '',
+                pronouns: '',
+                division_ids: [],
+                institution_id: '',
+                instSearch: '',
+                instOpen: false,
+                isCreatingInst: false,
+                newInstName: '',
+                newInstCode: '',
+                newInstCountry: ''
+            },
+
+            get filteredSpeakers() {
+                const q = this.searchQuery.trim().toLowerCase();
+                const list = this.speakers.filter(s => {
+                    if (this.divisionFilter && !(s.divisions || []).some(d => d.toLowerCase() === this.divisionFilter.toLowerCase())) {
+                        return false;
+                    }
+                    if (q) {
+                        const matchName = (s.name || '').toLowerCase().includes(q);
+                        const matchEmail = (s.email || '').toLowerCase().includes(q);
+                        const matchInst = (s.institution_name || '').toLowerCase().includes(q);
+                        const matchDiv = (s.divisions || []).some(d => d.toLowerCase().includes(q));
+                        if (!matchName && !matchEmail && !matchInst && !matchDiv) return false;
+                    }
+                    return true;
+                });
+
+                return list.sort((a, b) => {
+                    let vA = a[this.sortCol] ?? '';
+                    let vB = b[this.sortCol] ?? '';
+                    if (Array.isArray(vA)) vA = vA.join(', ');
+                    if (Array.isArray(vB)) vB = vB.join(', ');
+                    if (typeof vA === 'string') vA = vA.toLowerCase();
+                    if (typeof vB === 'string') vB = vB.toLowerCase();
+                    if (vA < vB) return this.sortAsc ? -1 : 1;
+                    if (vA > vB) return this.sortAsc ? 1 : -1;
+                    return 0;
+                });
+            },
+
+            get filteredAddInstitutions() {
+                if (!this.addForm.instSearch.trim()) return this.institutions;
+                const q = this.addForm.instSearch.toLowerCase();
+                return this.institutions.filter(i => 
+                    i.name.toLowerCase().includes(q) || (i.code && i.code.toLowerCase().includes(q))
+                );
+            },
+
+            get filteredEditInstitutions() {
+                if (!this.editForm.instSearch.trim()) return this.institutions;
+                const q = this.editForm.instSearch.toLowerCase();
+                return this.institutions.filter(i => 
+                    i.name.toLowerCase().includes(q) || (i.code && i.code.toLowerCase().includes(q))
+                );
+            },
+
+            toggleSelectAll() {
+                if (this.selectAll) {
+                    this.selectedIds = [];
+                    this.selectAll = false;
+                } else {
+                    this.selectedIds = this.filteredSpeakers.map(s => s.id);
+                    this.selectAll = true;
+                }
+            },
+
+            async setSpeakerInstitution(speaker, inst, dropdown) {
+                if (dropdown) dropdown.close();
+                const instId = inst ? inst.id : null;
+                const instName = inst ? inst.name : 'Independent';
+
+                if (speaker.institution_id === instId) return;
+
+                const payload = {
+                    name: speaker.name,
+                    email: speaker.email,
+                    phone: speaker.phone || null,
+                    pronouns: speaker.pronouns || null,
+                    division_ids: speaker.division_ids || [],
+                    institution_id: instId
+                };
+
+                try {
+                    const res = await fetch('/admin/speakers/' + speaker.id + '/update', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        speaker.institution_id = instId;
+                        speaker.institution_name = instName;
+                        if (window.showToast) window.showToast('Institution updated for ' + speaker.name, 'success');
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Update failed', 'error');
+                    }
+                } catch (err) {
+                    if (window.showToast) window.showToast('Network error while saving.', 'error');
+                }
+            },
+
+            openAddModal() {
+                this.addForm = {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    pronouns: '',
+                    division_ids: [{% if divisions %}'{{ divisions[0].id }}'{% endif %}],
+                    institution_id: '',
+                    instSearch: '',
+                    instOpen: false,
+                    isCreatingInst: false,
+                    newInstName: '',
+                    newInstCode: '',
+                    newInstCountry: ''
+                };
+                this.addModal = true;
+            },
+
+            openEditModal(speaker) {
+                this.editForm = {
+                    id: speaker.id,
+                    name: speaker.name,
+                    email: speaker.email,
+                    phone: speaker.phone || '',
+                    pronouns: speaker.pronouns || '',
+                    division_ids: speaker.division_ids ? [...speaker.division_ids] : [],
+                    institution_id: speaker.institution_id || '',
+                    instSearch: speaker.institution_name || (speaker.institution_id ? 'Selected' : ''),
+                    instOpen: false,
+                    isCreatingInst: false,
+                    newInstName: '',
+                    newInstCode: '',
+                    newInstCountry: ''
+                };
+                this.editModal = true;
+            },
+
+            confirmDelete(id, name) {
+                this.deleteTargetId = id;
+                this.deleteTargetName = name;
+                this.deleteModal = true;
+            },
+
+            openBulkDelete() {
+                if (this.selectedIds.length === 0) {
+                    if (window.showToast) window.showToast('Select at least one speaker.', 'warning');
+                    return;
+                }
+                this.actionsDropdownOpen = false;
+                this.deleteTargetId = 'bulk';
+                this.deleteTargetName = this.selectedIds.length + ' selected speaker(s)';
+                this.deleteModal = true;
+            },
+
+            async deleteSpeaker() {
+                if (this.deleteTargetId === 'bulk') {
+                    const count = this.selectedIds.length;
+                    const formData = new FormData();
+                    this.selectedIds.forEach(id => formData.append('speaker_ids', id));
+                    formData.append('action', 'delete');
+
+                    try {
+                        const res = await fetch('/admin/speakers/bulk-action', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.status === 'ok') {
+                            const deletedSet = new Set(this.selectedIds);
+                            this.speakers = this.speakers.filter(s => !deletedSet.has(s.id));
+                            this.selectedIds = [];
+                            this.selectAll = false;
+                            this.deleteModal = false;
+                            if (window.showToast) window.showToast(data.message || 'Deleted ' + count + ' speaker(s).', 'success');
+                        } else {
+                            if (window.showToast) window.showToast(data.message || 'Failed to delete selected speakers.', 'error');
+                        }
+                    } catch (e) {
+                        if (window.showToast) window.showToast('Network error during bulk delete.', 'error');
+                    }
+                    return;
+                }
+
+                const id = this.deleteTargetId;
+                try {
+                    const res = await fetch('/admin/speakers/' + id + '/delete', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        this.speakers = this.speakers.filter(s => s.id !== id);
+                        this.selectedIds = this.selectedIds.filter(x => x !== id);
+                        this.deleteModal = false;
+                        if (window.showToast) window.showToast('Speaker removed from roster.', 'success');
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Failed to delete speaker.', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Network error deleting speaker.', 'error');
+                }
+            },
+
+            async sendMagicLink(speaker) {
+                try {
+                    const res = await fetch('/admin/speakers/' + speaker.id + '/send-magic-link', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        if (window.showToast) {
+                            window.showToast('Magic link sent to ' + speaker.email, 'success');
+                        }
+                    } else {
+                        if (window.showToast) {
+                            window.showToast(data.message || 'Failed to send magic link.', 'error');
+                        }
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Network error sending magic link.', 'error');
+                }
+            },
+
+            async bulkSendMagicLinks() {
+                if (this.selectedIds.length === 0) {
+                    if (window.showToast) window.showToast('Select at least one speaker.', 'error');
+                    return;
+                }
+                const count = this.selectedIds.length;
+                this.actionsDropdownOpen = false;
+
+                const formData = new FormData();
+                this.selectedIds.forEach(id => formData.append('speaker_ids', id));
+                formData.append('action', 'send_magic_link');
+
+                try {
+                    const res = await fetch('/admin/speakers/bulk-action', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    if (res.ok) {
+                        if (window.showToast) {
+                            window.showToast('Dispatched magic links to ' + count + ' speakers!', 'success');
+                        }
+                        this.selectedIds = [];
+                        this.selectAll = false;
+                    } else {
+                        if (window.showToast) window.showToast('Failed to bulk dispatch magic links.', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Network error during bulk dispatch.', 'error');
+                }
+            },
+
+            async saveAndAddAnother() {
+                if (!this.addForm.name.trim()) {
+                    if (window.showToast) window.showToast('Speaker name is required.', 'error');
+                    return;
+                }
+                if (!this.addForm.email.trim() || !this.addForm.email.includes('@')) {
+                    if (window.showToast) window.showToast('A valid email address is required.', 'error');
+                    return;
+                }
+
+                const payload = {
+                    name: this.addForm.name.trim(),
+                    email: this.addForm.email.trim().toLowerCase(),
+                    phone: this.addForm.phone.trim() || null,
+                    pronouns: this.addForm.pronouns.trim() || null,
+                    division_ids: this.addForm.division_ids,
+                    institution_id: this.addForm.institution_id || null,
+                    institution_name: this.addForm.newInstName.trim() || null,
+                    institution_code: this.addForm.newInstCode.trim() || null,
+                    institution_country: this.addForm.newInstCountry.trim() || null
+                };
+
+                try {
+                    const res = await fetch('/admin/speakers', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        if (window.showToast) {
+                            window.showToast(data.message || 'Speaker registered! Enter another...', 'success');
+                        }
+                        if (data.speaker) {
+                            this.speakers.unshift(data.speaker);
+                        }
+                        // Reset inputs for rapid sequential additions
+                        this.addForm.name = '';
+                        this.addForm.email = '';
+                        this.addForm.phone = '';
+                        this.addForm.pronouns = '';
+                        this.$nextTick(() => {
+                            const nameInput = document.getElementById('add_speaker_name');
+                            if (nameInput) nameInput.focus();
+                        });
+                    } else {
+                        if (window.showToast) {
+                            window.showToast(data.detail || data.message || 'Failed to register speaker.', 'error');
+                        }
+                    }
+                } catch (err) {
+                    if (window.showToast) window.showToast('Network error while adding speaker.', 'error');
+                }
+            }
+        };
+    }
+</script>
+
+<script id="speakers-institutions-data" type="application/json">
+[
+    {% for inst in institutions %}
+    { "id": "{{ inst.id }}", "name": {{ inst.name | tojson }}, "code": {{ (inst.code or '') | tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+
+<script id="tournament-divisions-data" type="application/json">
+[
+    {% for div in divisions %}
+    { "id": "{{ div.id }}", "name": {{ div.name | tojson }}, "code": {{ (div.code or '') | tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+
+<script id="speakers-directory-data" type="application/json">
+{{ speakers_data | tojson | safe }}
+</script>
+
+<div class="max-w-7xl mx-auto space-y-6" x-data="speakersManager()">
+
+    <!-- Top Bar Navigation (Clean, minimal, count badge, no user IDs, no check-in counts) -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-theme-border pb-5">
         <div>
-            <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1">
-                <a href="/admin" class="hover:text-kwuo-bronze">Tab Room</a>
+            <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1 font-body">
+                <a href="/admin" class="hover:text-kwuo-bronze transition">Tab Room</a>
                 <span>/</span>
                 <span>Organization</span>
                 <span>/</span>
-                <span class="text-kwuo-bronze">Speakers</span>
+                <span class="text-kwuo-bronze font-bold">Speakers</span>
             </div>
-            <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
-                Speakers Roster &amp; Check-In Desk
-            </h1>
-            <p class="text-xs text-theme-body/70 mt-0.5">
-                Register competitors with single names or nicknames, issue zero-auth magic links, and manage arrival check-in.
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
+                    Speakers
+                </h1>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body"
+                      x-text="speakers.length">
+                </span>
+            </div>
+            <p class="text-xs text-theme-body/70 mt-1 font-body">
+                Manage registered competitors, mononyms/nicknames, multi-division eligibility, and zero-auth magic links.
             </p>
         </div>
 
-        <a href="/participants?role=speakers" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
-            <i class="ph-bold ph-arrow-square-out text-sm"></i>
-            <span>Preview Public Roster</span>
-        </a>
-    </div>
-
-    {% if msg %}
-    <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
-        <i class="ph-bold ph-check-circle text-base"></i>
-        <span>{{ msg }}</span>
-    </div>
-    {% endif %}
-
-    <!-- Top Action Card: Add Speaker Modal / Form & Summary -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Add Speaker Form (1 col) -->
-        <div>
-            <div class="kwuo-torn-docket-wrapper">
-                <article class="kwuo-torn-docket !p-5">
-                    <h3 class="text-sm font-heading font-bold text-theme-heading mb-3 pb-2 border-b border-theme-border flex items-center gap-2">
-                        <i class="ph-bold ph-user-plus text-kwuo-bronze"></i>
-                        <span>Register Speaker</span>
-                    </h3>
-
-                    <form method="POST" action="/admin/speakers" class="space-y-3">
-                        <div>
-                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
-                                Speaker Name / Nickname *
-                            </label>
-                            <input type="text" name="name" required placeholder="e.g. Kofi Mensah or 'JJ'"
-                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs">
-                            <p class="text-[10px] text-theme-body/60 mt-0.5">Supports single mononym, nickname, or full name.</p>
-                        </div>
-
-                        <div>
-                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
-                                Email Address *
-                            </label>
-                            <input type="email" name="email" required placeholder="speaker@institution.edu"
-                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs">
-                        </div>
-
-                        <div>
-                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
-                                Division Eligibility *
-                            </label>
-                            {% set div_options = [] %}
-                            {% for div in tournament.divisions %}
-                                {% set _ = div_options.append({"value": div.id, "label": div.name, "icon": "ph-users"}) %}
-                            {% endfor %}
-                            {{ edit.custom_select(
-                                name="division_id",
-                                value=tournament.divisions[0].id if tournament.divisions else "",
-                                required=true,
-                                options=div_options
-                            ) }}
-                        </div>
-
-                        <div>
-                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
-                                Institution
-                            </label>
-                            <input type="text" name="institution_name" placeholder="e.g. University of Ghana or Independent"
-                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs">
-                        </div>
-
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center justify-center gap-2 mt-2">
-                            <i class="ph-bold ph-plus"></i>
-                            <span>Add Speaker to Roster</span>
-                        </button>
-                    </form>
-                </article>
-            </div>
+        <div class="flex items-center gap-2">
+            <a href="/participants?role=speakers" target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body"
+               title="Preview public attendee speaker list">
+                <i class="ph-bold ph-arrow-square-out text-sm"></i>
+                <span class="hidden sm:inline">Public Roster</span>
+            </a>
         </div>
+    </div>
 
-        <!-- Speaker Table (2 cols) -->
-        <div class="lg:col-span-2">
-            <div class="kwuo-torn-docket-wrapper">
-                <article class="kwuo-torn-docket !p-6">
-                    <div class="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
-                        <h3 class="text-sm font-heading font-bold text-theme-heading">
-                            Registered Speakers ({{ tournament.speakers|length }})
-                        </h3>
-                        <span class="text-xs text-theme-body/60">
-                            {{ tournament.speakers|selectattr('status.value', 'equalto', 'checked_in')|list|length }} Checked In
-                        </span>
-                    </div>
+    <!-- Filter, Search, Actions Dropdown & Add Speaker Toolbar (Sticky so it scrolls with viewport) -->
+    <div class="sticky top-14 lg:top-0 z-30 bg-theme-base py-3 border-b border-theme-border/60 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-body" style="background-color: var(--color-bg-base);">
+        <!-- Left: Search and Custom Division Combobox -->
+        <div class="flex items-center gap-2.5 flex-1 max-w-xl">
+            <!-- Search Input -->
+            <div class="relative flex-1">
+                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-theme-body/50 text-sm"></i>
+                <input type="text" x-model="searchQuery" placeholder="Filter speakers by name, email, role, school..."
+                       class="w-full pl-9 pr-3.5 py-2 rounded-xl border border-theme-border bg-theme-base text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
+            </div>
 
-                    {% if tournament.speakers %}
-                    <div class="divide-y divide-theme-border overflow-x-auto">
-                        {% for spk in tournament.speakers %}
-                        <div class="py-3 flex items-center justify-between gap-4 min-w-[480px]">
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <span class="font-heading font-bold text-sm text-theme-heading">{{ spk.name }}</span>
-                                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full {% if spk.status.value == 'checked_in' %}bg-emerald-500/10 text-emerald-600 dark:text-emerald-400{% else %}bg-theme-base text-theme-body/60 border border-theme-border{% endif %}">
-                                        {{ spk.status.value|replace('_', ' ')|capitalize }}
-                                    </span>
-                                </div>
-                                <div class="text-[11px] text-theme-body/60 mt-0.5">
-                                    {{ spk.email }} &bull; {{ spk.institution_name }} &bull; {{ spk.division_names|join(', ') }}
-                                </div>
-                            </div>
+            <!-- Custom Floating Division Combobox -->
+            {% if divisions %}
+            <div x-data="kwuoDropdown()" class="relative shrink-0">
+                <button type="button" x-ref="trigger" @click="toggle()" @keydown.escape="close()"
+                        class="inline-flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-xs font-semibold text-theme-heading hover:border-kwuo-bronze/50 transition">
+                    <span x-text="divisionFilter ? divisionFilter : 'All Divisions'"></span>
+                    <i class="ph-bold ph-caret-down text-xs text-theme-body/50 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                </button>
 
-                            <div class="flex items-center gap-2 shrink-0">
-                                <!-- Check-in toggle -->
-                                <form method="POST" action="/admin/speakers/{{ spk.id }}/toggle-checkin">
-                                    <button type="submit" class="px-2.5 py-1 rounded-lg text-xs font-semibold border {% if spk.status.value == 'checked_in' %}border-emerald-300 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300{% else %}border-theme-border hover:bg-theme-base text-theme-heading{% endif %} transition">
-                                        {% if spk.status.value == 'checked_in' %}
-                                        <i class="ph-bold ph-check"></i> Present
-                                        {% else %}
-                                        Check In
-                                        {% endif %}
-                                    </button>
-                                </form>
-
-                                <!-- Magic link copy helper -->
-                                <button type="button" @click="navigator.clipboard.writeText(window.location.origin + '/portal/speaker'); alert('Speaker portal URL copied!')"
-                                        class="p-1.5 rounded-lg border border-theme-border hover:bg-theme-base text-theme-heading text-xs" title="Copy Magic Link">
-                                    <i class="ph-bold ph-link-simple"></i>
-                                </button>
-                            </div>
-                        </div>
+                <template x-teleport="body">
+                    <div x-show="open" x-cloak @click.away="close()" :style="menuStyle"
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="overflow-y-auto rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md">
+                        <button type="button" @click="divisionFilter = ''; close()"
+                                class="w-full px-3.5 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
+                                :class="!divisionFilter ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                            <span>All Divisions</span>
+                            <i x-show="!divisionFilter" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                        </button>
+                        <div class="my-1 border-t border-theme-border/60"></div>
+                        {% for d in divisions %}
+                        <button type="button" @click="divisionFilter = '{{ d.name }}'; close()"
+                                class="w-full px-3.5 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
+                                :class="divisionFilter === '{{ d.name }}' ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                            <span>{{ d.name }}</span>
+                            <i x-show="divisionFilter === '{{ d.name }}'" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                        </button>
                         {% endfor %}
                     </div>
-                    {% else %}
-                    <div class="py-8 text-center text-xs text-theme-body/60">
-                        No speakers registered yet. Use the registration form to add competitors.
+                </template>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Controls: View Switcher, Actions Dropdown, and Add Speaker Button -->
+        <div class="flex items-center gap-2 justify-end">
+            <!-- View Switcher (Table vs Cards) -->
+            <div class="inline-flex p-1 rounded-xl border border-theme-border bg-theme-base">
+                <button type="button" @click="viewMode = 'table'"
+                        class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                        :class="viewMode === 'table' ? 'bg-kwuo-bronze text-white shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'">
+                    <i class="ph-bold ph-table text-sm"></i>
+                    <span class="hidden sm:inline">Table</span>
+                </button>
+                <button type="button" @click="viewMode = 'cards'"
+                        class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                        :class="viewMode === 'cards' ? 'bg-kwuo-bronze text-white shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'">
+                    <i class="ph-bold ph-cards text-sm"></i>
+                    <span class="hidden sm:inline">Cards</span>
+                </button>
+            </div>
+
+            <!-- Grouped Actions Dropdown (Matches image media_1794071364745_4e690504.jpg) -->
+            <div class="relative" x-data="{ actOpen: false }" @click.away="actOpen = false">
+                <button type="button" @click="actOpen = !actOpen"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-theme-border bg-theme-surface text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                    <i class="ph-bold ph-lightning text-kwuo-bronze text-sm"></i>
+                    <span>Actions</span>
+                    <i class="ph-bold ph-caret-down text-[10px] text-theme-body/60 transition-transform duration-200" :class="{ 'rotate-180': actOpen }"></i>
+                </button>
+
+                <div x-show="actOpen" x-cloak
+                     class="absolute right-0 mt-1.5 w-60 rounded-2xl border border-theme-border bg-theme-surface shadow-2xl py-2 z-30 font-body text-xs divide-y divide-theme-border/60">
+                    
+                    <!-- BATCH OPERATIONS -->
+                    <div class="py-1">
+                        <div class="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-theme-body/50">
+                            Batch Operations
+                        </div>
+                        <button type="button" @click="actOpen = false; bulkSendMagicLinks()"
+                                class="w-full text-left px-3.5 py-2 hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze flex items-center justify-between text-theme-heading font-medium transition">
+                            <span class="flex items-center gap-2">
+                                <i class="ph-bold ph-paper-plane-tilt text-kwuo-bronze"></i>
+                                <span>Send Magic Links</span>
+                            </span>
+                            <span class="text-[10px] text-theme-body/50 px-1.5 py-0.5 rounded bg-theme-base">
+                                <span x-text="selectedIds.length > 0 ? selectedIds.length : 'Select 1+'"></span>
+                            </span>
+                        </button>
+                        <button type="button" @click="actOpen = false; openBulkDelete()"
+                                class="w-full text-left px-3.5 py-2 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-between font-medium transition">
+                            <span class="flex items-center gap-2">
+                                <i class="ph-bold ph-trash"></i>
+                                <span>Delete Selected</span>
+                            </span>
+                            <span x-show="selectedIds.length > 0" class="text-[10px] text-rose-500 px-1.5 py-0.5 rounded bg-rose-500/10" x-text="selectedIds.length"></span>
+                        </button>
                     </div>
-                    {% endif %}
+
+                    <!-- SPREADSHEETS & IMPORT -->
+                    <div class="py-1">
+                        <div class="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-theme-body/50">
+                            Spreadsheets &amp; Import
+                        </div>
+                        <a href="/admin/speakers/export.xlsx" hx-boost="false" download
+                           class="w-full text-left px-3.5 py-2 hover:bg-theme-base flex items-center justify-between text-theme-heading font-medium transition">
+                            <span class="flex items-center gap-2">
+                                <i class="ph-bold ph-file-xls text-emerald-600 text-sm"></i>
+                                <span>Download Excel</span>
+                            </span>
+                            <span class="text-[10px] text-theme-body/50 uppercase">.xlsx</span>
+                        </a>
+                        <button type="button" @click="actOpen = false; importModal = true"
+                                class="w-full text-left px-3.5 py-2 hover:bg-theme-base flex items-center justify-between text-theme-heading font-medium transition">
+                            <span class="flex items-center gap-2">
+                                <i class="ph-bold ph-upload-simple text-sm"></i>
+                                <span>Import Speakers</span>
+                            </span>
+                            <span class="text-[10px] text-theme-body/50">Excel/CSV</span>
+                        </button>
+                    </div>
+
+                    <!-- SINGLE ADD -->
+                    <div class="pt-1">
+                        <button type="button" @click="actOpen = false; openAddModal()"
+                                class="w-full text-left px-3.5 py-2 hover:bg-kwuo-bronze/10 text-kwuo-bronze font-bold flex items-center gap-2 transition">
+                            <i class="ph-bold ph-user-plus text-sm"></i>
+                            <span>Add Speaker</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Primary Add Speaker Button -->
+            <button type="button" @click="openAddModal()"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white text-xs font-bold transition font-body shadow-xs">
+                <i class="ph-bold ph-plus text-sm"></i>
+                <span>Add Speaker</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN VIEW 1: Interactive Table with Inline Cell Editing (No User IDs, No Arrival Check-In) -->
+    <div x-show="viewMode === 'table'" x-cloak class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-0 overflow-hidden font-body">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs min-w-[720px]">
+                    <thead>
+                        <tr class="border-b border-theme-border bg-theme-base/60 text-theme-body/70 text-[11px] font-bold uppercase tracking-wider">
+                            <th class="py-3 px-3 w-10 text-center shrink-0">
+                                <input type="checkbox" @click="toggleSelectAll()" :checked="selectAll"
+                                       class="rounded border-theme-border text-kwuo-bronze focus:ring-0">
+                            </th>
+                            <th class="py-3 px-3 min-w-[150px] cursor-pointer select-none group" @click="sortBy('name')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Speaker</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'name' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th class="py-3 px-3 min-w-[180px] cursor-pointer select-none group" @click="sortBy('email')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Email</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'email' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th class="py-3 px-3 min-w-[110px] cursor-pointer select-none group" @click="sortBy('phone')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Phone</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'phone' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th class="py-3 px-3 min-w-[170px] cursor-pointer select-none group" @click="sortBy('institution_name')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Institution</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'institution_name' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th class="py-3 px-3 min-w-[130px] cursor-pointer select-none group" @click="sortBy('divisions')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Divisions</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'divisions' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th class="py-3 px-3 w-28 text-right shrink-0">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-theme-border bg-theme-surface">
+                        <template x-for="spk in filteredSpeakers" :key="spk.id">
+                            <tr class="hover:bg-theme-base/40 transition group"
+                                :class="editingRowId === spk.id ? 'bg-kwuo-bronze/5' : ''">
+                                <!-- Checkbox -->
+                                <td class="py-3 px-3 text-center align-top shrink-0">
+                                    <input type="checkbox" :value="spk.id" x-model="selectedIds"
+                                           class="speaker-checkbox rounded border-theme-border text-kwuo-bronze focus:ring-0 mt-1">
+                                </td>
+
+                                <!-- Speaker Name + Pronouns (Inline Editable) -->
+                                <td class="py-3 px-3 font-body align-top min-w-[150px]">
+                                    <div x-show="editingRowId !== spk.id">
+                                        <div class="font-bold text-theme-heading text-xs break-words" x-text="spk.name"></div>
+                                        <div x-show="spk.pronouns" class="text-[10px] text-theme-body/50 mt-0.5 break-words" x-text="spk.pronouns"></div>
+                                    </div>
+                                    <template x-if="editingRowId === spk.id">
+                                        <div class="space-y-1">
+                                            <input type="text" x-model="editRowData.name" placeholder="Name *"
+                                                   class="w-full px-2 py-1 text-xs rounded-lg border border-kwuo-bronze bg-theme-surface text-theme-heading font-bold focus:outline-none">
+                                            <input type="text" x-model="editRowData.pronouns" placeholder="Pronouns (optional)"
+                                                   class="w-full px-2 py-0.5 text-[10px] rounded-lg border border-theme-border bg-theme-base text-theme-heading focus:outline-none">
+                                        </div>
+                                    </template>
+                                </td>
+
+                                <!-- Email (Inline Editable) -->
+                                <td class="py-3 px-3 font-body align-top min-w-[180px]">
+                                    <div x-show="editingRowId !== spk.id">
+                                        <span class="text-theme-heading text-xs break-all block" x-text="spk.email"></span>
+                                    </div>
+                                    <template x-if="editingRowId === spk.id">
+                                        <input type="email" x-model="editRowData.email" placeholder="Email *"
+                                               class="w-full px-2 py-1 text-xs rounded-lg border border-kwuo-bronze bg-theme-surface text-theme-heading focus:outline-none">
+                                    </template>
+                                </td>
+
+                                <!-- Phone (Inline Editable) -->
+                                <td class="py-3 px-3 font-body align-top min-w-[110px]">
+                                    <div x-show="editingRowId !== spk.id">
+                                        <span class="text-theme-body/60 text-xs whitespace-nowrap" x-text="spk.phone || '—'"></span>
+                                    </div>
+                                    <template x-if="editingRowId === spk.id">
+                                        <input type="text" x-model="editRowData.phone" placeholder="Phone"
+                                               class="w-full px-2 py-1 text-xs rounded-lg border border-theme-border bg-theme-surface text-theme-heading focus:outline-none">
+                                    </template>
+                                </td>
+
+                                <!-- Institution (Sleek Combobox Dropdown) -->
+                                <td class="py-3 px-3 font-body align-top min-w-[170px]">
+                                    <div x-show="editingRowId !== spk.id">
+                                        <span class="text-xs text-theme-heading font-medium break-words block" x-text="spk.institution_name || 'Independent'"></span>
+                                    </div>
+                                    <template x-if="editingRowId === spk.id">
+                                        <div x-data="kwuoDropdown()" class="relative w-full">
+                                            <button type="button" x-ref="trigger" @click="toggle()"
+                                                    class="w-full inline-flex items-center justify-between gap-1.5 px-2.5 py-1 text-xs rounded-lg border border-theme-border bg-theme-base text-theme-heading hover:border-kwuo-bronze focus:outline-none transition text-left font-body">
+                                                <span class="truncate" x-text="getInstitutionName(editRowData.institution_id)"></span>
+                                                <i class="ph-bold ph-caret-down text-[10px] text-theme-body/50 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                                            </button>
+                                            <template x-teleport="body">
+                                                <div x-show="open" x-cloak @click.away="close()" :style="menuStyle"
+                                                     x-transition:enter="transition ease-out duration-150"
+                                                     x-transition:enter-start="opacity-0 scale-95"
+                                                     x-transition:enter-end="opacity-100 scale-100"
+                                                     class="overflow-hidden rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md flex flex-col">
+                                                    <div class="p-1.5 border-b border-theme-border/60">
+                                                        <input type="text" x-model="instFilterText" placeholder="Search institution..."
+                                                               @click.stop
+                                                               class="w-full px-2 py-1 rounded-md border border-theme-border bg-theme-base text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
+                                                    </div>
+                                                    <div class="overflow-y-auto max-h-48 divide-y divide-theme-border/30">
+                                                        <button type="button" @click="editRowData.institution_id = ''; close()"
+                                                                class="w-full text-left px-3 py-1.5 hover:bg-theme-base flex items-center justify-between text-theme-body/70 italic font-body"
+                                                                :class="!editRowData.institution_id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : ''">
+                                                            <span>Independent / Unaffiliated</span>
+                                                            <i x-show="!editRowData.institution_id" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                                                        </button>
+                                                        <template x-for="inst in filteredInstitutionsForEdit" :key="inst.id">
+                                                            <button type="button" @click="editRowData.institution_id = inst.id; close()"
+                                                                    class="w-full text-left px-3 py-1.5 hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze flex items-center justify-between text-theme-heading font-body transition"
+                                                                    :class="editRowData.institution_id === inst.id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : ''">
+                                                                <span class="truncate" x-text="inst.name"></span>
+                                                                <span x-show="inst.code" class="text-[10px] text-theme-body/50 uppercase ml-2 shrink-0" x-text="inst.code"></span>
+                                                            </button>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </td>
+
+                                <!-- Divisions (Inline Badges / Checkboxes) -->
+                                <td class="py-3 px-3 font-body align-top min-w-[130px]">
+                                    <div x-show="editingRowId !== spk.id" class="flex flex-wrap gap-1">
+                                        <template x-for="d in (spk.divisions || [])" :key="d">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20"
+                                                  x-text="d"></span>
+                                        </template>
+                                        <span x-show="!(spk.divisions && spk.divisions.length)" class="text-[10px] text-theme-body/40 italic">Open</span>
+                                    </div>
+                                    <template x-if="editingRowId === spk.id">
+                                        <div class="flex flex-wrap gap-1 max-w-[220px]">
+                                            <template x-for="d in divisionsList" :key="d.id">
+                                                <label class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] cursor-pointer transition select-none"
+                                                       :class="editRowData.division_ids.includes(d.id) ? 'border-kwuo-bronze bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'border-theme-border bg-theme-base text-theme-body/60'">
+                                                    <input type="checkbox" :value="d.id" x-model="editRowData.division_ids" class="sr-only">
+                                                    <span x-text="d.name"></span>
+                                                </label>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </td>
+
+                                <!-- Actions: Edit / Save, Link, Delete -->
+                                <td class="py-3 px-3 text-right font-body align-top w-28 shrink-0 whitespace-nowrap">
+                                    <div x-show="editingRowId !== spk.id" class="flex items-center justify-end gap-1.5">
+                                        <button type="button" @click="startInlineEdit(spk)"
+                                                class="p-1.5 rounded-lg border border-theme-border hover:bg-theme-base text-theme-body/70 hover:text-theme-heading transition"
+                                                title="Edit speaker inline">
+                                            <i class="ph-bold ph-pencil-simple text-xs"></i>
+                                        </button>
+                                        <button type="button" @click="sendMagicLink(spk)"
+                                                class="p-1.5 rounded-lg border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze transition"
+                                                title="Send magic link email">
+                                            <i class="ph-bold ph-link text-xs"></i>
+                                        </button>
+                                        <button type="button" @click="confirmDelete(spk.id, spk.name)"
+                                                class="p-1.5 rounded-lg border border-theme-border hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition"
+                                                title="Delete speaker">
+                                            <i class="ph-bold ph-trash text-xs"></i>
+                                        </button>
+                                    </div>
+                                    <div x-show="editingRowId === spk.id" class="flex items-center justify-end gap-1.5">
+                                        <button type="button" @click="saveRowInlineEdit(spk)"
+                                                class="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-2xs"
+                                                title="Save changes">
+                                            <i class="ph-bold ph-check text-xs"></i>
+                                        </button>
+                                        <button type="button" @click="cancelInlineEdit()"
+                                                class="p-1.5 rounded-lg border border-theme-border hover:bg-theme-base text-theme-body/60 hover:text-theme-heading transition"
+                                                title="Cancel edit">
+                                            <i class="ph-bold ph-x text-xs"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+
+                        <tr x-show="filteredSpeakers.length === 0">
+                            <td colspan="7" class="py-12 text-center text-xs text-theme-body/60 font-body">
+                                <div class="max-w-xs mx-auto space-y-3">
+                                    <div class="h-12 w-12 rounded-2xl bg-kwuo-bronze/10 text-kwuo-bronze flex items-center justify-center mx-auto border border-kwuo-bronze/20">
+                                        <i class="ph-bold ph-users-three text-xl"></i>
+                                    </div>
+                                    <p class="font-bold text-theme-heading">No speakers found</p>
+                                    <p class="text-[11px] text-theme-body/60 leading-relaxed">
+                                        Try adjusting your search or filters, or add a new speaker to the tournament.
+                                    </p>
+                                    <button type="button" @click="openAddModal()"
+                                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-bold transition shadow-xs">
+                                        <i class="ph-bold ph-plus"></i>
+                                        <span>Add Speaker</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </div>
+
+    <!-- MAIN VIEW 2: Cards Grid View (Wrapped inside single Torn Docket, rounded rectangle cards) -->
+    <div x-show="viewMode === 'cards'" x-cloak class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-5 sm:!p-6 font-body">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <template x-for="spk in filteredSpeakers" :key="spk.id">
+                    <div class="rounded-xl border border-theme-border bg-theme-surface p-4 flex flex-col justify-between hover:border-kwuo-bronze/40 transition space-y-3"
+                         :class="editingRowId === spk.id ? 'border-kwuo-bronze bg-kwuo-bronze/5' : ''">
+                        
+                        <!-- Top Row: Checkbox + Name + Pronouns + Actions -->
+                        <div>
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex items-start gap-2.5 min-w-0 flex-1">
+                                    <input type="checkbox" :value="spk.id" x-model="selectedIds"
+                                           class="mt-1 rounded border-theme-border text-kwuo-bronze focus:ring-0 shrink-0">
+                                    
+                                    <div class="min-w-0 flex-1">
+                                        <!-- Normal View -->
+                                        <div x-show="editingRowId !== spk.id">
+                                            <h3 class="font-bold text-sm sm:text-base text-theme-heading leading-tight truncate" x-text="spk.name"></h3>
+                                            <div x-show="spk.pronouns" class="text-[10px] text-theme-body/50 mt-0.5 truncate" x-text="spk.pronouns"></div>
+                                        </div>
+                                        <!-- Inline Edit Inputs -->
+                                        <div x-show="editingRowId === spk.id" class="space-y-1.5">
+                                            <input type="text" x-model="editRowData.name" placeholder="Name *"
+                                                   class="w-full px-2 py-1 text-xs rounded border border-kwuo-bronze bg-theme-surface text-theme-heading font-bold focus:outline-none">
+                                            <input type="text" x-model="editRowData.pronouns" placeholder="Pronouns (optional)"
+                                                   class="w-full px-2 py-0.5 text-[10px] rounded border border-theme-border bg-theme-base text-theme-heading focus:outline-none">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions on Top Right (edit, link, delete) -->
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <div x-show="editingRowId !== spk.id" class="flex items-center gap-1">
+                                        <button type="button" @click="startInlineEdit(spk)"
+                                                class="p-1.5 rounded-lg border border-theme-border hover:bg-theme-base text-theme-body/70 hover:text-theme-heading transition"
+                                                title="Edit speaker inline">
+                                            <i class="ph-bold ph-pencil-simple text-xs"></i>
+                                        </button>
+                                        <button type="button" @click="sendMagicLink(spk)"
+                                                class="p-1.5 rounded-lg border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze transition"
+                                                title="Send magic link email">
+                                            <i class="ph-bold ph-link text-xs"></i>
+                                        </button>
+                                        <button type="button" @click="confirmDelete(spk.id, spk.name)"
+                                                class="p-1.5 rounded-lg border border-theme-border hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition"
+                                                title="Delete speaker">
+                                            <i class="ph-bold ph-trash text-xs"></i>
+                                        </button>
+                                    </div>
+                                    <div x-show="editingRowId === spk.id" class="flex items-center gap-1">
+                                        <button type="button" @click="saveRowInlineEdit(spk)"
+                                                class="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-2xs"
+                                                title="Save changes">
+                                            <i class="ph-bold ph-check text-xs"></i>
+                                        </button>
+                                        <button type="button" @click="cancelInlineEdit()"
+                                                class="p-1.5 rounded-lg border border-theme-border hover:bg-theme-base text-theme-body/60 hover:text-theme-heading transition"
+                                                title="Cancel edit">
+                                            <i class="ph-bold ph-x text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card Middle: Email, Phone, Institution, Divisions -->
+                            <div class="mt-2.5 space-y-2">
+                                <!-- Normal Middle -->
+                                <div x-show="editingRowId !== spk.id" class="space-y-1.5">
+                                    <div class="text-xs text-theme-body/70 truncate" x-text="spk.email"></div>
+                                    <div x-show="spk.phone" class="text-xs text-theme-body/60 truncate" x-text="spk.phone"></div>
+                                    <div class="text-xs text-theme-heading font-medium truncate pt-0.5">
+                                        <span x-text="spk.institution_name || 'Independent'"></span>
+                                    </div>
+                                    <div class="pt-1">
+                                        <div class="text-[10px] font-bold uppercase tracking-wider text-theme-body/50 mb-1">
+                                            Divisions
+                                        </div>
+                                        <div class="flex flex-wrap gap-1">
+                                            <template x-for="d in (spk.divisions || [])" :key="d">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20"
+                                                      x-text="d"></span>
+                                            </template>
+                                            <span x-show="!(spk.divisions && spk.divisions.length)" class="px-2 py-0.5 rounded text-[10px] font-bold bg-theme-base text-theme-body/60 border border-theme-border">Open</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Inline Edit Form Controls -->
+                                <template x-if="editingRowId === spk.id">
+                                    <div class="space-y-2 pt-2 border-t border-theme-border/60">
+                                        <div>
+                                            <label class="block text-[10px] font-bold uppercase tracking-wider text-theme-body/60 mb-0.5">Email *</label>
+                                            <input type="email" x-model="editRowData.email" placeholder="Email"
+                                                   class="w-full px-2 py-1 text-xs rounded-lg border border-kwuo-bronze bg-theme-surface text-theme-heading focus:outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold uppercase tracking-wider text-theme-body/60 mb-0.5">Phone</label>
+                                            <input type="text" x-model="editRowData.phone" placeholder="Phone"
+                                                   class="w-full px-2 py-1 text-xs rounded-lg border border-theme-border bg-theme-surface text-theme-heading focus:outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold uppercase tracking-wider text-theme-body/60 mb-0.5">Institution</label>
+                                            <div x-data="kwuoDropdown()" class="relative w-full">
+                                                <button type="button" x-ref="trigger" @click="toggle()"
+                                                        class="w-full inline-flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border border-theme-border bg-theme-base text-theme-heading hover:border-kwuo-bronze focus:outline-none transition text-left font-body">
+                                                    <span class="truncate" x-text="getInstitutionName(editRowData.institution_id)"></span>
+                                                    <i class="ph-bold ph-caret-down text-[10px] text-theme-body/50 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                                                </button>
+                                                <template x-teleport="body">
+                                                    <div x-show="open" x-cloak @click.away="close()" :style="menuStyle"
+                                                         x-transition:enter="transition ease-out duration-150"
+                                                         x-transition:enter-start="opacity-0 scale-95"
+                                                         x-transition:enter-end="opacity-100 scale-100"
+                                                         class="overflow-hidden rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md flex flex-col">
+                                                        <div class="p-1.5 border-b border-theme-border/60">
+                                                            <input type="text" x-model="instFilterText" placeholder="Search institution..."
+                                                                   @click.stop
+                                                                   class="w-full px-2 py-1 rounded-md border border-theme-border bg-theme-base text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
+                                                        </div>
+                                                        <div class="overflow-y-auto max-h-48 divide-y divide-theme-border/30">
+                                                            <button type="button" @click="editRowData.institution_id = ''; close()"
+                                                                    class="w-full text-left px-3 py-1.5 hover:bg-theme-base flex items-center justify-between text-theme-body/70 italic font-body"
+                                                                    :class="!editRowData.institution_id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : ''">
+                                                                <span>Independent / Unaffiliated</span>
+                                                                <i x-show="!editRowData.institution_id" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                                                            </button>
+                                                            <template x-for="inst in filteredInstitutionsForEdit" :key="inst.id">
+                                                                <button type="button" @click="editRowData.institution_id = inst.id; close()"
+                                                                        class="w-full text-left px-3 py-1.5 hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze flex items-center justify-between text-theme-heading font-body transition"
+                                                                        :class="editRowData.institution_id === inst.id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : ''">
+                                                                    <span class="truncate" x-text="inst.name"></span>
+                                                                    <span x-show="inst.code" class="text-[10px] text-theme-body/50 uppercase ml-2 shrink-0" x-text="inst.code"></span>
+                                                                </button>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold uppercase tracking-wider text-theme-body/60 mb-1">Divisions</label>
+                                            <div class="flex flex-wrap gap-1">
+                                                <template x-for="d in divisionsList" :key="d.id">
+                                                    <label class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] cursor-pointer transition select-none"
+                                                           :class="editRowData.division_ids.includes(d.id) ? 'border-kwuo-bronze bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'border-theme-border bg-theme-base text-theme-body/60'">
+                                                        <input type="checkbox" :value="d.id" x-model="editRowData.division_ids" class="sr-only">
+                                                        <span x-text="d.name"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                    </div>
+                </template>
+
+                <div x-show="filteredSpeakers.length === 0" class="col-span-full py-12 text-center text-xs text-theme-body/60 italic font-body">
+                    No speakers match the current filters or search query.
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <!-- Floating Multi-Select Bulk Actions Pill -->
+    <div x-show="selectedIds.length > 0" x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-4"
+         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-theme-surface border-2 border-kwuo-bronze/40 shadow-2xl rounded-2xl px-4 py-2.5 flex items-center gap-3 font-body">
+        <div class="text-xs font-bold text-theme-heading flex items-center gap-1.5 pr-2 border-r border-theme-border">
+            <i class="ph-bold ph-check-square-offset text-kwuo-bronze text-base"></i>
+            <span x-text="selectedIds.length + ' selected'"></span>
+        </div>
+
+        <button type="button" @click="bulkSendMagicLinks()"
+                class="px-3 py-1.5 rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze hover:bg-kwuo-bronze/20 text-xs font-bold border border-kwuo-bronze/20 transition flex items-center gap-1.5">
+            <i class="ph-bold ph-paper-plane-tilt"></i>
+            <span>Send Magic Links</span>
+        </button>
+
+        <button type="button" @click="openBulkDelete()"
+                class="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 text-xs font-bold border border-rose-500/20 transition flex items-center gap-1.5">
+            <i class="ph-bold ph-trash"></i>
+            <span>Delete</span>
+        </button>
+
+        <button type="button" @click="selectedIds = []; selectAll = false"
+                class="text-xs text-theme-body/60 hover:text-theme-heading p-1">
+            <i class="ph-bold ph-x text-sm"></i>
+        </button>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 1: Add Speaker Modal (Save & Add Another updates table instantly)    -->
+    <!-- ========================================================================= -->
+    <template x-teleport="body">
+        <div x-show="addModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="addModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg z-10" @keydown.escape.window="addModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[88vh] font-body">
+                    <!-- Modal Fixed Header -->
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                        <div class="flex items-center gap-2">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                                <i class="ph-bold ph-user-plus text-base"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">Add Speaker</h3>
+                                <p class="text-[11px] text-theme-body/60">Register competitor and issue personal magic link</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="addModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-base"></i>
+                        </button>
+                    </div>
+
+                <!-- Modal Form -->
+                <form id="addSpeakerForm" method="POST" action="/admin/speakers" class="overflow-y-auto flex-1 py-4 space-y-4">
+                    <div>
+                        <label for="add_speaker_name" class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                            Speaker Name / Nickname *
+                        </label>
+                        <input type="text" id="add_speaker_name" name="name" x-model="addForm.name" required
+                               placeholder="e.g. Maya Angelou, JJ, or Kwame"
+                               class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label for="add_speaker_email" class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Email Address *
+                            </label>
+                            <input type="email" id="add_speaker_email" name="email" x-model="addForm.email" required
+                                   placeholder="speaker@school.edu"
+                                   class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
+                        </div>
+
+                        <div>
+                            <label for="add_speaker_phone" class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Phone Number
+                            </label>
+                            <input type="tel" id="add_speaker_phone" name="phone" x-model="addForm.phone"
+                                   placeholder="+1 (555) 000-0000"
+                                   class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="add_speaker_pronouns" class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                            Pronouns (Optional)
+                        </label>
+                        <input type="text" id="add_speaker_pronouns" name="pronouns" x-model="addForm.pronouns"
+                               placeholder="e.g. she/her, they/them, he/him"
+                               class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
+                    </div>
+
+                    <!-- Multi-Division Eligibility -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading font-body">
+                                Division Eligibility *
+                            </label>
+                            <span class="text-[10px] text-theme-body/60 font-body">Select one or more</span>
+                        </div>
+                        {% if divisions %}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {% for div in divisions %}
+                            <label class="flex items-start gap-2.5 p-2.5 rounded-xl border transition cursor-pointer text-xs"
+                                   :class="addForm.division_ids.includes('{{ div.id }}') ? 'border-kwuo-bronze bg-kwuo-bronze/10 text-kwuo-bronze shadow-2xs font-bold' : 'border-theme-border bg-theme-base/60 hover:bg-theme-surface text-theme-heading'">
+                                <input type="checkbox" name="division_ids" value="{{ div.id }}" x-model="addForm.division_ids"
+                                       class="mt-0.5 rounded border-theme-border text-kwuo-bronze focus:ring-0">
+                                <div class="min-w-0 flex-1">
+                                    <div class="leading-tight truncate">{{ div.name }}</div>
+                                    {% if div.description %}
+                                    <p class="text-[10px] text-theme-body/60 leading-tight mt-0.5 truncate font-normal">{{ div.description }}</p>
+                                    {% endif %}
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-xs text-theme-body/60 italic font-body">Open Division (Default)</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Representing Institution -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading font-body">
+                            Representing Institution
+                        </label>
+                        <input type="hidden" name="institution_id" :value="addForm.institution_id">
+
+                        <div x-data="kwuoDropdown()" class="relative">
+                            <div x-ref="trigger" class="relative">
+                                <input type="text" x-model="addForm.instSearch"
+                                       @focus="if (!open) toggle()"
+                                       @input="if (!open) toggle()"
+                                       placeholder="Type to find or add institution..."
+                                       class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body pr-8">
+                                <button type="button" @click="toggle()"
+                                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-theme-body/50 p-0.5">
+                                    <i class="ph-bold ph-caret-down text-xs" :class="{ 'rotate-180': open }"></i>
+                                </button>
+                            </div>
+
+                            <template x-teleport="body">
+                                <div x-show="open" x-cloak @click.away="close()" :style="menuStyle"
+                                     x-transition:enter="transition ease-out duration-150"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
+                                     class="overflow-y-auto max-h-56 rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md">
+                                    <button type="button"
+                                            @click="addForm.institution_id = ''; addForm.instSearch = 'Independent / Unaffiliated'; addForm.isCreatingInst = false; close()"
+                                            class="w-full text-left px-3 py-1.5 hover:bg-theme-base text-theme-body/70 italic border-b border-theme-border/40">
+                                        Independent / Unaffiliated
+                                    </button>
+                                    <template x-for="item in filteredAddInstitutions" :key="item.id">
+                                        <button type="button"
+                                                @click="addForm.institution_id = item.id; addForm.instSearch = item.name; addForm.isCreatingInst = false; close()"
+                                                class="w-full text-left px-3 py-1.5 hover:bg-theme-base flex items-center justify-between text-theme-heading">
+                                            <span x-text="item.name"></span>
+                                            <span class="text-[10px] text-theme-body/50 uppercase" x-text="item.code"></span>
+                                        </button>
+                                    </template>
+                                    <template x-if="addForm.instSearch.trim().length > 0">
+                                        <button type="button"
+                                                @click="addForm.institution_id = 'new'; addForm.isCreatingInst = true; addForm.newInstName = addForm.instSearch.trim(); close()"
+                                                class="w-full text-left px-3 py-2 hover:bg-kwuo-bronze/10 text-kwuo-bronze flex items-center gap-1.5 border-t border-theme-border font-bold">
+                                            <i class="ph-bold ph-plus-circle text-xs"></i>
+                                            <span>+ Create new institution "<span x-text="addForm.instSearch.trim()"></span>"</span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Inline New Institution Details -->
+                        <div x-show="addForm.isCreatingInst" x-cloak
+                             class="p-3 rounded-xl border border-kwuo-bronze/30 bg-kwuo-bronze/5 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-bold text-kwuo-bronze uppercase tracking-wider">
+                                    Create New Institution
+                                </span>
+                                <button type="button" @click="addForm.isCreatingInst = false; addForm.institution_id = ''"
+                                        class="text-[10px] text-theme-body/60 hover:text-theme-heading">Cancel</button>
+                            </div>
+                            <input type="text" name="institution_name" x-model="addForm.newInstName" placeholder="Full Institution Name"
+                                   class="w-full rounded-lg border border-theme-border bg-theme-surface px-3 py-1.5 text-xs text-theme-heading font-body">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" name="institution_code" x-model="addForm.newInstCode" placeholder="Code (e.g. YALE)"
+                                       class="w-full rounded-lg border border-theme-border bg-theme-surface px-3 py-1.5 text-xs text-theme-heading font-body">
+                                <input type="text" name="institution_country" x-model="addForm.newInstCountry" placeholder="Country"
+                                       class="w-full rounded-lg border border-theme-border bg-theme-surface px-3 py-1.5 text-xs text-theme-heading font-body">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Actions: Save & Add Another & Save & Finish -->
+                <div class="pt-3 border-t border-theme-border shrink-0 flex items-center justify-between gap-2 font-body">
+                    <button type="button" @click="addModal = false"
+                            class="px-3.5 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:text-theme-heading hover:bg-theme-base transition">
+                        Cancel
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="saveAndAddAnother()"
+                                class="px-3.5 py-2 rounded-xl border border-kwuo-bronze/40 text-kwuo-bronze bg-kwuo-bronze/5 hover:bg-kwuo-bronze/15 text-xs font-bold transition">
+                            Save &amp; Add Another
+                        </button>
+                        <button type="submit" form="addSpeakerForm"
+                                class="px-4 py-2 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white text-xs font-bold transition shadow-xs">
+                            Save &amp; Finish
+                        </button>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+</template>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 2: Edit Speaker Modal                                               -->
+    <!-- ========================================================================= -->
+    <template x-teleport="body">
+        <div x-show="editModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="editModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg z-10" @keydown.escape.window="editModal = false">
+            <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[88vh] font-body">
+                <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                    <div class="flex items-center gap-2">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                            <i class="ph-bold ph-pencil-simple text-base"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">Edit Speaker</h3>
+                            <p class="text-[11px] text-theme-body/60" x-text="editForm.name"></p>
+                        </div>
+                    </div>
+                    <button type="button" @click="editModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                        <i class="ph-bold ph-x text-base"></i>
+                    </button>
+                </div>
+
+                <form id="editSpeakerForm" method="POST" :action="'/admin/speakers/' + editForm.id + '/update'" class="overflow-y-auto flex-1 py-4 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                            Speaker Name / Nickname *
+                        </label>
+                        <input type="text" name="name" x-model="editForm.name" required
+                               class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading focus:outline-none focus:border-kwuo-bronze font-body">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Email Address *
+                            </label>
+                            <input type="email" name="email" x-model="editForm.email" required
+                                   class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading focus:outline-none focus:border-kwuo-bronze font-body">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Phone Number
+                            </label>
+                            <input type="tel" name="phone" x-model="editForm.phone"
+                                   class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading focus:outline-none focus:border-kwuo-bronze font-body">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                            Pronouns
+                        </label>
+                        <input type="text" name="pronouns" x-model="editForm.pronouns"
+                               class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading focus:outline-none focus:border-kwuo-bronze font-body">
+                    </div>
+
+                    <!-- Multi-Division Eligibility -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading font-body">
+                                Division Eligibility *
+                            </label>
+                            <span class="text-[10px] text-theme-body/60 font-body">Select one or more</span>
+                        </div>
+                        {% if divisions %}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {% for div in divisions %}
+                            <label class="flex items-start gap-2.5 p-2.5 rounded-xl border transition cursor-pointer text-xs"
+                                   :class="editForm.division_ids.includes('{{ div.id }}') ? 'border-kwuo-bronze bg-kwuo-bronze/10 text-kwuo-bronze shadow-2xs font-bold' : 'border-theme-border bg-theme-base/60 hover:bg-theme-surface text-theme-heading'">
+                                <input type="checkbox" name="division_ids" value="{{ div.id }}" x-model="editForm.division_ids"
+                                       class="mt-0.5 rounded border-theme-border text-kwuo-bronze focus:ring-0">
+                                <div class="min-w-0 flex-1">
+                                    <div class="leading-tight truncate">{{ div.name }}</div>
+                                    {% if div.description %}
+                                    <p class="text-[10px] text-theme-body/60 leading-tight mt-0.5 truncate font-normal">{{ div.description }}</p>
+                                    {% endif %}
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Institution Selection -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading font-body">
+                            Representing Institution
+                        </label>
+                        <input type="hidden" name="institution_id" :value="editForm.institution_id">
+
+                        <div x-data="kwuoDropdown()" class="relative">
+                            <div x-ref="trigger" class="relative">
+                                <input type="text" x-model="editForm.instSearch"
+                                       @focus="if (!open) toggle()"
+                                       @input="if (!open) toggle()"
+                                       placeholder="Type to search institution..."
+                                       class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading focus:outline-none focus:border-kwuo-bronze font-body pr-8">
+                                <button type="button" @click="toggle()"
+                                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-theme-body/50 p-0.5">
+                                    <i class="ph-bold ph-caret-down text-xs" :class="{ 'rotate-180': open }"></i>
+                                </button>
+                            </div>
+
+                            <template x-teleport="body">
+                                <div x-show="open" x-cloak @click.away="close()" :style="menuStyle"
+                                     x-transition:enter="transition ease-out duration-150"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
+                                     class="overflow-y-auto max-h-56 rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md">
+                                    <button type="button"
+                                            @click="editForm.institution_id = ''; editForm.instSearch = 'Independent / Unaffiliated'; close()"
+                                            class="w-full text-left px-3 py-1.5 hover:bg-theme-base text-theme-body/70 italic border-b border-theme-border/40">
+                                        Independent / Unaffiliated
+                                    </button>
+                                    <template x-for="item in filteredEditInstitutions" :key="item.id">
+                                        <button type="button"
+                                                @click="editForm.institution_id = item.id; editForm.instSearch = item.name; close()"
+                                                class="w-full text-left px-3 py-1.5 hover:bg-theme-base flex items-center justify-between text-theme-heading">
+                                            <span x-text="item.name"></span>
+                                            <span class="text-[10px] text-theme-body/50 uppercase" x-text="item.code"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="pt-3 border-t border-theme-border shrink-0 flex items-center justify-end gap-2 font-body">
+                    <button type="button" @click="editModal = false"
+                            class="px-3.5 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:text-theme-heading hover:bg-theme-base transition">
+                        Cancel
+                    </button>
+                    <button type="submit" form="editSpeakerForm"
+                            class="px-5 py-2 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white text-xs font-bold transition shadow-xs">
+                        Save Changes
+                    </button>
+                </div>
+            </article>
+        </div>
+    </div>
+</template>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 3: Upload Spreadsheet Modal (Matches media_1794072427262_01c7b88c.png)-->
+    <!-- ========================================================================= -->
+    <template x-teleport="body">
+        <div x-show="importModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="importModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-md z-10" @keydown.escape.window="importModal = false">
+            <article class="kwuo-torn-docket !p-5 sm:!p-6 space-y-4 font-body">
+                <!-- Header with Mint/Green XLS Icon -->
+                <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-black text-xs border border-emerald-500/25 shrink-0">
+                            <i class="ph-bold ph-file-xls text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-extrabold text-base text-theme-heading leading-tight">
+                                Upload Spreadsheet
+                            </h3>
+                            <p class="text-[11px] text-theme-body/60 mt-0.5">
+                                Import speakers via Excel (.xlsx) or CSV
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" @click="importModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                        <i class="ph-bold ph-x text-base"></i>
+                    </button>
+                </div>
+
+                <!-- Form -->
+                <form method="POST" action="/admin/speakers/import" enctype="multipart/form-data" hx-boost="false" class="space-y-4">
+                    <div>
+                        <label class="block text-[11px] font-black uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Select Spreadsheet File *
+                        </label>
+                        
+                        <!-- File Upload Box matching media_1794072427262_01c7b88c.png -->
+                        <div class="relative rounded-2xl border border-theme-border bg-theme-base/60 p-2 flex items-center gap-3">
+                            <label class="cursor-pointer inline-flex items-center px-4 py-2 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white text-xs font-bold transition shadow-xs shrink-0">
+                                <span>Browse...</span>
+                                <input type="file" name="file" accept=".xlsx, .csv" required
+                                       @change="importFileName = $event.target.files[0] ? $event.target.files[0].name : ''"
+                                       class="sr-only">
+                            </label>
+                            <span class="text-xs text-theme-body/70 truncate flex-1 font-medium"
+                                  x-text="importFileName ? importFileName : 'No file selected.'">
+                            </span>
+                        </div>
+                        
+                        <p class="text-[11px] text-theme-body/70 mt-2 leading-relaxed">
+                            Spreadsheet should contain columns: <strong>Name</strong>, <strong>Email</strong>, <strong>Phone</strong> (Cells can be blank), <strong>Institution</strong>, and <strong>Division</strong>.
+                        </p>
+                    </div>
+
+                    <div class="pt-3 border-t border-theme-border flex items-center justify-end gap-2.5">
+                        <button type="button" @click="importModal = false"
+                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:text-theme-heading hover:bg-theme-base transition">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5">
+                            <i class="ph-bold ph-upload-simple"></i>
+                            <span>Upload &amp; Import</span>
+                        </button>
+                    </div>
+                </form>
+            </article>
+        </div>
+    </div>
+</template>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 4: Delete Speaker Confirmation                                      -->
+    <!-- ========================================================================= -->
+    <template x-teleport="body">
+        <div x-show="deleteModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="deleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-sm z-10" @keydown.escape.window="deleteModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 space-y-4 font-body text-center">
+                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                        <i class="ph-bold ph-trash text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-bold text-base text-theme-heading">Delete Speaker</h3>
+                        <p class="text-xs text-theme-body/70 mt-1">
+                            Are you sure you want to remove <strong class="text-theme-heading" x-text="deleteTargetName"></strong> from this tournament?
+                        </p>
+                    </div>
+
+                    <div class="pt-2 flex items-center justify-center gap-2">
+                        <button type="button" @click="deleteModal = false"
+                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:text-theme-heading hover:bg-theme-base transition">
+                            Cancel
+                        </button>
+                        <button type="button" @click="deleteSpeaker()"
+                                class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs">
+                            Confirm Delete
+                        </button>
+                    </div>
                 </article>
             </div>
         </div>
-    </div>
+    </template>
+
 </div>
 {% endblock %}

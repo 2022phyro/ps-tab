@@ -1,0 +1,122 @@
+{% extends "tenant/base.html" %}
+
+{% block title %}{{ participant.name }} — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold font-body">
+        <a href="/" class="hover:text-kwuo-bronze">Overview</a>
+        <span>/</span>
+        <a href="/participants" class="hover:text-kwuo-bronze">Participants</a>
+        <span>/</span>
+        <span class="text-kwuo-bronze truncate">{{ participant.name }}</span>
+    </div>
+
+    <!-- Participant Profile Torn Docket -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-10 space-y-8 font-body">
+            <!-- Header Section -->
+            <div class="flex items-start justify-between flex-wrap gap-4 pb-6 border-b border-theme-border">
+                <div class="space-y-1.5">
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
+                            {{ participant.name }}
+                        </h1>
+                        {% if speaker and speaker.pronouns %}
+                        <span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-theme-base border border-theme-border text-theme-body/70 font-body">
+                            {{ speaker.pronouns }}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Role Badges -->
+                    <div class="flex items-center gap-2 flex-wrap pt-1 font-body">
+                        {% if participant.is_speaker %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                            <i class="ph-bold ph-microphone-stage text-xs"></i>
+                            <span>Speaker</span>
+                        </span>
+                        {% endif %}
+                        {% if participant.is_judge %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold {% if judge and judge.is_chair_eligible %}bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20{% else %}bg-theme-base text-theme-body/80 border border-theme-border{% endif %}">
+                            <i class="ph-bold ph-scales text-xs"></i>
+                            <span>{{ 'Chair Adjudicator' if (judge and judge.is_chair_eligible) else 'Adjudicator' }}</span>
+                        </span>
+                        {% endif %}
+                        {% if participant.is_official %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
+                            <i class="ph-bold ph-shield text-xs"></i>
+                            <span>Tournament Official</span>
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <a href="/participants"
+                   class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface text-theme-heading text-xs font-bold transition font-body shadow-2xs">
+                    <i class="ph-bold ph-arrow-left text-xs"></i>
+                    <span>All Participants</span>
+                </a>
+            </div>
+
+            <!-- Details Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 font-body">
+                <!-- Institution -->
+                <div class="p-4 rounded-xl border border-theme-border bg-theme-base/60 space-y-1">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-theme-body/60 font-body">
+                        Representing Institution
+                    </div>
+                    <div class="text-base font-heading font-bold text-theme-heading">
+                        {% if participant.institution %}
+                        <a href="/institutions" class="hover:text-kwuo-bronze transition">
+                            {{ participant.institution.name }}
+                        </a>
+                        {% if participant.institution.code %}
+                        <span class="text-xs text-theme-body/50 font-normal">({{ participant.institution.code }})</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-theme-body/70 italic font-body text-sm font-normal">Independent / Unaffiliated</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Division(s) -->
+                <div class="p-4 rounded-xl border border-theme-border bg-theme-base/60 space-y-1.5">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-theme-body/60 font-body">
+                        Competitive Divisions
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 pt-0.5">
+                        {% if participant.divisions %}
+                            {% for div in participant.divisions %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                                {{ div.name }}
+                            </span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-theme-surface text-theme-body/60 border border-theme-border font-body">
+                                Open Division
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Secondary Affiliations if any -->
+            {% if participant.affiliations %}
+            <div class="pt-4 border-t border-theme-border space-y-3 font-body">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-theme-heading font-body">Institutional Affiliations</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {% for aff in participant.affiliations %}
+                    <div class="p-3 rounded-lg border border-theme-border bg-theme-base/40 flex items-center justify-between text-xs">
+                        <span class="font-bold text-theme-heading">{{ aff.institution.name if aff.institution else 'Institution' }}</span>
+                        <span class="text-[10px] uppercase font-semibold text-theme-body/60">{{ aff.tie_type or 'Represents' }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </article>
+    </div>
+</div>
+{% endblock %}

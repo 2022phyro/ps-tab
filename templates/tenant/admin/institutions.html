@@ -32,6 +32,51 @@
             },
             bulkDeleteModal: false,
             bulkDeleting: false,
+            sortCol: 'name',
+            sortAsc: true,
+            sortBy(col) {
+                if (this.sortCol === col) {
+                    this.sortAsc = !this.sortAsc;
+                } else {
+                    this.sortCol = col;
+                    this.sortAsc = true;
+                }
+                const isNumeric = ['speakers', 'judges', 'ias', 'total'].includes(col);
+                const tbody = document.getElementById('institutions-tbody');
+                if (tbody) {
+                    const rows = Array.from(tbody.querySelectorAll('tr.institution-row'));
+                    rows.sort((a, b) => {
+                        let vA = a.dataset[col] || '';
+                        let vB = b.dataset[col] || '';
+                        if (isNumeric) {
+                            return this.sortAsc ? (Number(vA) - Number(vB)) : (Number(vB) - Number(vA));
+                        }
+                        vA = vA.toLowerCase();
+                        vB = vB.toLowerCase();
+                        if (vA < vB) return this.sortAsc ? -1 : 1;
+                        if (vA > vB) return this.sortAsc ? 1 : -1;
+                        return 0;
+                    });
+                    rows.forEach(r => tbody.appendChild(r));
+                }
+                const cardsContainer = document.getElementById('institutions-cards-container');
+                if (cardsContainer) {
+                    const cards = Array.from(cardsContainer.querySelectorAll('.institution-card'));
+                    cards.sort((a, b) => {
+                        let vA = a.dataset[col] || '';
+                        let vB = b.dataset[col] || '';
+                        if (isNumeric) {
+                            return this.sortAsc ? (Number(vA) - Number(vB)) : (Number(vB) - Number(vA));
+                        }
+                        vA = vA.toLowerCase();
+                        vB = vB.toLowerCase();
+                        if (vA < vB) return this.sortAsc ? -1 : 1;
+                        if (vA > vB) return this.sortAsc ? 1 : -1;
+                        return 0;
+                    });
+                    cards.forEach(c => cardsContainer.appendChild(c));
+                }
+            },
             toggleStats() {
                 const newState = !(this.visibleCols.speakers && this.visibleCols.judges);
                 this.visibleCols.speakers = newState;
@@ -346,7 +391,7 @@
     </div>
 
     <!-- Sticky Action & Search Toolbar -->
-    <div class="sticky top-16 z-30 bg-theme-surface/95 backdrop-blur-md -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 border-y border-theme-border shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+    <div class="sticky top-14 lg:top-0 z-30 bg-theme-base py-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="background-color: var(--color-bg-base);">
         <!-- Left: Search, Multi-select indicator & Column Visibility Picker -->
         <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-1 min-w-0">
             <!-- Search Bar -->
@@ -584,35 +629,81 @@
                                        class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5 cursor-pointer">
                             </th>
                             <!-- 2. Institution Name -->
-                            <th class="py-2.5 px-3 min-w-[170px] sm:min-w-[220px]">
-                                Full name
+                            <th class="py-2.5 px-3 min-w-[150px] sm:min-w-[200px] cursor-pointer select-none group" @click="sortBy('name')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Full name</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'name' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
                             </th>
-                            <!-- 3. Code -->
-                            <th x-show="visibleCols.code" class="py-2.5 px-2.5 whitespace-nowrap text-center">Code</th>
-                            <!-- 4. Country -->
-                            <th x-show="visibleCols.country" class="py-2.5 px-2.5 whitespace-nowrap">Country</th>
+                            <!-- 3. Code (Desktop / Tablet) -->
+                            <th x-show="visibleCols.code" class="py-2.5 px-2.5 whitespace-nowrap text-center hidden md:table-cell cursor-pointer select-none group" @click="sortBy('code')">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <span>Code</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'code' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <!-- 4. Country (Desktop / Tablet) -->
+                            <th x-show="visibleCols.country" class="py-2.5 px-2.5 whitespace-nowrap hidden md:table-cell cursor-pointer select-none group" @click="sortBy('country')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Country</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'country' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
                             <!-- 5. Region -->
-                            <th x-show="visibleCols.region" class="py-2.5 px-2.5 whitespace-nowrap">Region</th>
-                            <!-- 6. Speakers -->
-                            <th x-show="visibleCols.speakers" class="py-2.5 px-2.5 text-center whitespace-nowrap">Speakers</th>
-                            <!-- 7. Judges -->
-                            <th x-show="visibleCols.judges" class="py-2.5 px-2.5 text-center whitespace-nowrap">Judges</th>
+                            <th x-show="visibleCols.region" class="py-2.5 px-2.5 whitespace-nowrap cursor-pointer select-none group" @click="sortBy('region')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Region</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'region' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <!-- 6. Teams / Speakers -->
+                            <th x-show="visibleCols.speakers" class="py-2.5 px-2 text-center whitespace-nowrap font-bold cursor-pointer select-none group" @click="sortBy('speakers')">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <span>Teams</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'speakers' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <!-- 7. Adjs / Judges -->
+                            <th x-show="visibleCols.judges" class="py-2.5 px-2 text-center whitespace-nowrap font-bold cursor-pointer select-none group" @click="sortBy('judges')">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <span>Adjs</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'judges' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
                             <!-- 8. IAs -->
-                            <th x-show="visibleCols.ias" class="py-2.5 px-2.5 text-center whitespace-nowrap font-bold text-kwuo-bronze">IAs</th>
+                            <th x-show="visibleCols.ias" class="py-2.5 px-2 text-center whitespace-nowrap font-bold text-kwuo-bronze cursor-pointer select-none group" @click="sortBy('ias')">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <span>IAs</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'ias' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
                             <!-- 9. Total -->
-                            <th x-show="visibleCols.total" class="py-2.5 px-3 text-center whitespace-nowrap font-bold">Total</th>
+                            <th x-show="visibleCols.total" class="py-2.5 px-2.5 text-center whitespace-nowrap font-bold hidden sm:table-cell cursor-pointer select-none group" @click="sortBy('total')">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <span>Total</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'total' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
                             <!-- 10. Actions -->
                             <th class="py-2.5 px-3 text-right whitespace-nowrap">
                                 Actions
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-theme-border">
+                    <tbody id="institutions-tbody" class="divide-y divide-theme-border">
                         {% for inst in institutions %}
                         <tr id="inst-row-{{ inst.id }}"
                             x-show="matchesFilter('{{ inst.name|replace('\'', '\\\'') }}', '{{ inst.code|replace('\'', '\\\'') }}', '{{ (inst.country_name or inst.country)|replace('\'', '\\\'') }}', '{{ inst.region|replace('\'', '\\\'') }}')"
+                            data-name="{{ inst.name }}"
+                            data-code="{{ inst.code or '' }}"
+                            data-country="{{ inst.country_name or inst.country or '' }}"
+                            data-region="{{ inst.region_display or inst.region or '' }}"
+                            data-speakers="{{ inst.speakers_count }}"
+                            data-judges="{{ inst.judges_count }}"
+                            data-ias="{{ inst.ias_count }}"
+                            data-total="{{ inst.total_count }}"
                             :class="editingId === '{{ inst.id }}' ? 'bg-kwuo-bronze/5 dark:bg-kwuo-bronze/10' : (selectedIds.includes('{{ inst.id }}') ? 'bg-amber-500/5 dark:bg-amber-500/10' : 'hover:bg-theme-base/60')"
-                            class="transition group font-body">
+                            class="institution-row transition group font-body">
                             <!-- 1. CHECKBOX -->
                             <td class="py-2.5 px-3 w-10 text-center">
                                 <input type="checkbox" value="{{ inst.id }}" x-model="selectedIds"
@@ -634,7 +725,7 @@
                             </td>
 
                             <!-- 3. CODE -->
-                            <td x-show="visibleCols.code" class="py-2.5 px-2.5 whitespace-nowrap text-center">
+                            <td x-show="visibleCols.code" class="py-2.5 px-2.5 whitespace-nowrap text-center hidden md:table-cell">
                                 <template x-if="editingId !== '{{ inst.id }}'">
                                     <div id="inst-code-{{ inst.id }}">
                                         {% if inst.code %}
@@ -654,7 +745,7 @@
                             </td>
 
                             <!-- 4. COUNTRY -->
-                            <td x-show="visibleCols.country" class="py-2.5 px-2.5 whitespace-nowrap">
+                            <td x-show="visibleCols.country" class="py-2.5 px-2.5 whitespace-nowrap hidden md:table-cell">
                                 <template x-if="editingId !== '{{ inst.id }}'">
                                     <div id="inst-country-{{ inst.id }}">
                                         {% if inst.country %}
@@ -692,23 +783,23 @@
                                 </template>
                             </td>
 
-                            <!-- 6. SPEAKERS COUNT (Pure clean text number) -->
-                            <td x-show="visibleCols.speakers" class="py-2.5 px-2.5 text-center whitespace-nowrap text-xs font-semibold text-theme-heading">
+                            <!-- 6. SPEAKERS / TEAMS COUNT (Pure clean text number) -->
+                            <td x-show="visibleCols.speakers" class="py-2.5 px-2 text-center whitespace-nowrap text-xs font-semibold text-theme-heading">
                                 {{ inst.speakers_count }}
                             </td>
 
-                            <!-- 7. JUDGES COUNT (Pure clean text number) -->
-                            <td x-show="visibleCols.judges" class="py-2.5 px-2.5 text-center whitespace-nowrap text-xs font-semibold text-theme-heading">
+                            <!-- 7. JUDGES / ADJS COUNT (Pure clean text number) -->
+                            <td x-show="visibleCols.judges" class="py-2.5 px-2 text-center whitespace-nowrap text-xs font-semibold text-theme-heading">
                                 {{ inst.judges_count }}
                             </td>
 
                             <!-- 8. IAs COUNT (Independent Adjudicators, pure clean number) -->
-                            <td x-show="visibleCols.ias" class="py-2.5 px-2.5 text-center whitespace-nowrap text-xs font-bold text-kwuo-bronze">
+                            <td x-show="visibleCols.ias" class="py-2.5 px-2 text-center whitespace-nowrap text-xs font-bold text-kwuo-bronze">
                                 {{ inst.ias_count }}
                             </td>
 
                             <!-- 9. TOTAL COUNT (Pure clean number, no 'entries' text) -->
-                            <td x-show="visibleCols.total" class="py-2.5 px-3 text-center whitespace-nowrap text-xs font-bold text-theme-heading">
+                            <td x-show="visibleCols.total" class="py-2.5 px-2.5 text-center whitespace-nowrap text-xs font-bold text-theme-heading hidden sm:table-cell">
                                 {{ inst.total_count }}
                             </td>
 
@@ -772,12 +863,20 @@
             </div>
 
             <!-- VIEW 2: Collapsed Cards Mode (Optimized for Mobile Screens & Compact Reading) -->
-            <div x-show="viewMode === 'cards'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div id="institutions-cards-container" x-show="viewMode === 'cards'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {% for inst in institutions %}
                 <article id="inst-card-{{ inst.id }}"
                          x-show="matchesFilter('{{ inst.name|replace('\'', '\\\'') }}', '{{ inst.code|replace('\'', '\\\'') }}', '{{ (inst.country_name or inst.country)|replace('\'', '\\\'') }}', '{{ inst.region|replace('\'', '\\\'') }}')"
+                         data-name="{{ inst.name }}"
+                         data-code="{{ inst.code or '' }}"
+                         data-country="{{ inst.country_name or inst.country or '' }}"
+                         data-region="{{ inst.region_display or inst.region or '' }}"
+                         data-speakers="{{ inst.speakers_count }}"
+                         data-judges="{{ inst.judges_count }}"
+                         data-ias="{{ inst.ias_count }}"
+                         data-total="{{ inst.total_count }}"
                          :class="editingId === '{{ inst.id }}' ? 'border-kwuo-bronze bg-kwuo-bronze/5 ring-1 ring-kwuo-bronze/30' : (selectedIds.includes('{{ inst.id }}') ? 'border-amber-500/60 bg-amber-500/5 ring-1 ring-amber-500/30' : 'border-theme-border bg-theme-surface hover:border-kwuo-bronze/30')"
-                         class="p-3.5 rounded-xl border transition shadow-xs flex flex-col justify-between gap-2.5 font-body">
+                         class="institution-card p-3.5 rounded-xl border transition shadow-xs flex flex-col justify-between gap-2.5 font-body">
                     
                     <!-- When NOT Editing: Compact Card Layout -->
                     <template x-if="editingId !== '{{ inst.id }}'">
@@ -927,10 +1026,11 @@
     <!-- ============================================================= -->
     <!-- MODAL 1: Add Institution Modal with Combobox Live Search     -->
     <!-- ============================================================= -->
-    <div x-show="addModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-        <!-- Backdrop -->
-        <div @click="addModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+    <template x-teleport="body">
+        <div x-show="addModal" x-cloak
+             class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <!-- Backdrop -->
+            <div @click="addModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
 
         <!-- Dialog -->
         <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10" @keydown.escape.window="addModal = false">
@@ -1030,14 +1130,16 @@
             {% endcall %}
         </div>
     </div>
+    </template>
 
     <!-- ============================================================= -->
     <!-- MODAL 2: Merge Institutions Modal                             -->
     <!-- ============================================================= -->
-    <div x-show="mergeModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-        <!-- Backdrop -->
-        <div @click="mergeModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+    <template x-teleport="body">
+        <div x-show="mergeModal" x-cloak
+             class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="mergeModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
 
         <!-- Dialog -->
         <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10" @keydown.escape.window="mergeModal = false">
@@ -1117,14 +1219,16 @@
             {% endcall %}
         </div>
     </div>
+    </template>
 
     <!-- ============================================================= -->
     <!-- MODAL 3: Bulk Import Spreadsheet Modal (Excel / CSV)          -->
     <!-- ============================================================= -->
-    <div x-show="importModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-        <!-- Backdrop -->
-        <div @click="importModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+    <template x-teleport="body">
+        <div x-show="importModal" x-cloak
+             class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="importModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
 
         <!-- Dialog -->
         <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="importModal = false">
@@ -1172,85 +1276,90 @@
             {% endcall %}
         </div>
     </div>
+    </template>
 
     <!-- ============================================================= -->
     <!-- MODAL 4: Delete Confirmation Modal                            -->
     <!-- ============================================================= -->
-    <div x-show="deleteModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-        <!-- Backdrop -->
-        <div @click="deleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+    <template x-teleport="body">
+        <div x-show="deleteModal" x-cloak
+             class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="deleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
 
-        <!-- Dialog -->
-        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="deleteModal = false">
-            <article class="kwuo-torn-docket !p-6 sm:!p-7 space-y-4">
-                <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
-                    <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0">
-                        <i class="ph-bold ph-warning"></i>
+            <!-- Dialog -->
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="deleteModal = false">
+                <article class="kwuo-torn-docket !p-6 sm:!p-7 space-y-4">
+                    <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
+                        <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0">
+                            <i class="ph-bold ph-warning"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-extrabold text-base text-theme-heading">Delete Institution</h3>
+                            <p class="text-[11px] text-rose-600 dark:text-rose-400 font-body">Roster Decoupling Confirmation</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="font-heading font-extrabold text-base text-theme-heading">Delete Institution</h3>
-                        <p class="text-[11px] text-rose-600 dark:text-rose-400 font-body">Roster Decoupling Confirmation</p>
+
+                    <p class="text-xs text-theme-body leading-relaxed font-body">
+                        Are you sure you want to delete <strong class="text-theme-heading font-semibold" x-text="deleteInstName"></strong>? Affiliated participants in this tournament will be detached to independent status.
+                    </p>
+
+                    <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
+                        <button type="button" @click="deleteModal = false"
+                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                            Cancel
+                        </button>
+                        <button type="button" @click="confirmDelete()"
+                                class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 font-body">
+                            <i class="ph-bold ph-trash"></i>
+                            <span>Confirm Delete</span>
+                        </button>
                     </div>
-                </div>
-
-                <p class="text-xs text-theme-body leading-relaxed font-body">
-                    Are you sure you want to delete <strong class="text-theme-heading font-semibold" x-text="deleteInstName"></strong>? Affiliated participants in this tournament will be detached to independent status.
-                </p>
-
-                <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
-                    <button type="button" @click="deleteModal = false"
-                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
-                        Cancel
-                    </button>
-                    <button type="button" @click="confirmDelete()"
-                            class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 font-body">
-                        <i class="ph-bold ph-trash"></i>
-                        <span>Confirm Delete</span>
-                    </button>
-                </div>
-            </article>
+                </article>
+            </div>
         </div>
-    </div>
+    </template>
 
     <!-- ============================================================= -->
     <!-- MODAL 5: Bulk Delete Confirmation Modal                       -->
     <!-- ============================================================= -->
-    <div x-show="bulkDeleteModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-        <!-- Backdrop -->
-        <div @click="bulkDeleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+    <template x-teleport="body">
+        <div x-show="bulkDeleteModal" x-cloak
+             class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="bulkDeleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
 
-        <!-- Dialog -->
-        <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="bulkDeleteModal = false">
-            <article class="kwuo-torn-docket !p-6 sm:!p-7 space-y-4">
-                <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
-                    <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0">
-                        <i class="ph-bold ph-trash"></i>
+            <!-- Dialog -->
+            <div class="relative w-full max-w-md kwuo-torn-docket-wrapper z-10" @keydown.escape.window="bulkDeleteModal = false">
+                <article class="kwuo-torn-docket !p-6 sm:!p-7 space-y-4">
+                    <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
+                        <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0">
+                            <i class="ph-bold ph-trash"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-extrabold text-base text-theme-heading">Delete Selected Institutions</h3>
+                            <p class="text-[11px] text-rose-600 dark:text-rose-400 font-body">Bulk Roster Decoupling Confirmation</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="font-heading font-extrabold text-base text-theme-heading">Delete Selected Institutions</h3>
-                        <p class="text-[11px] text-rose-600 dark:text-rose-400 font-body">Bulk Roster Decoupling Confirmation</p>
+
+                    <p class="text-xs text-theme-body leading-relaxed font-body">
+                        Are you sure you want to delete <span class="font-bold text-rose-600" x-text="selectedIds.length"></span> selected institution(s)? All affiliated speakers and adjudicators in this tournament will be detached to independent status.
+                    </p>
+
+                    <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
+                        <button type="button" @click="bulkDeleteModal = false"
+                                class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                            Cancel
+                        </button>
+                        <button type="button" @click="confirmBulkDelete()" :disabled="bulkDeleting"
+                                class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 font-body disabled:opacity-50">
+                            <i class="ph-bold ph-trash"></i>
+                            <span x-text="bulkDeleting ? 'Deleting...' : 'Delete (' + selectedIds.length + ')'"></span>
+                        </button>
                     </div>
-                </div>
-
-                <p class="text-xs text-theme-body leading-relaxed font-body">
-                    Are you sure you want to delete <span class="font-bold text-rose-600" x-text="selectedIds.length"></span> selected institution(s)? All affiliated speakers and adjudicators in this tournament will be detached to independent status.
-                </p>
-
-                <div class="pt-3 flex items-center justify-end gap-3 border-t border-theme-border">
-                    <button type="button" @click="bulkDeleteModal = false"
-                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
-                        Cancel
-                    </button>
-                    <button type="button" @click="confirmBulkDelete()" :disabled="bulkDeleting"
-                            class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 font-body disabled:opacity-50">
-                        <i class="ph-bold ph-trash"></i>
-                        <span x-text="bulkDeleting ? 'Deleting...' : 'Delete (' + selectedIds.length + ')'"></span>
-                    </button>
-                </div>
-            </article>
+                </article>
+            </div>
         </div>
-    </div>
+    </template>
 </div>
 {% endblock %}

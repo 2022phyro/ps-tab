@@ -153,7 +153,7 @@ else "") %}
     placeholder: {{ placeholder|tojson|forceescape }}
 })" class="relative w-full {{ class }}">
     <!-- Hidden native input to seamlessly submit in standard and HTMX forms -->
-    <input type="hidden" name="{{ name }}" {% if id %}id="{{ id }}"{% endif %} :value="selectedValue" {% if required %}required{% endif %}>
+    <input type="hidden" name="{{ name }}" {% if id %}id="{{ id }}"{% endif %} :value="selectedValue">
 
     <!-- Trigger Button -->
     <button type="button" x-ref="trigger" @click="toggle()" @keydown.escape="close()"

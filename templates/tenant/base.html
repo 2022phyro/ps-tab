@@ -41,50 +41,8 @@
         }
     </style>
 
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Onest:wght@300..800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css" />
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Onest', 'sans-serif'],
-                        heading: ['"Bricolage Grotesque"', 'sans-serif'],
-                    },
-                    colors: {
-                        theme: {
-                            base: 'var(--color-bg-base)',
-                            surface: 'var(--color-bg-surface)',
-                            heading: 'var(--color-text-heading)',
-                            body: 'var(--color-text-body)',
-                            border: 'var(--color-border)',
-                        },
-                        kwuo: {
-                            sand: '#F7F4EE',
-                            sage: '#8A9A86',
-                            bronze: '#C07D53',
-                            mahogany: '#2E150F',
-                            dark: {
-                                base: '#15100E',
-                                surface: '#1E1614',
-                                border: '#332420',
-                                heading: '#FAF8F5',
-                                body: '#C8BEB7',
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Compiled Local Stylesheet (Tailwind CSS, Self-Hosted Fonts & Phosphor Icons) -->
+    <link rel="stylesheet" href="/static/css/app.min.css">
     <style>
         :root {
             --color-bg-base: #F7F4EE;
@@ -135,6 +93,28 @@
             background-color: var(--color-surface, #231A15);
             border-left-color: var(--color-border, #3D2D23);
             border-right-color: var(--color-border, #3D2D23);
+        }
+
+        /* Torn Header Navigation */
+        .kwuo-torn-header-wrapper {
+            filter: drop-shadow(0 4px 6px rgba(98, 43, 20, 0.08)) drop-shadow(0 1px 3px rgba(98, 43, 20, 0.04));
+            transition: filter 250ms ease;
+        }
+        .dark .kwuo-torn-header-wrapper {
+            filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+        }
+        .kwuo-torn-header {
+            background-color: var(--color-surface, #FFFFFF);
+            border-bottom: none;
+            clip-path: polygon(
+                0% 0%,
+                100% 0%,
+                100% calc(100% - 3px),
+                96% calc(100% - 5px), 92% calc(100% - 1px), 88% calc(100% - 4px), 84% calc(100% - 6px), 80% calc(100% - 2px), 76% calc(100% - 5px), 72% calc(100% - 1px), 68% calc(100% - 4px), 64% calc(100% - 6px), 60% calc(100% - 2px), 56% calc(100% - 5px), 52% calc(100% - 1px), 48% calc(100% - 4px), 44% calc(100% - 6px), 40% calc(100% - 2px), 36% calc(100% - 5px), 32% calc(100% - 1px), 28% calc(100% - 4px), 24% calc(100% - 6px), 20% calc(100% - 2px), 16% calc(100% - 5px), 12% calc(100% - 1px), 8% calc(100% - 4px), 4% calc(100% - 2px), 0% calc(100% - 4px)
+            );
+        }
+        .dark .kwuo-torn-header {
+            background-color: var(--color-surface, #1E1614);
         }
 
         /* Post-It Note */
@@ -220,46 +200,90 @@
         }
     </style>
 
-    <!-- Alpine.js & HTMX -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
-    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <!-- Bundled Local JavaScript (HTMX, Alpine & Alpine Collapse) -->
+    <script defer src="/static/js/app.min.js"></script>
 </head>
 <body hx-boost="true" class="min-h-full flex flex-col bg-theme-base text-theme-body font-sans">
-    <!-- Tournament Header Navigation -->
-    <header class="sticky top-0 z-40 bg-theme-surface/90 backdrop-blur-md border-b border-theme-border">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Tournament Branding -->
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
-                        <i class="ph-bold ph-trophy text-xl"></i>
-                    </div>
-                    <div>
-                        <a href="/" class="text-lg font-heading font-extrabold tracking-tight text-theme-heading hover:text-kwuo-bronze transition">
+    <!-- Tournament Header Navigation with Authentic Torn Paper Bottom Edge -->
+    <header class="sticky top-0 z-40 kwuo-torn-header-wrapper">
+        <div class="kwuo-torn-header bg-theme-surface/95 backdrop-blur-md pb-1 sm:pb-1.5">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-[70px] min-h-[70px]">
+                    <!-- Tournament Branding (Name Only, Clean & Distinctive) -->
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
+                            <i class="ph-bold ph-trophy text-lg"></i>
+                        </div>
+                        <a href="/" class="text-base sm:text-lg font-heading font-extrabold tracking-tight text-theme-heading hover:text-kwuo-bronze transition truncate" title="{{ tournament.name }}">
                             {{ tournament.name }}
                         </a>
-                        <div class="flex items-center gap-2 text-xs text-theme-body/60">
-                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-kwuo-bronze/10 text-kwuo-bronze uppercase tracking-wider">
-                                {{ tournament.status.value }}
+                    </div>
+
+                    <!-- Navigation Links -->
+                    <nav class="hidden lg:flex items-center gap-6 text-sm font-semibold">
+                        <a href="/" class="{% if request.url.path == '/' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Overview</a>
+                        <a href="/documents" class="{% if request.url.path == '/documents' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Documents</a>
+                        <a href="/tasks" class="{% if request.url.path == '/tasks' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Tasks</a>
+                        <a href="/schedule" class="{% if request.url.path == '/schedule' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Schedule</a>
+                        <a href="/participants" class="{% if request.url.path == '/participants' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Participants</a>
+                        <a href="/institutions" class="{% if request.url.path == '/institutions' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Institutions</a>
+                        <a href="/rankings" class="{% if request.url.path == '/rankings' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Rankings</a>
+                        {% if tournament.has_active_round %}
+                        <a href="/current-round" class="{% if request.url.path == '/current-round' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Current Round
                             </span>
-                            {% if tournament.location %}
-                            <span>• {{ tournament.location }}</span>
-                            {% endif %}
-                        </div>
+                        </a>
+                        {% endif %}
+                        {% if tournament.has_published_results %}
+                        <a href="/results" class="{% if request.url.path == '/results' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Results</a>
+                        {% endif %}
+                    </nav>
+
+                    <!-- Actions: Register, Login, Theme Toggle & Mobile Menu -->
+                    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {% if tournament.status.value == 'registration' %}
+                        <a href="/register"
+                           class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white transition text-xs font-bold font-body shadow-xs"
+                           title="Register as a Competitor">
+                            <i class="ph-bold ph-user-plus text-base"></i>
+                            <span>Register</span>
+                        </a>
+                        {% endif %}
+                        <a href="/admin"
+                           class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base hover:text-kwuo-bronze transition text-xs font-semibold font-body"
+                           title="Officials &amp; Tab Room Login">
+                            <i class="ph-bold ph-sign-in text-base text-kwuo-bronze"></i>
+                            <span>Login</span>
+                        </a>
+                        <button @click="darkMode = !darkMode" type="button"
+                                class="p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition flex items-center justify-center"
+                                aria-label="Toggle theme">
+                            <i x-show="!darkMode" class="ph-bold ph-moon text-base sm:text-lg"></i>
+                            <i x-show="darkMode" class="ph-bold ph-sun text-base sm:text-lg"></i>
+                        </button>
+                        <!-- Mobile menu button -->
+                        <button @click="mobileMenuOpen = !mobileMenuOpen" type="button"
+                                class="lg:hidden p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition flex items-center justify-center"
+                                aria-label="Toggle navigation menu">
+                            <i x-show="!mobileMenuOpen" class="ph-bold ph-list text-base sm:text-lg"></i>
+                            <i x-show="mobileMenuOpen" class="ph-bold ph-x text-base sm:text-lg"></i>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Navigation Links -->
-                <nav class="hidden lg:flex items-center gap-6 text-sm font-semibold">
-                    <a href="/" class="{% if request.url.path == '/' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Overview</a>
-                    <a href="/documents" class="{% if request.url.path == '/documents' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Documents</a>
-                    <a href="/tasks" class="{% if request.url.path == '/tasks' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Tasks</a>
-                    <a href="/schedule" class="{% if request.url.path == '/schedule' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Schedule</a>
-                    <a href="/participants" class="{% if request.url.path == '/participants' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Participants</a>
-                    <a href="/institutions" class="{% if request.url.path == '/institutions' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Institutions</a>
-                    <a href="/rankings" class="{% if request.url.path == '/rankings' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Rankings</a>
+                <!-- Mobile Navigation Drawer -->
+                <div x-show="mobileMenuOpen" x-transition class="lg:hidden py-4 border-t border-theme-border space-y-2">
+                    <a href="/" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Overview</a>
+                    <a href="/documents" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/documents' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Documents</a>
+                    <a href="/tasks" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/tasks' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Tasks</a>
+                    <a href="/schedule" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/schedule' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Schedule</a>
+                    <a href="/participants" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/participants' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Participants</a>
+                    <a href="/institutions" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/institutions' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Institutions</a>
+                    <a href="/rankings" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/rankings' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Rankings</a>
                     {% if tournament.has_active_round %}
-                    <a href="/current-round" class="{% if request.url.path == '/current-round' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">
+                    <a href="/current-round" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/current-round' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">
                         <span class="inline-flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                             Current Round
@@ -267,53 +291,26 @@
                     </a>
                     {% endif %}
                     {% if tournament.has_published_results %}
-                    <a href="/results" class="{% if request.url.path == '/results' %}text-kwuo-bronze font-bold border-b-2 border-kwuo-bronze pb-1{% else %}text-theme-heading/80 hover:text-kwuo-bronze transition pb-1{% endif %}">Results</a>
+                    <a href="/results" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/results' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Results</a>
                     {% endif %}
-                </nav>
-
-                <!-- Actions: Tab Room & Dark Mode & Mobile Menu -->
-                <div class="flex items-center gap-2">
-                    <a href="/admin" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-kwuo-bronze/30 bg-kwuo-bronze/10 text-kwuo-bronze hover:bg-kwuo-bronze hover:text-white text-xs font-semibold transition" title="Tournament Officials & Tab Room Admin">
-                        <i class="ph-bold ph-shield-check text-sm"></i>
-                        <span>Tab Room</span>
-                    </a>
-                    <button @click="darkMode = !darkMode" type="button" class="p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition" aria-label="Toggle theme">
-                        <i x-show="!darkMode" class="ph-bold ph-moon text-lg"></i>
-                        <i x-show="darkMode" class="ph-bold ph-sun text-lg"></i>
-                    </button>
-                    <!-- Mobile menu button -->
-                    <button @click="mobileMenuOpen = !mobileMenuOpen" type="button" class="lg:hidden p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition" aria-label="Toggle navigation menu">
-                        <i x-show="!mobileMenuOpen" class="ph-bold ph-list text-lg"></i>
-                        <i x-show="mobileMenuOpen" class="ph-bold ph-x text-lg"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Mobile Navigation Drawer -->
-            <div x-show="mobileMenuOpen" x-transition class="lg:hidden py-4 border-t border-theme-border space-y-2">
-                <a href="/" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Overview</a>
-                <a href="/documents" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/documents' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Documents</a>
-                <a href="/tasks" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/tasks' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Tasks</a>
-                <a href="/schedule" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/schedule' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Schedule</a>
-                <a href="/participants" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/participants' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Participants</a>
-                <a href="/institutions" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/institutions' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Institutions</a>
-                <a href="/rankings" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/rankings' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Rankings</a>
-                {% if tournament.has_active_round %}
-                <a href="/current-round" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/current-round' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">
-                    <span class="inline-flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Current Round
-                    </span>
-                </a>
-                {% endif %}
-                {% if tournament.has_published_results %}
-                <a href="/results" class="block px-3 py-2 rounded-lg text-sm font-semibold {% if request.url.path == '/results' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}">Results</a>
-                {% endif %}
-                <div class="pt-2 border-t border-theme-border">
-                    <a href="/admin" class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-kwuo-bronze hover:bg-kwuo-bronze/10">
-                        <i class="ph-bold ph-shield-check"></i>
-                        <span>Tab Room / Official Login</span>
-                    </a>
+                    <div class="pt-2 border-t border-theme-border space-y-2">
+                        {% if tournament.status.value == 'registration' %}
+                        <a href="/register" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white text-xs font-bold transition font-body shadow-xs">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-user-plus text-base"></i>
+                                <span>Register as a Competitor</span>
+                            </div>
+                            <i class="ph-bold ph-arrow-right text-xs text-white/80"></i>
+                        </a>
+                        {% endif %}
+                        <a href="/admin" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-sign-in text-base text-kwuo-bronze"></i>
+                                <span>Officials &amp; Tab Room Login</span>
+                            </div>
+                            <i class="ph-bold ph-arrow-right text-xs text-theme-body/50"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -389,8 +386,9 @@
                     const duration = (typeof detail === 'object' && detail.duration) ? detail.duration : 4500;
                     if (!message) return;
 
+                    if (this.toasts.some(t => t.message === message && t.visible)) return;
                     const now = Date.now();
-                    if (this.lastMessage === message && (now - this.lastTime < 1000)) return;
+                    if (this.lastMessage === message && (now - this.lastTime < 3000)) return;
                     this.lastMessage = message;
                     this.lastTime = now;
 
@@ -411,6 +409,42 @@
         window.showToast = function (message, type = 'success', duration = 4500) {
             window.dispatchEvent(new CustomEvent('toast', { detail: { message, type, duration } }));
         };
+
+        function removeCloak(target) {
+            if (!target) return;
+            if (target.hasAttribute && target.hasAttribute('x-cloak')) {
+                target.removeAttribute('x-cloak');
+            }
+            if (target.querySelectorAll) {
+                target.querySelectorAll('[x-cloak]').forEach(function (el) {
+                    el.removeAttribute('x-cloak');
+                });
+            }
+        }
+
+        // Re-initialize Alpine.js components on HTMX page swaps and history restore
+        document.addEventListener('htmx:afterSwap', function (evt) {
+            if (evt.detail && evt.detail.target) {
+                removeCloak(evt.detail.target);
+                if (window.Alpine) {
+                    window.Alpine.initTree(evt.detail.target);
+                }
+            }
+        });
+        document.addEventListener('htmx:afterSettle', function (evt) {
+            if (evt.detail && evt.detail.target) {
+                removeCloak(evt.detail.target);
+                if (window.Alpine) {
+                    window.Alpine.initTree(evt.detail.target);
+                }
+            }
+        });
+        document.addEventListener('htmx:historyRestore', function () {
+            removeCloak(document.body);
+            if (window.Alpine) {
+                window.Alpine.initTree(document.body);
+            }
+        });
     </script>
 </body>
 </html>

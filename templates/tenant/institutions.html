@@ -10,6 +10,51 @@
             searchQuery: '',
             colsDropdownOpen: false,
             viewMode: 'table',
+            sortCol: 'name',
+            sortAsc: true,
+            sortBy(col) {
+                if (this.sortCol === col) {
+                    this.sortAsc = !this.sortAsc;
+                } else {
+                    this.sortCol = col;
+                    this.sortAsc = true;
+                }
+                const isNumeric = ['speakers', 'judges', 'ias', 'total'].includes(col);
+                const tbody = document.getElementById('public-inst-tbody');
+                if (tbody) {
+                    const rows = Array.from(tbody.querySelectorAll('tr.public-inst-row'));
+                    rows.sort((a, b) => {
+                        let vA = a.dataset[col] || '';
+                        let vB = b.dataset[col] || '';
+                        if (isNumeric) {
+                            return this.sortAsc ? (Number(vA) - Number(vB)) : (Number(vB) - Number(vA));
+                        }
+                        vA = vA.toLowerCase();
+                        vB = vB.toLowerCase();
+                        if (vA < vB) return this.sortAsc ? -1 : 1;
+                        if (vA > vB) return this.sortAsc ? 1 : -1;
+                        return 0;
+                    });
+                    rows.forEach(r => tbody.appendChild(r));
+                }
+                const cardsContainer = document.getElementById('public-inst-cards-container');
+                if (cardsContainer) {
+                    const cards = Array.from(cardsContainer.querySelectorAll('.public-inst-card'));
+                    cards.sort((a, b) => {
+                        let vA = a.dataset[col] || '';
+                        let vB = b.dataset[col] || '';
+                        if (isNumeric) {
+                            return this.sortAsc ? (Number(vA) - Number(vB)) : (Number(vB) - Number(vA));
+                        }
+                        vA = vA.toLowerCase();
+                        vB = vB.toLowerCase();
+                        if (vA < vB) return this.sortAsc ? -1 : 1;
+                        if (vA > vB) return this.sortAsc ? 1 : -1;
+                        return 0;
+                    });
+                    cards.forEach(c => cardsContainer.appendChild(c));
+                }
+            },
             visibleCols: {
                 code: true,
                 country: true,
@@ -33,9 +78,9 @@
     }
 </script>
 
-<div x-data="publicInstitutionsDirectory()" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+<div x-data="publicInstitutionsDirectory()" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     <!-- Header Banner -->
-    <div class="kwuo-torn-docket-wrapper">
+    <div class="kwuo-torn-docket-wrapper mb-6">
         <article class="kwuo-torn-docket !p-6 sm:!p-8">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
@@ -67,119 +112,166 @@
         </article>
     </div>
 
-    <!-- Container in Torn-Docket Styling -->
-    <div class="kwuo-torn-docket-wrapper">
-        <article class="kwuo-torn-docket !p-5 sm:!p-7 space-y-4">
-            <!-- Header Controls Toolbar: Clean, Non-Clipping Search & Toggles -->
-            <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pb-4 border-b border-theme-border">
-                <div class="flex items-center gap-2">
-                    <span class="font-heading font-bold text-base text-theme-heading">
-                        All Delegations
-                    </span>
-                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
-                        {{ institutions|length }}
-                    </span>
-                </div>
+    <!-- Sticky Controls Toolbar (Positioned outside torn-docket so CSS sticky works against page scroll) -->
+    <div class="sticky top-[70px] z-30 bg-theme-base/95 backdrop-blur-md pt-3 pb-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="top: 70px; margin-top: 0; background-color: var(--color-bg-base);">
+        <div class="flex items-center gap-2">
+            <span class="font-heading font-bold text-base text-theme-heading">
+                All Delegations
+            </span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                {{ institutions|length }}
+            </span>
+        </div>
 
-                <!-- Controls Group: Search, View Mode & Column Picker -->
-                <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                    <!-- Instant Search Input -->
-                    <div class="relative min-w-[200px] flex-1 sm:flex-none sm:w-64">
-                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-theme-body/50 text-xs"></i>
-                        <input type="text" x-model="searchQuery" placeholder="Filter delegations..."
-                               class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
-                    </div>
+        <!-- Controls Group: Search, View Mode & Column Picker -->
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <!-- Instant Search Input -->
+            <div class="relative min-w-[200px] flex-1 sm:flex-none sm:w-64">
+                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-theme-body/50 text-xs"></i>
+                <input type="text" x-model="searchQuery" placeholder="Filter delegations..."
+                       class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+            </div>
 
-                    <!-- View Switcher Toggle (Table vs Cards) -->
-                    <div class="inline-flex items-center rounded-xl border border-theme-border bg-theme-base p-0.5 text-xs font-semibold shadow-xs shrink-0">
-                        <button type="button" @click="viewMode = 'table'"
-                                :class="viewMode === 'table' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
-                                class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body"
-                                title="Table view">
-                            <i class="ph-bold ph-table text-xs"></i>
-                            <span class="hidden sm:inline">Table</span>
-                        </button>
-                        <button type="button" @click="viewMode = 'cards'"
-                                :class="viewMode === 'cards' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
-                                class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body"
-                                title="Cards view">
-                            <i class="ph-bold ph-squares-four text-xs"></i>
-                            <span class="hidden sm:inline">Cards</span>
-                        </button>
-                    </div>
+            <!-- View Switcher Toggle (Table vs Cards) -->
+            <div class="inline-flex items-center rounded-xl border border-theme-border bg-theme-base p-0.5 text-xs font-semibold shadow-xs shrink-0">
+                <button type="button" @click="viewMode = 'table'"
+                        :class="viewMode === 'table' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
+                        class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body"
+                        title="Table view">
+                    <i class="ph-bold ph-table text-xs"></i>
+                    <span class="hidden sm:inline">Table</span>
+                </button>
+                <button type="button" @click="viewMode = 'cards'"
+                        :class="viewMode === 'cards' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
+                        class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body"
+                        title="Cards view">
+                    <i class="ph-bold ph-squares-four text-xs"></i>
+                    <span class="hidden sm:inline">Cards</span>
+                </button>
+            </div>
 
-                    <!-- Column Visibility Dropdown -->
-                    <div class="relative shrink-0" @click.outside="colsDropdownOpen = false">
-                        <button type="button" @click="colsDropdownOpen = !colsDropdownOpen"
-                                class="px-2.5 py-1.5 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface text-theme-heading text-xs font-semibold flex items-center gap-1.5 transition font-body shadow-xs">
-                            <i class="ph-bold ph-columns text-sm text-kwuo-bronze"></i>
-                            <span class="hidden sm:inline">Columns</span>
-                            <i class="ph-bold ph-caret-down text-[10px] text-theme-body/60 transition-transform" :class="colsDropdownOpen ? 'rotate-180' : ''"></i>
-                        </button>
-                        <div x-show="colsDropdownOpen" x-cloak
-                             x-transition:enter="transition ease-out duration-100"
-                             x-transition:enter-start="opacity-0 scale-95"
-                             x-transition:enter-end="opacity-100 scale-100"
-                             class="absolute right-0 mt-1.5 w-48 rounded-xl border border-theme-border bg-theme-surface shadow-xl z-30 p-2.5 space-y-1 text-xs font-body">
-                            <div class="text-[10px] font-bold uppercase tracking-wider text-theme-body/60 px-2 py-1">Visible Fields</div>
-                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg text-theme-body/40 cursor-not-allowed">
-                                <input type="checkbox" checked disabled class="rounded text-kwuo-bronze h-3.5 w-3.5">
-                                <span>Institution (Pinned)</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
-                                <input type="checkbox" x-model="visibleCols.code" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
-                                <span>Code</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
-                                <input type="checkbox" x-model="visibleCols.country" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
-                                <span>Country</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
-                                <input type="checkbox" x-model="visibleCols.region" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
-                                <span>Region</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
-                                <input type="checkbox" x-model="visibleCols.speakers" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
-                                <span>Speakers</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
-                                <input type="checkbox" x-model="visibleCols.judges" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
-                                <span>Judges</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
-                                <input type="checkbox" x-model="visibleCols.ias" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
-                                <span>IAs (Independent Adjudicators)</span>
-                            </label>
-                            <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
-                                <input type="checkbox" x-model="visibleCols.total" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
-                                <span>Total</span>
-                            </label>
-                        </div>
-                    </div>
+            <!-- Column Visibility Dropdown -->
+            <div class="relative shrink-0" @click.outside="colsDropdownOpen = false">
+                <button type="button" @click="colsDropdownOpen = !colsDropdownOpen"
+                        class="px-2.5 py-1.5 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface text-theme-heading text-xs font-semibold flex items-center gap-1.5 transition font-body shadow-xs">
+                    <i class="ph-bold ph-columns text-sm text-kwuo-bronze"></i>
+                    <span class="hidden sm:inline">Columns</span>
+                    <i class="ph-bold ph-caret-down text-[10px] text-theme-body/60 transition-transform" :class="colsDropdownOpen ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="colsDropdownOpen" x-cloak
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     class="absolute right-0 mt-1.5 w-48 rounded-xl border border-theme-border bg-theme-surface shadow-xl z-30 p-2.5 space-y-1 text-xs font-body">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-theme-body/60 px-2 py-1">Visible Fields</div>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg text-theme-body/40 cursor-not-allowed">
+                        <input type="checkbox" checked disabled class="rounded text-kwuo-bronze h-3.5 w-3.5">
+                        <span>Institution (Pinned)</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.code" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Code</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.country" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Country</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.region" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Region</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.speakers" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Speakers</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.judges" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Judges</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.ias" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>IAs (Independent Adjudicators)</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-theme-base cursor-pointer text-theme-heading">
+                        <input type="checkbox" x-model="visibleCols.total" class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                        <span>Total</span>
+                    </label>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Container in Torn-Docket Styling -->
+    <div class="kwuo-torn-docket-wrapper mt-6">
+        <article class="kwuo-torn-docket !p-5 sm:!p-7 space-y-4">
 
             <!-- VIEW 1: Ultra-Compact Tabbycat-Style Table (Zero Icons, Pure Text & Numeric Precision) -->
             <div x-show="viewMode === 'table'" class="overflow-x-auto rounded-xl border border-theme-border bg-theme-surface">
                 <table class="w-full text-left text-xs border-collapse">
                     <thead>
                         <tr class="border-b border-theme-border bg-theme-base/40 text-theme-body/70 text-[11px] font-bold">
-                            <th class="py-2.5 px-3 min-w-[170px] sm:min-w-[220px]">
-                                Full name
+                            <th class="py-2.5 px-3 min-w-[170px] sm:min-w-[220px] cursor-pointer select-none group" @click="sortBy('name')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Full name</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'name' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
                             </th>
-                            <th x-show="visibleCols.code" class="py-2.5 px-2.5 whitespace-nowrap text-center">Code</th>
-                            <th x-show="visibleCols.country" class="py-2.5 px-2.5 whitespace-nowrap">Country</th>
-                            <th x-show="visibleCols.region" class="py-2.5 px-2.5 whitespace-nowrap">Region</th>
-                            <th x-show="visibleCols.speakers" class="py-2.5 px-2.5 text-center whitespace-nowrap">Speakers</th>
-                            <th x-show="visibleCols.judges" class="py-2.5 px-2.5 text-center whitespace-nowrap">Judges</th>
-                            <th x-show="visibleCols.ias" class="py-2.5 px-2.5 text-center whitespace-nowrap font-bold text-kwuo-bronze">IAs</th>
-                            <th x-show="visibleCols.total" class="py-2.5 px-3 text-center whitespace-nowrap font-bold">Total</th>
+                            <th x-show="visibleCols.code" class="py-2.5 px-2.5 whitespace-nowrap text-center cursor-pointer select-none group" @click="sortBy('code')">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <span>Code</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'code' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th x-show="visibleCols.country" class="py-2.5 px-2.5 whitespace-nowrap cursor-pointer select-none group" @click="sortBy('country')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Country</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'country' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th x-show="visibleCols.region" class="py-2.5 px-2.5 whitespace-nowrap cursor-pointer select-none group" @click="sortBy('region')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Region</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'region' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th x-show="visibleCols.speakers" class="py-2.5 px-2.5 text-center whitespace-nowrap cursor-pointer select-none group" @click="sortBy('speakers')">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <span>Speakers</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'speakers' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th x-show="visibleCols.judges" class="py-2.5 px-2.5 text-center whitespace-nowrap cursor-pointer select-none group" @click="sortBy('judges')">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <span>Judges</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'judges' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th x-show="visibleCols.ias" class="py-2.5 px-2.5 text-center whitespace-nowrap font-bold text-kwuo-bronze cursor-pointer select-none group" @click="sortBy('ias')">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <span>IAs</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'ias' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th x-show="visibleCols.total" class="py-2.5 px-3 text-center whitespace-nowrap font-bold cursor-pointer select-none group" @click="sortBy('total')">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <span>Total</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'total' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-theme-border">
+                    <tbody id="public-inst-tbody" class="divide-y divide-theme-border">
                         {% for inst in institutions %}
                         <tr x-show="matchesFilter('{{ inst.name|replace('\'', '\\\'') }}', '{{ inst.code|replace('\'', '\\\'') }}', '{{ (inst.country_name or inst.country)|replace('\'', '\\\'') }}', '{{ inst.region|replace('\'', '\\\'') }}')"
-                            class="hover:bg-theme-base/60 transition group font-body">
+                            data-name="{{ inst.name }}"
+                            data-code="{{ inst.code or '' }}"
+                            data-country="{{ inst.country_name or inst.country or '' }}"
+                            data-region="{{ inst.region_display or inst.region or '' }}"
+                            data-speakers="{{ inst.speakers_count }}"
+                            data-judges="{{ inst.judges_count }}"
+                            data-ias="{{ inst.ias_count }}"
+                            data-total="{{ inst.total_count }}"
+                            class="public-inst-row hover:bg-theme-base/60 transition group font-body">
                             <!-- 1. FULL NAME (Clean, word-wrapped, no bulky icon) -->
                             <td class="py-2.5 px-3 max-w-[280px]">
                                 <div class="font-heading font-bold text-xs sm:text-sm text-theme-heading break-words leading-snug">
@@ -254,10 +346,18 @@
             </div>
 
             <!-- VIEW 2: Collapsed Cards Mode (Optimized for Mobile Screens & Compact Reading) -->
-            <div x-show="viewMode === 'cards'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div id="public-inst-cards-container" x-show="viewMode === 'cards'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {% for inst in institutions %}
                 <article x-show="matchesFilter('{{ inst.name|replace('\'', '\\\'') }}', '{{ inst.code|replace('\'', '\\\'') }}', '{{ (inst.country_name or inst.country)|replace('\'', '\\\'') }}', '{{ inst.region|replace('\'', '\\\'') }}')"
-                         class="p-3.5 rounded-xl border border-theme-border bg-theme-surface hover:border-kwuo-bronze/40 transition shadow-xs flex flex-col justify-between gap-2.5 font-body">
+                         data-name="{{ inst.name }}"
+                         data-code="{{ inst.code or '' }}"
+                         data-country="{{ inst.country_name or inst.country or '' }}"
+                         data-region="{{ inst.region_display or inst.region or '' }}"
+                         data-speakers="{{ inst.speakers_count }}"
+                         data-judges="{{ inst.judges_count }}"
+                         data-ias="{{ inst.ias_count }}"
+                         data-total="{{ inst.total_count }}"
+                         class="public-inst-card p-3.5 rounded-xl border border-theme-border bg-theme-surface hover:border-kwuo-bronze/40 transition shadow-xs flex flex-col justify-between gap-2.5 font-body">
                     <!-- Top: Name & Code Badge (Clean, no bulky square icon) -->
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex-1 min-w-0">

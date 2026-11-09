@@ -49,79 +49,11 @@
         }
     </style>
 
-    <!-- HTMX for smooth, flashless page transitions -->
-    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <!-- Compiled Local Stylesheet (Tailwind CSS, Self-Hosted Fonts & Phosphor Icons) -->
+    <link rel="stylesheet" href="/static/css/app.min.css">
 
-    <!-- Google Fonts: Bricolage Grotesque (Headings/Display) & Onest (UI/Body) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Onest:wght@300..800&display=swap"
-        rel="stylesheet">
-
-    <!-- Phosphor Icons: Regular, Bold, Fill & Duotone -->
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css" />
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css" />
-
-    <!-- Tailwind CSS CDN with Custom Tokens, Dark Mode & Font Theming -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Onest', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-                        display: ['"Bricolage Grotesque"', 'sans-serif'],
-                        heading: ['"Bricolage Grotesque"', 'sans-serif'],
-                    },
-                    colors: {
-                        // Named Brand Swatches
-                        kwuo: {
-                            mahogany: '#622B14',  // Primary accent / brand display
-                            bronze: '#995F2F',  // Interactive brand / buttons / links
-                            sage: '#978F66',  // Secondary / muted text / subtle borders
-                            sand: '#E4D6A9',  // Parchment / light accents / borders
-                            gold: '#D3C18E',  // Dark mode text highlight / warm gold
-                            canvas: '#FAF7F0',  // Light page background
-                            dark: {
-                                canvas: '#16110F', // Dark page background
-                                surface: '#231A15', // Dark card surface
-                                subtle: '#1E1612', // Dark header/footer/subtle
-                                accent: '#2B1F19', // Dark badges/pills
-                                border: '#3D2D23', // Dark primary border
-                                input: '#4D392D', // Dark input border
-                            }
-                        },
-                        // Semantic Theme Tokens (Mapped to CSS variables for automatic light/dark mode)
-                        theme: {
-                            canvas: 'var(--color-canvas)',
-                            surface: 'var(--color-surface)',
-                            'surface-subtle': 'var(--color-surface-subtle)',
-                            border: 'var(--color-border)',
-                            'border-subtle': 'var(--color-border-subtle)',
-                            heading: 'var(--color-text-heading)',
-                            body: 'var(--color-text-body)',
-                            muted: 'var(--color-text-muted)',
-                            interactive: {
-                                DEFAULT: 'var(--color-interactive)',
-                                hover: 'var(--color-interactive-hover)',
-                                text: 'var(--color-interactive-text)',
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.2/dist/htmx.min.js"></script>
-
-    <!-- Alpine.js -->
-    <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <!-- Bundled Local JavaScript (HTMX, Alpine & Alpine Collapse) -->
+    <script defer src="/static/js/app.min.js"></script>
 
     <style>
         :root {
@@ -280,39 +212,47 @@
             padding-top: 0.375rem;
             padding-bottom: 0.375rem;
             font-size: 0.875rem;
-            font-weight: 600;
-            color: rgba(98, 43, 20, 0.72);
+            font-weight: 500;
+            color: #64748B;
             border-bottom: 2px solid transparent;
             text-decoration: none;
             white-space: nowrap;
-            transition: color 250ms cubic-bezier(0.4, 0, 0.2, 1),
-                border-color 250ms cubic-bezier(0.4, 0, 0.2, 1);
+            transition: color 200ms ease, border-color 200ms ease;
         }
 
         .kwuo-nav-tab:hover {
-            color: #622B14;
-            border-bottom-color: rgba(98, 43, 20, 0.25);
+            color: #995F2F;
+            border-bottom-color: rgba(153, 95, 47, 0.35);
         }
 
         .kwuo-nav-tab.is-active {
             font-weight: 700;
-            color: #622B14;
-            border-bottom-color: #622B14;
+            color: #995F2F;
+            border-bottom-color: #995F2F;
         }
 
         .dark .kwuo-nav-tab {
-            color: rgba(211, 193, 142, 0.75);
+            color: #94A3B8;
             border-bottom-color: transparent;
         }
 
         .dark .kwuo-nav-tab:hover {
-            color: #FFFFFF;
-            border-bottom-color: rgba(228, 214, 169, 0.25);
+            color: #FAF7F0;
+            border-bottom-color: rgba(192, 125, 83, 0.5);
         }
 
         .dark .kwuo-nav-tab.is-active {
-            color: #E4D6A9;
-            border-bottom-color: #E4D6A9;
+            font-weight: 700;
+            color: #FAF7F0;
+            border-bottom-color: #C07D53;
+        }
+            color: #FFFFFF;
+            border-bottom-color: rgba(192, 125, 83, 0.4);
+        }
+
+        .dark .kwuo-nav-tab.is-active {
+            color: #C07D53;
+            border-bottom-color: #C07D53;
         }
 
         .kwuo-mobile-nav-tab {
@@ -320,7 +260,7 @@
             padding: 0.625rem 0.875rem;
             font-size: 1rem;
             font-weight: 600;
-            color: rgba(98, 43, 20, 0.75);
+            color: rgba(153, 95, 47, 0.8);
             border-left: 3px solid transparent;
             text-decoration: none;
             border-radius: 0 0.5rem 0.5rem 0;
@@ -330,16 +270,16 @@
         }
 
         .kwuo-mobile-nav-tab:hover {
-            color: #622B14;
-            border-left-color: rgba(98, 43, 20, 0.25);
-            background-color: rgba(98, 43, 20, 0.04);
+            color: #995F2F;
+            border-left-color: rgba(153, 95, 47, 0.35);
+            background-color: rgba(153, 95, 47, 0.06);
         }
 
         .kwuo-mobile-nav-tab.is-active {
             font-weight: 700;
-            color: #622B14;
-            border-left-color: #622B14;
-            background-color: rgba(98, 43, 20, 0.06);
+            color: #995F2F;
+            border-left-color: #995F2F;
+            background-color: rgba(153, 95, 47, 0.1);
         }
 
         .dark .kwuo-mobile-nav-tab {
@@ -349,29 +289,29 @@
 
         .dark .kwuo-mobile-nav-tab:hover {
             color: #FFFFFF;
-            border-left-color: rgba(228, 214, 169, 0.25);
-            background-color: rgba(228, 214, 169, 0.04);
+            border-left-color: rgba(192, 125, 83, 0.4);
+            background-color: rgba(192, 125, 83, 0.06);
         }
 
         .dark .kwuo-mobile-nav-tab.is-active {
-            color: #E4D6A9;
-            border-left-color: #E4D6A9;
-            background-color: rgba(228, 214, 169, 0.08);
+            color: #C07D53;
+            border-left-color: #C07D53;
+            background-color: rgba(192, 125, 83, 0.15);
         }
 
         /* ---------------------------------------------------------------------
-           1. PRIMARY VARIANT: Full Solid (Deep Mahogany / Kwuo Bronze)
+           1. PRIMARY VARIANT: Full Solid (Kwuo Bronze / Deep Mahogany)
            --------------------------------------------------------------------- */
         .kwuo-btn-primary {
-            background-color: #622B14;
+            background-color: #995F2F;
             color: #FAF7F0;
-            border-color: rgba(74, 30, 13, 0.4);
+            border-color: rgba(98, 43, 20, 0.4);
             box-shadow: 0 1px 2px rgba(98, 43, 20, 0.16), 0 1px 0 rgba(255, 255, 255, 0.1) inset;
         }
 
         .kwuo-btn-primary:hover:not(:disabled):not(.is-disabled) {
-            background-color: #995F2F;
-            border-color: #622B14;
+            background-color: #622B14;
+            border-color: #4A1E0D;
             color: #FAF7F0;
             box-shadow: 0 3px 6px rgba(98, 43, 20, 0.2), 0 1px 0 rgba(255, 255, 255, 0.15) inset;
         }
@@ -547,14 +487,14 @@
            DARK MODE OVERRIDES
            --------------------------------------------------------------------- */
         .dark .kwuo-btn-primary {
-            background-color: #622B14;
-            color: #E4D6A9;
+            background-color: #995F2F;
+            color: #FAF7F0;
             border-color: rgba(228, 214, 169, 0.25);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
         }
 
         .dark .kwuo-btn-primary:hover:not(:disabled):not(.is-disabled) {
-            background-color: #995F2F;
+            background-color: #622B14;
             color: #FFFFFF;
             border-color: #E4D6A9;
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
@@ -1044,11 +984,11 @@
                 <div class="flex items-center gap-3">
                     <a href="/" class="flex items-center gap-2 group">
                         <span
-                            class="flex h-9 w-9 items-center justify-center rounded-lg bg-kwuo-mahogany text-kwuo-sand font-bold shadow-sm group-hover:bg-kwuo-bronze transition border border-kwuo-mahogany/30">
+                            class="flex h-9 w-9 items-center justify-center rounded-lg bg-kwuo-bronze text-kwuo-sand font-bold shadow-sm group-hover:bg-kwuo-mahogany transition border border-kwuo-bronze/30">
                             K
                         </span>
                         <span
-                            class="text-xl font-heading font-extrabold tracking-tight text-kwuo-mahogany dark:text-kwuo-sand">Kwuo</span>
+                            class="text-xl font-heading font-extrabold tracking-tight text-kwuo-bronze dark:text-kwuo-sand">Kwuo</span>
                     </a>
                 </div>
 
@@ -1111,19 +1051,19 @@
                         aria-label="Toggle dark mode">
                         <i x-show="darkMode" x-cloak
                             class="ph-bold ph-sun text-base text-kwuo-sand dark:text-kwuo-gold"></i>
-                        <i x-show="!darkMode" class="ph-bold ph-moon text-base text-kwuo-mahogany"></i>
+                        <i x-show="!darkMode" class="ph-bold ph-moon text-base text-kwuo-bronze"></i>
                     </button>
 
                     {% if user %}
-                    <a href="/profile" class="flex items-center gap-2.5 pr-3 hover:opacity-80 transition"
+                    <a href="/profile" hx-boost="false" class="flex items-center gap-2.5 pr-3 hover:opacity-80 transition"
                         title="Account Settings & Security">
                         <div
-                            class="flex h-8 w-8 items-center justify-center rounded-full bg-kwuo-mahogany text-kwuo-sand dark:bg-kwuo-dark-border dark:text-kwuo-sand font-bold text-xs uppercase shadow-sm">
+                            class="flex h-8 w-8 items-center justify-center rounded-full bg-kwuo-bronze text-kwuo-sand dark:bg-kwuo-dark-border dark:text-kwuo-sand font-bold text-xs uppercase shadow-sm">
                             {{ user.full_name[:2] }}
                         </div>
                         <div class="text-xs">
-                            <div class="font-bold text-kwuo-mahogany dark:text-kwuo-sand">{{ user.full_name }}</div>
-                            <div class="text-kwuo-mahogany/70 dark:text-kwuo-sage truncate max-w-[140px] font-medium">{{
+                            <div class="font-bold text-kwuo-bronze dark:text-kwuo-sand">{{ user.full_name }}</div>
+                            <div class="text-kwuo-bronze/70 dark:text-kwuo-sage truncate max-w-[140px] font-medium">{{
                                 user.email }}</div>
                         </div>
                     </a>
@@ -1145,13 +1085,13 @@
                         aria-label="Toggle dark mode">
                         <i x-show="darkMode" x-cloak
                             class="ph-bold ph-sun text-base text-kwuo-sand dark:text-kwuo-gold"></i>
-                        <i x-show="!darkMode" class="ph-bold ph-moon text-base text-kwuo-mahogany"></i>
+                        <i x-show="!darkMode" class="ph-bold ph-moon text-base text-kwuo-bronze"></i>
                     </button>
 
                     <!-- Mobile Hamburger / Close Button -->
                     <button @click="mobileMenuOpen = !mobileMenuOpen" type="button"
                         class="kwuo-btn kwuo-btn-outline kwuo-btn-icon-md transition"
-                        :class="mobileMenuOpen ? '!bg-kwuo-mahogany !text-kwuo-sand !border-kwuo-mahogany dark:!bg-kwuo-sand dark:!text-kwuo-mahogany' : ''"
+                        :class="mobileMenuOpen ? '!bg-kwuo-bronze !text-kwuo-sand !border-kwuo-bronze dark:!bg-kwuo-sand dark:!text-kwuo-mahogany' : ''"
                         title="Toggle navigation menu" aria-label="Toggle navigation menu">
                         <i x-show="!mobileMenuOpen" class="ph-bold ph-list text-xl"></i>
                         <i x-show="mobileMenuOpen" x-cloak class="ph-bold ph-x text-xl"></i>
@@ -1233,10 +1173,10 @@
                 <div class="lg:col-span-2 space-y-4">
                     <div class="flex items-center gap-2.5">
                         <span
-                            class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-mahogany text-kwuo-sand font-bold text-sm shadow-sm border border-kwuo-sage/30">
+                            class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze text-kwuo-sand font-bold text-sm shadow-sm border border-kwuo-bronze/30">
                             K
                         </span>
-                        <span class="text-xl font-heading font-extrabold tracking-tight text-theme-heading">Kwuo</span>
+                        <span class="text-xl font-heading font-extrabold tracking-tight text-kwuo-bronze dark:text-kwuo-sand">Kwuo</span>
                     </div>
                     <p class="text-xs leading-relaxed max-w-sm text-slate-600 dark:text-kwuo-sage">
                         The dedicated tabulation engine for individual speech tournaments and tertiary forensics.
@@ -1247,7 +1187,7 @@
                     <!-- Buy Me a Coffee & Sponsor Pill -->
                     <div class="pt-2 flex flex-wrap items-center gap-3">
                         <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer"
-                            class="inline-flex items-center gap-2 rounded-lg bg-kwuo-mahogany hover:bg-kwuo-bronze px-3.5 py-1.5 text-xs font-bold text-kwuo-sand shadow-sm transition border border-kwuo-sage/40">
+                            class="inline-flex items-center gap-2 rounded-lg bg-kwuo-bronze hover:bg-kwuo-mahogany px-3.5 py-1.5 text-xs font-bold text-kwuo-sand shadow-sm transition border border-kwuo-bronze/40">
                             <i class="ph-duotone ph-coffee text-base text-kwuo-sand"></i>
                             <span>Buy Me a Coffee</span>
                         </a>
@@ -1332,7 +1272,7 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <span
-                        class="rounded bg-kwuo-sand/50 dark:bg-kwuo-dark-accent text-kwuo-mahogany dark:text-kwuo-sand px-2 py-0.5 font-body text-[10px] font-semibold border border-kwuo-sage/30">
+                        class="rounded bg-kwuo-sand/50 dark:bg-kwuo-dark-accent text-kwuo-bronze dark:text-kwuo-sand px-2 py-0.5 font-body text-[10px] font-semibold border border-kwuo-bronze/30">
                         v0.1.0
                     </span>
                     <span>Designed for Competitive public speaking tournaments</span>
@@ -1423,6 +1363,42 @@
         window.showToast = function (message, type = 'success', duration = 4500) {
             window.dispatchEvent(new CustomEvent('toast', { detail: { message, type, duration } }));
         };
+
+        function removeCloak(target) {
+            if (!target) return;
+            if (target.hasAttribute && target.hasAttribute('x-cloak')) {
+                target.removeAttribute('x-cloak');
+            }
+            if (target.querySelectorAll) {
+                target.querySelectorAll('[x-cloak]').forEach(function (el) {
+                    el.removeAttribute('x-cloak');
+                });
+            }
+        }
+
+        // Re-initialize Alpine.js components on HTMX page swaps and history restore
+        document.addEventListener('htmx:afterSwap', function (evt) {
+            if (evt.detail && evt.detail.target) {
+                removeCloak(evt.detail.target);
+                if (window.Alpine) {
+                    window.Alpine.initTree(evt.detail.target);
+                }
+            }
+        });
+        document.addEventListener('htmx:afterSettle', function (evt) {
+            if (evt.detail && evt.detail.target) {
+                removeCloak(evt.detail.target);
+                if (window.Alpine) {
+                    window.Alpine.initTree(evt.detail.target);
+                }
+            }
+        });
+        document.addEventListener('htmx:historyRestore', function () {
+            removeCloak(document.body);
+            if (window.Alpine) {
+                window.Alpine.initTree(document.body);
+            }
+        });
     </script>
 
     {% block scripts %}{% endblock %}

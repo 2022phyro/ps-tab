@@ -73,12 +73,12 @@ async def test_create_tournament_successful(client: AsyncClient, db_session: Asy
     assert tournament.divisions[0].name == "Open"
     assert len(tournament.rubric_criteria) >= 3
 
-    # Verify dashboard lists the new tournament and has "View Tournament" link
+    # Verify dashboard lists the new tournament and has "Manage Tournament" link
     dash_res = await client.get("/dashboard")
     assert dash_res.status_code == 200
     assert "Midwest Forensic Open 2026" in dash_res.text
     assert "midwest-open-2026" in dash_res.text
-    assert "View Tournament" in dash_res.text
+    assert "Manage Tournament" in dash_res.text
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,524 @@
+{% extends "tenant/base.html" %}
+
+{% block title %}Register — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<script>
+    function kwuoDropdown() {
+        return {
+            open: false,
+            menuStyle: '',
+            toggle() {
+                if (this.open) {
+                    this.close();
+                } else {
+                    this.open = true;
+                    this.$nextTick(() => { this.updatePos(); });
+                    this._reposition = () => { if (this.open) this.updatePos(); };
+                    window.addEventListener('scroll', this._reposition, true);
+                    window.addEventListener('resize', this._reposition);
+                }
+            },
+            close() {
+                this.open = false;
+                if (this._reposition) {
+                    window.removeEventListener('scroll', this._reposition, true);
+                    window.removeEventListener('resize', this._reposition);
+                    this._reposition = null;
+                }
+            },
+            updatePos() {
+                const btn = this.$refs.trigger;
+                if (!btn) return;
+                const rect = btn.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const minW = Math.max(rect.width, 240);
+                const maxH = 260;
+                let topCss = '';
+                if (spaceBelow < 220 && rect.top > spaceBelow) {
+                    topCss = 'bottom: ' + Math.round(window.innerHeight - rect.top + 4) + 'px; max-height: ' + Math.min(maxH, rect.top - 12) + 'px;';
+                } else {
+                    topCss = 'top: ' + Math.round(rect.bottom + 4) + 'px; max-height: ' + Math.min(maxH, spaceBelow - 12) + 'px;';
+                }
+                let leftPos = rect.left;
+                if (leftPos + minW > window.innerWidth - 12) {
+                    leftPos = Math.max(12, window.innerWidth - minW - 12);
+                }
+                this.menuStyle = 'position: fixed; left: ' + Math.round(leftPos) + 'px; width: ' + Math.round(minW) + 'px; z-index: 999999; ' + topCss;
+            }
+        };
+    }
+</script>
+
+<div class="max-w-4xl mx-auto px-4 py-8 sm:py-10">
+    <!-- Breadcrumbs -->
+    <div class="flex items-center gap-2 text-xs text-theme-body/60 font-body mb-5">
+        <a href="/" class="hover:text-theme-heading transition">Home</a>
+        <i class="ph-bold ph-caret-right text-[10px]"></i>
+        <span class="text-theme-heading font-semibold">Tournament Registration</span>
+    </div>
+
+    {% if registration_closed %}
+    <!-- Registration Closed Notice -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-8 sm:!p-10 text-center space-y-4 font-body">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                <i class="ph-bold ph-lock text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-heading font-extrabold text-theme-heading">Registration Closed</h2>
+            <p class="text-xs text-theme-body/70 max-w-md mx-auto leading-relaxed">
+                Registration for <strong>{{ tournament.name }}</strong> is currently closed or the tournament has concluded. If you are already registered, please access your portal using your personal access link.
+            </p>
+            <div class="pt-4 flex items-center justify-center gap-3">
+                <a href="/" class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                    Back to Tournament Home
+                </a>
+                <a href="/participants" class="px-4 py-2 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white text-xs font-bold transition font-body shadow-xs">
+                    View Enrolled Participants
+                </a>
+            </div>
+        </article>
+    </div>
+    {% else %}
+    <script id="registration-institutions-data" type="application/json">
+    [
+        {% for inst in institutions %}
+        { "id": "{{ inst.id }}", "name": {{ inst.name | tojson }}, "code": {{ (inst.code or '') | tojson }} }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+    </script>
+
+    <!-- Self-Registration Form in Torn-Docket Styling -->
+    <div class="kwuo-torn-docket-wrapper"
+         x-data="{
+             regRole: 'speaker',
+             selectedInstId: '',
+             selectedInstName: 'Select school or independent...',
+             instSearch: '',
+             isIndependent: false,
+             secondaryAffiliations: [],
+             newInstModal: false,
+             newInstName: '',
+             newInstCode: '',
+             newInstCountry: '',
+             institutions: JSON.parse(document.getElementById('registration-institutions-data')?.textContent || '[]'),
+             get filteredInstitutions() {
+                 if (!this.instSearch.trim()) return this.institutions;
+                 const q = this.instSearch.toLowerCase();
+                 return this.institutions.filter(i => 
+                     i.name.toLowerCase().includes(q) || (i.code && i.code.toLowerCase().includes(q))
+                 );
+             },
+             selectInst(inst, dropdown) {
+                 this.selectedInstId = inst.id;
+                 this.selectedInstName = inst.name + (inst.code ? ' (' + inst.code + ')' : '');
+                 this.newInstName = '';
+                 this.newInstCode = '';
+                 this.newInstCountry = '';
+                 if (dropdown) dropdown.close();
+             },
+             setIndependent(dropdown) {
+                 this.selectedInstId = 'none';
+                 this.selectedInstName = 'Independent / Unaffiliated';
+                 this.newInstName = '';
+                 this.newInstCode = '';
+                 this.newInstCountry = '';
+                 if (dropdown) dropdown.close();
+             },
+             addAffiliation() {
+                 this.secondaryAffiliations.push({ institution_id: '', tie_type: 'alumnus' });
+             },
+             removeAffiliation(index) {
+                 this.secondaryAffiliations.splice(index, 1);
+             },
+             openNewInstModal(dropdown) {
+                 if (dropdown) dropdown.close();
+                 this.newInstModal = true;
+             },
+             saveNewInst() {
+                 if (!this.newInstName.trim()) {
+                     if (window.showToast) window.showToast('Institution name is required.', 'error');
+                     return;
+                 }
+                 const customName = this.newInstName.trim();
+                 const customCode = this.newInstCode.trim().toUpperCase();
+                 this.selectedInstId = 'new';
+                 this.selectedInstName = customName + (customCode ? ' (' + customCode + ')' : '') + ' [New]';
+                 this.newInstModal = false;
+                 if (window.showToast) window.showToast('New institution details attached to registration.', 'success');
+             }
+         }">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8 space-y-6 font-body">
+            <!-- Header with Role Switcher -->
+            <div class="border-b border-theme-border pb-5 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 shrink-0">
+                            <i class="ph-bold text-xl" :class="regRole === 'judge' ? 'ph-scales' : 'ph-microphone-stage'"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl sm:text-2xl font-heading font-extrabold text-theme-heading leading-tight"
+                                x-text="regRole === 'judge' ? 'Adjudicator Self-Registration' : 'Competitor Self-Registration'">
+                                Competitor Self-Registration
+                            </h1>
+                            <p class="text-xs text-theme-body/60 mt-0.5">
+                                {{ tournament.name }} &bull; {{ tournament.location or tournament.location_type.value|capitalize }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Role Switcher Pills -->
+                    <div class="inline-flex items-center p-1 rounded-xl bg-theme-base border border-theme-border self-start sm:self-auto">
+                        <button type="button" @click="regRole = 'speaker'"
+                                class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                                :class="regRole === 'speaker' ? 'bg-kwuo-bronze text-white shadow-xs' : 'text-theme-body hover:text-theme-heading'">
+                            <i class="ph-bold ph-microphone-stage text-xs"></i>
+                            <span>Speaker</span>
+                        </button>
+                        <button type="button" @click="regRole = 'judge'"
+                                class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                                :class="regRole === 'judge' ? 'bg-kwuo-bronze text-white shadow-xs' : 'text-theme-body hover:text-theme-heading'">
+                            <i class="ph-bold ph-scales text-xs"></i>
+                            <span>Judge</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-theme-body/70">
+                    <template x-if="regRole === 'judge'">
+                        <span>Register as an adjudicator. You will receive a <strong>private zero-auth magic link</strong> for entering round ballots and feedback.</span>
+                    </template>
+                    <template x-if="regRole === 'speaker'">
+                        <span>Register as a speaker/competitor. You will receive a <strong>private zero-auth magic link</strong> for direct access to schedules &amp; ballots.</span>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Registration Form with 2-Column Desktop Grid -->
+            <form action="/register" method="POST" class="space-y-6">
+                <!-- Hidden inputs for registration role and new institution -->
+                <input type="hidden" name="registration_role" :value="regRole">
+                <input type="hidden" name="is_independent" :value="isIndependent ? 'true' : 'false'">
+                <input type="hidden" name="secondary_affiliations_json" :value="JSON.stringify(secondaryAffiliations)">
+                <input type="hidden" name="institution_id" :value="selectedInstId === 'none' ? '' : selectedInstId">
+                <input type="hidden" name="new_institution_name" :value="selectedInstId === 'new' ? newInstName : ''">
+                <input type="hidden" name="new_institution_code" :value="selectedInstId === 'new' ? newInstCode : ''">
+                <input type="hidden" name="new_institution_country" :value="selectedInstId === 'new' ? newInstCountry : ''">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                    <!-- LEFT COLUMN: Personal Info -->
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-kwuo-bronze pb-1 border-b border-theme-border/60">
+                            <i class="ph-bold ph-identification-card text-sm"></i>
+                            <span x-text="regRole === 'judge' ? 'Adjudicator Information' : 'Competitor Information'"></span>
+                        </div>
+
+                        <!-- Full Name -->
+                        <div>
+                            <label for="name" class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Full Name / Mononym *
+                            </label>
+                            <input type="text" id="name" name="name" required placeholder="e.g. Maya Angelou or Kofi"
+                                   class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                        </div>
+
+                        <!-- Email Address -->
+                        <div>
+                            <label for="email" class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Email Address *
+                            </label>
+                            <input type="email" id="email" name="email" required placeholder="maya@example.edu"
+                                   class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                            <p class="text-[11px] text-theme-body/50 mt-1">
+                                Used to send your private access link and ballots.
+                            </p>
+                        </div>
+
+                        <!-- Phone & Pronouns in Subgrid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="phone_number" class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                    Phone Number <span class="text-theme-body/40 lowercase font-normal">(optional)</span>
+                                </label>
+                                <input type="tel" id="phone_number" name="phone_number" placeholder="+1 (555) 000-0000"
+                                       class="w-full rounded-xl border border-theme-border bg-theme-base px-3 py-2 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
+                            </div>
+
+                            <div>
+                                <label for="pronouns" class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                    Pronouns
+                                </label>
+                                <input type="text" id="pronouns" name="pronouns" placeholder="e.g. she/her, they/them"
+                                       class="w-full rounded-xl border border-theme-border bg-theme-base px-3 py-2 text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze font-body">
+                            </div>
+                        </div>
+
+                        <!-- Judge Only: Independent Adjudicator (IA) Checkbox -->
+                        <template x-if="regRole === 'judge'">
+                            <div class="p-3.5 rounded-xl border border-theme-border bg-theme-base space-y-1">
+                                <label class="flex items-center gap-2.5 cursor-pointer">
+                                    <input type="checkbox" x-model="isIndependent"
+                                           class="rounded border-theme-border text-kwuo-bronze focus:ring-kwuo-bronze h-4 w-4">
+                                    <span class="text-xs font-bold text-theme-heading">Independent Adjudicator (IA)</span>
+                                </label>
+                                <p class="text-[10px] text-theme-body/60 pl-6">
+                                    Check if you are accrediting independently and not representing a specific institution's mandatory adjudicator quota.
+                                </p>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- RIGHT COLUMN: Divisions & School Affiliations -->
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-kwuo-bronze pb-1 border-b border-theme-border/60">
+                            <i class="ph-bold ph-graduation-cap text-sm"></i>
+                            <span>Divisions &amp; Affiliations</span>
+                        </div>
+
+                        <!-- Competitive / Judging Divisions -->
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                <span x-text="regRole === 'judge' ? 'Eligible Divisions to Adjudicate *' : 'Competitive Divisions *'"></span>
+                                <span class="text-theme-body/50 lowercase font-normal">(select all that apply)</span>
+                            </label>
+                            {% if divisions %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {% for div in divisions %}
+                                <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface transition cursor-pointer">
+                                    <input type="checkbox" name="division_ids" value="{{ div.id }}"
+                                           {% if loop.first %}checked{% endif %}
+                                           class="mt-0.5 rounded border-theme-border text-kwuo-bronze focus:ring-kwuo-bronze">
+                                    <div class="min-w-0">
+                                        <div class="text-xs font-bold text-theme-heading leading-tight">{{ div.name }}</div>
+                                        {% if div.description %}
+                                        <p class="text-[10px] text-theme-body/60 leading-tight mt-0.5 truncate">{{ div.description }}</p>
+                                        {% endif %}
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="text-xs text-theme-body/60 italic">Standard Open Division</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Representing Institution Combobox (Custom Dropdown) -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading font-body">
+                                    <span x-text="regRole === 'judge' ? 'Primary Representing Institution' : 'Representing Institution / School'"></span>
+                                </label>
+                                <button type="button" @click="openNewInstModal()"
+                                        class="text-[11px] font-bold text-kwuo-bronze hover:underline inline-flex items-center gap-1">
+                                    <i class="ph-bold ph-plus-circle"></i>
+                                    <span>+ Add New School</span>
+                                </button>
+                            </div>
+
+                            <!-- Custom Floating Select Trigger -->
+                            <div x-data="kwuoDropdown()" class="relative">
+                                <button type="button" x-ref="trigger" @click="toggle()" @keydown.escape="close()"
+                                        class="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border border-theme-border bg-theme-base text-xs font-semibold text-theme-heading hover:border-kwuo-bronze/50 focus:outline-none focus:border-kwuo-bronze transition text-left">
+                                    <span class="flex items-center gap-2 truncate">
+                                        <i class="ph-bold ph-buildings text-kwuo-bronze text-sm shrink-0"></i>
+                                        <span x-text="selectedInstName" class="truncate"></span>
+                                    </span>
+                                    <i class="ph-bold ph-caret-down text-theme-body/50 transition-transform duration-200 shrink-0 text-xs" :class="{ 'rotate-180': open }"></i>
+                                </button>
+
+                                <!-- Teleported Floating Dropdown Menu -->
+                                <template x-teleport="body">
+                                    <div x-show="open" x-cloak @click.away="close()" :style="menuStyle"
+                                         x-transition:enter="transition ease-out duration-150"
+                                         x-transition:enter-start="opacity-0 scale-95"
+                                         x-transition:enter-end="opacity-100 scale-100"
+                                         x-transition:leave="transition ease-in duration-100"
+                                         x-transition:leave-start="opacity-100 scale-100"
+                                         x-transition:leave-end="opacity-0 scale-95"
+                                         class="overflow-hidden rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md flex flex-col">
+                                        
+                                        <!-- Search within dropdown -->
+                                        <div class="p-2 border-b border-theme-border/60">
+                                            <input type="text" x-model="instSearch" placeholder="Type to search school..."
+                                                   @click.stop
+                                                   class="w-full px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-base text-xs text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze">
+                                        </div>
+
+                                        <div class="overflow-y-auto max-h-56 divide-y divide-theme-border/30">
+                                            <!-- Option: Independent / Unaffiliated -->
+                                            <button type="button" @click="setIndependent($data)"
+                                                    class="w-full px-3 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-theme-base"
+                                                    :class="selectedInstId === 'none' ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                                                <span class="italic">Independent / Unaffiliated</span>
+                                                <i x-show="selectedInstId === 'none'" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                                            </button>
+
+                                            <!-- Existing Institutions -->
+                                            <template x-for="item in filteredInstitutions" :key="item.id">
+                                                <button type="button" @click="selectInst(item, $data)"
+                                                        class="w-full px-3 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze"
+                                                        :class="selectedInstId === item.id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                                                    <span class="truncate" x-text="item.name"></span>
+                                                    <div class="flex items-center gap-1.5 shrink-0">
+                                                        <span x-show="item.code" class="text-[10px] text-theme-body/50 uppercase font-bold" x-text="item.code"></span>
+                                                        <i x-show="selectedInstId === item.id" class="ph-bold ph-check text-kwuo-bronze text-xs"></i>
+                                                    </div>
+                                                </button>
+                                            </template>
+
+                                            <template x-if="filteredInstitutions.length === 0">
+                                                <div class="px-3 py-3 text-center text-xs text-theme-body/50 italic">
+                                                    No schools match your search.
+                                                </div>
+                                            </template>
+                                        </div>
+
+                                        <!-- Footer Action to Open New Inst Modal -->
+                                        <div class="p-1.5 border-t border-theme-border/60 bg-theme-base/40">
+                                            <button type="button" @click="openNewInstModal($data)"
+                                                    class="w-full px-3 py-1.5 rounded-lg hover:bg-kwuo-bronze/10 text-kwuo-bronze font-bold flex items-center gap-1.5 transition">
+                                                <i class="ph-bold ph-plus-circle text-xs"></i>
+                                                <span>+ Register New Institution...</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Judge Only: Secondary Affiliations (Institutional Clash Declarations) -->
+                        <template x-if="regRole === 'judge'">
+                            <div class="space-y-3 pt-3 border-t border-theme-border/60">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading font-body">
+                                            Secondary Affiliations &amp; Clashes
+                                        </label>
+                                        <p class="text-[10px] text-theme-body/60">
+                                            Institutions where you have past ties (alumnus, coached, debated) for clash detection.
+                                        </p>
+                                    </div>
+                                    <button type="button" @click="addAffiliation()"
+                                            class="text-[11px] font-bold text-kwuo-bronze hover:underline inline-flex items-center gap-1">
+                                        <i class="ph-bold ph-plus-circle"></i>
+                                        <span>+ Add Clash</span>
+                                    </button>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <template x-for="(aff, idx) in secondaryAffiliations" :key="idx">
+                                        <div class="flex items-center gap-2 p-2 rounded-xl border border-theme-border bg-theme-base">
+                                            <select x-model="aff.institution_id"
+                                                    class="flex-1 px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-xs text-theme-heading font-body focus:outline-none focus:border-kwuo-bronze">
+                                                <option value="">Select Institution...</option>
+                                                <template x-for="inst in institutions" :key="inst.id">
+                                                    <option :value="inst.id" x-text="inst.name"></option>
+                                                </template>
+                                            </select>
+
+                                            <select x-model="aff.tie_type"
+                                                    class="w-32 px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-xs text-theme-heading font-body focus:outline-none focus:border-kwuo-bronze">
+                                                <option value="alumnus">Alumnus</option>
+                                                <option value="coach">Coach</option>
+                                                <option value="former_speaker">Former Speaker</option>
+                                                <option value="former_member">Former Member</option>
+                                                <option value="other">Other Conflict</option>
+                                            </select>
+
+                                            <button type="button" @click="removeAffiliation(idx)"
+                                                    class="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition"
+                                                    title="Remove affiliation">
+                                                <i class="ph-bold ph-trash text-sm"></i>
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <div x-show="secondaryAffiliations.length === 0" class="text-[11px] text-theme-body/50 italic py-1">
+                                        No secondary institutional conflicts declared.
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Submit Button Bar -->
+                <div class="pt-4 border-t border-theme-border flex items-center justify-between gap-3 font-body">
+                    <a href="/" class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:text-theme-heading hover:bg-theme-base transition font-body">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 bg-kwuo-bronze hover:bg-kwuo-mahogany text-white px-6 py-2.5 rounded-xl text-xs font-bold transition font-body shadow-xs">
+                        <i class="ph-bold ph-check text-sm"></i>
+                        <span x-text="regRole === 'judge' ? 'Complete Judge Registration' : 'Complete Registration'">Complete Registration</span>
+                    </button>
+                </div>
+            </form>
+        </article>
+
+        <!-- ========================================================================= -->
+        <!-- MODAL: Add New Institution (Clean Modal Dialog, No In-Page Push Down)      -->
+        <!-- ========================================================================= -->
+        <div x-show="newInstModal" x-cloak
+             @click.self="newInstModal = false"
+             class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 font-body">
+            <div class="kwuo-torn-docket-wrapper w-full max-w-md z-10" @keydown.escape.window="newInstModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 space-y-4 font-body">
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+                        <div class="flex items-center gap-2">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                                <i class="ph-bold ph-buildings text-base"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">Register New School</h3>
+                                <p class="text-[11px] text-theme-body/60">Add institution details for this tournament</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="newInstModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-base"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                Full Institution Name *
+                            </label>
+                            <input type="text" x-model="newInstName" placeholder="e.g. Obafemi Awolowo University"
+                                   class="w-full rounded-xl border border-theme-border bg-theme-base px-3 py-2 text-xs text-theme-heading focus:outline-none focus:border-kwuo-bronze font-body">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                    Short Code / Acronym
+                                </label>
+                                <input type="text" x-model="newInstCode" placeholder="e.g. OAU"
+                                       class="w-full rounded-xl border border-theme-border bg-theme-base px-3 py-2 text-xs text-theme-heading focus:outline-none focus:border-kwuo-bronze font-body">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1 font-body">
+                                    Country
+                                </label>
+                                <input type="text" x-model="newInstCountry" placeholder="e.g. Nigeria"
+                                       class="w-full rounded-xl border border-theme-border bg-theme-base px-3 py-2 text-xs text-theme-heading focus:outline-none focus:border-kwuo-bronze font-body">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-theme-border flex items-center justify-end gap-2">
+                        <button type="button" @click="newInstModal = false"
+                                class="px-3.5 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:text-theme-heading hover:bg-theme-base transition">
+                            Cancel
+                        </button>
+                        <button type="button" @click="saveNewInst()"
+                                class="px-4 py-2 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white text-xs font-bold transition shadow-xs">
+                            Confirm School
+                        </button>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

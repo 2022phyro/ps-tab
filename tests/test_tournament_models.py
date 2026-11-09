@@ -166,6 +166,7 @@ async def test_institution_and_participant_profiles(db_session: AsyncSession):
 
     # 2. Add institution (grow-by-selection)
     inst = Institution(
+        tournament_id=tournament.id,
         name="Stanford Debate & Speech Society",
         code="STAN",
     )
@@ -416,3 +417,14 @@ async def test_tournament_rubric_criteria_and_scoring_bounds(db_session: AsyncSe
     total_criteria_cap = sum(c.max_points for c in loaded_tournament.rubric_criteria)
     # Total max score = base_score (70) + sum(criteria) (30) = 100
     assert loaded_tournament.base_score + total_criteria_cap == loaded_tournament.ceiling_score
+
+
+@pytest.mark.asyncio
+async def test_tournament_status_lifecycle():
+    """Verify TournamentStatus enum includes full state machine: DRAFT, REGISTRATION, ACTIVE, CONCLUDED, ARCHIVED."""
+    assert TournamentStatus.DRAFT.value == "draft"
+    assert TournamentStatus.REGISTRATION.value == "registration"
+    assert TournamentStatus.ACTIVE.value == "active"
+    assert TournamentStatus.CONCLUDED.value == "concluded"
+    assert TournamentStatus.ARCHIVED.value == "archived"
+    assert len(TournamentStatus) == 5

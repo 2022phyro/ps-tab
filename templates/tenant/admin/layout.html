@@ -42,50 +42,8 @@
         }
     </style>
 
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Onest:wght@300..800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css" />
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Onest', 'sans-serif'],
-                        heading: ['"Bricolage Grotesque"', 'sans-serif'],
-                    },
-                    colors: {
-                        theme: {
-                            base: 'var(--color-bg-base)',
-                            surface: 'var(--color-bg-surface)',
-                            heading: 'var(--color-text-heading)',
-                            body: 'var(--color-text-body)',
-                            border: 'var(--color-border)',
-                        },
-                        kwuo: {
-                            sand: '#F7F4EE',
-                            sage: '#8A9A86',
-                            bronze: '#C07D53',
-                            mahogany: '#2E150F',
-                            dark: {
-                                base: '#15100E',
-                                surface: '#1E1614',
-                                border: '#332420',
-                                heading: '#FAF8F5',
-                                body: '#C8BEB7',
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Compiled Local Stylesheet (Tailwind CSS, Self-Hosted Fonts & Phosphor Icons) -->
+    <link rel="stylesheet" href="/static/css/app.min.css">
 
     <style>
         :root {
@@ -237,256 +195,479 @@
         }
     </style>
 
-    <!-- Alpine.js & HTMX -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
-    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <!-- Bundled Local JavaScript (HTMX, Alpine & Alpine Collapse) -->
+    <script defer src="/static/js/app.min.js"></script>
 </head>
-<body hx-boost="true" class="min-h-full flex flex-col bg-theme-base text-theme-body font-sans">
-    <!-- Top Bar Navigation -->
-    <header class="sticky top-0 z-40 bg-theme-surface border-b border-theme-border">
-        <div class="px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Left: Drawer Toggle & Tournament Identity -->
-                <div class="flex items-center gap-3">
-                    <button @click="drawerOpen = !drawerOpen" type="button" class="lg:hidden p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition" aria-label="Toggle Tab Room Drawer">
-                        <i class="ph-bold ph-sidebar-simple text-xl"></i>
-                    </button>
-                    
-                    <div class="flex items-center gap-2.5">
-                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-kwuo-bronze text-white font-bold font-heading shadow-sm">
-                            K
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <a href="/admin" class="text-base font-heading font-extrabold text-theme-heading hover:text-kwuo-bronze transition">
-                                    {{ tournament.name }}
-                                </a>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
-                                    {{ tournament.status.value }}
-                                </span>
-                            </div>
-                            <div class="text-[11px] text-theme-body/60">
-                                Tab Room Control Center &bull; {{ tournament.slug }}.kwuo.com
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right: Public Portal Link & Official Identity -->
-                <div class="flex items-center gap-3">
-                    <a href="/" target="_blank" rel="noopener noreferrer"
-                       class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition"
-                       title="View public attendee facade">
-                        <i class="ph-bold ph-arrow-square-out text-sm"></i>
-                        <span>Public Portal</span>
-                    </a>
-
-                    <!-- Official Badge -->
-                    <div class="hidden md:flex items-center gap-2 pl-3 border-l border-theme-border">
-                        <div class="text-right">
-                            <span class="block text-xs font-bold text-theme-heading leading-tight">{{ official.name }}</span>
-                            <span class="block text-[10px] font-semibold text-kwuo-bronze uppercase tracking-wider">{{ official.role }}</span>
-                        </div>
-                    </div>
-
-                    <!-- Theme Toggle -->
-                    <button @click="darkMode = !darkMode" type="button" class="p-2 rounded-xl border border-theme-border text-theme-heading hover:bg-theme-base transition" aria-label="Toggle theme">
-                        <i x-show="!darkMode" class="ph-bold ph-moon text-lg"></i>
-                        <i x-show="darkMode" class="ph-bold ph-sun text-lg"></i>
-                    </button>
-
-                    <!-- Sign Out -->
-                    <form method="POST" action="/admin/logout">
-                        <button type="submit"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-semibold hover:bg-rose-100 transition"
-                                title="Sign out of Tab Room">
-                            <i class="ph-bold ph-sign-out text-sm"></i>
-                            <span class="hidden sm:inline">Sign Out</span>
-                        </button>
-                    </form>
-                </div>
-            </div>
+<body hx-boost="true" class="min-h-full flex flex-col lg:flex-row bg-theme-base text-theme-body font-sans"
+      x-data="{ 
+          darkMode: false, 
+          drawerOpen: false, 
+          navCollapsed: localStorage.getItem('kwuo_nav_collapsed') === 'true',
+          isDesktop: window.innerWidth >= 1024,
+          orgExpanded: {{ 'true' if request.url.path in ('/admin/settings', '/admin/documents', '/admin/rubric', '/admin/speakers', '/admin/judges', '/admin/institutions', '/admin/officials', '/admin/authorization') else 'false' }},
+          roundsExpanded: true,
+          activeFlyout: null
+      }" 
+      x-init="
+          const updateDesktop = () => { isDesktop = (window.innerWidth >= 1024); };
+          window.addEventListener('resize', updateDesktop);
+          updateDesktop();
+          darkMode = document.documentElement.classList.contains('dark');
+          $watch('darkMode', val => {
+              if (val) {
+                  document.documentElement.classList.add('dark');
+                  localStorage.theme = 'dark';
+              } else {
+                  document.documentElement.classList.remove('dark');
+                  localStorage.theme = 'light';
+              }
+          });
+          $watch('navCollapsed', val => localStorage.setItem('kwuo_nav_collapsed', val));
+      ">
+    <!-- Mobile-Only Header Bar (lg:hidden, central page tops out at 0 on desktop) -->
+    <header class="lg:hidden sticky top-0 z-40 bg-theme-surface border-b border-theme-border flex items-center justify-between px-4 h-14 shrink-0 font-body">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <button @click="drawerOpen = !drawerOpen" type="button" class="p-1.5 rounded-lg border border-theme-border text-theme-heading hover:bg-theme-base transition" aria-label="Toggle Drawer">
+                <i class="ph-bold ph-list text-lg"></i>
+            </button>
+            <a href="/" target="_blank" rel="noopener noreferrer" class="font-heading font-extrabold text-sm text-theme-heading truncate hover:text-kwuo-bronze transition" title="Open Public Portal">
+                {{ tournament.name }}
+            </a>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/" target="_blank" rel="noopener noreferrer" class="p-1.5 rounded-lg border border-theme-border text-theme-heading hover:bg-theme-base text-xs transition" title="Public Portal">
+                <i class="ph-bold ph-arrow-square-out text-sm"></i>
+            </a>
+            <button @click="darkMode = !darkMode" type="button" class="p-1.5 rounded-lg border border-theme-border text-theme-heading hover:bg-theme-base text-xs transition" aria-label="Toggle theme">
+                <i x-show="!darkMode" class="ph-bold ph-moon text-sm"></i>
+                <i x-show="darkMode" class="ph-bold ph-sun text-sm"></i>
+            </button>
+            <form method="POST" action="/admin/logout" class="inline">
+                <button type="submit" class="p-1.5 rounded-lg border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs transition" title="Sign Out">
+                    <i class="ph-bold ph-sign-out text-sm"></i>
+                </button>
+            </form>
         </div>
     </header>
 
-    <!-- Workspace Container (Side Drawer + Content Area) -->
-    <div class="flex-grow flex">
-        <!-- Backdrop for mobile drawer -->
-        <div x-show="drawerOpen" @click="drawerOpen = false" x-transition.opacity class="fixed inset-0 z-40 bg-black/50 lg:hidden"></div>
+    <!-- Backdrop for mobile drawer -->
+    <div x-show="drawerOpen" @click="drawerOpen = false" x-cloak x-transition.opacity class="fixed inset-0 z-40 bg-black/50 lg:hidden"></div>
 
-        <!-- Left Side Drawer Rail -->
-        <aside :class="drawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-               class="fixed lg:sticky top-16 left-0 z-40 w-72 h-[calc(100vh-4rem)] bg-theme-surface border-r border-theme-border flex flex-col justify-between overflow-y-auto transition-transform duration-200 shrink-0">
-            
-            <div class="p-4 space-y-6">
-                <!-- Cockpit Home Link -->
-                <a href="/admin" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold {% if request.url.path in ('/admin', '/admin/') %}bg-kwuo-bronze text-white shadow-sm{% else %}text-theme-heading hover:bg-theme-base{% endif %} transition">
-                    <i class="ph-bold ph-squares-four text-base"></i>
-                    <span>Control Center Hub</span>
-                </a>
-
-                <!-- SECTION 1: ORGANIZATION -->
-                <div x-data="{ open: true }" class="space-y-1">
-                    <div @click="open = !open" class="flex items-center justify-between px-3 py-1 text-[11px] font-heading font-extrabold uppercase tracking-widest text-kwuo-bronze cursor-pointer select-none">
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-kwuo-bronze"></span>
-                            <span>Organization</span>
+    <!-- Collapsible Sidebar (Reaches the VERY top of the screen on desktop) -->
+    <aside :class="[
+               drawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+               (isDesktop && navCollapsed) ? 'lg:w-16' : 'lg:w-64'
+           ]"
+           class="fixed inset-y-0 left-0 z-40 lg:z-20 lg:sticky lg:top-0 h-screen w-64 bg-theme-surface border-r border-theme-border flex flex-col justify-between transition-all duration-200 shrink-0 font-body shadow-lg lg:shadow-none select-none">
+        
+        <!-- SIDEBAR TOP: Brand / Identity -->
+        <div class="flex-1 min-h-0 flex flex-col">
+            <!-- When Expanded (Always visible on mobile drawer, toggleable on desktop) -->
+            <div x-show="!isDesktop || !navCollapsed" class="p-3.5 border-b border-theme-border flex items-center justify-between gap-2 shrink-0">
+                <a href="/" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2.5 min-w-0 group" title="Open Public Portal">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-kwuo-bronze text-white font-bold font-heading shadow-xs shrink-0 group-hover:scale-105 transition">
+                        K
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-xs font-heading font-extrabold text-theme-heading truncate leading-tight group-hover:text-kwuo-bronze transition">
+                            {{ tournament.name }}
                         </div>
-                        <div class="flex items-center gap-1">
-                            <span class="text-[10px] font-body lowercase text-theme-body/60">7 items</span>
-                            <i :class="open ? 'ph-bold ph-caret-down' : 'ph-bold ph-caret-right'" class="text-xs"></i>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                {{ tournament.status.value }}
+                            </span>
+                            <span class="text-[9px] text-theme-body/40 font-medium">Public &nearr;</span>
+                        </div>
+                    </div>
+                </a>
+                <div class="flex items-center gap-1">
+                    <button @click="drawerOpen = false" type="button" class="lg:hidden p-1.5 rounded-lg text-theme-body/60 hover:text-theme-heading hover:bg-theme-base transition" title="Close drawer">
+                        <i class="ph-bold ph-x text-base"></i>
+                    </button>
+                    <button @click="navCollapsed = true" type="button" class="hidden lg:flex p-1.5 rounded-lg text-theme-body/60 hover:text-theme-heading hover:bg-theme-base transition" title="Collapse sidebar to phase rail">
+                        <i class="ph-bold ph-sidebar-simple text-base"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- When Collapsed (Desktop icon rail header only) -->
+            <div x-show="isDesktop && navCollapsed" class="p-2 border-b border-theme-border hidden lg:flex flex-col items-center gap-2 shrink-0">
+                <a href="/" target="_blank" rel="noopener noreferrer" class="flex h-9 w-9 items-center justify-center rounded-xl bg-kwuo-bronze text-white font-bold font-heading shadow-xs hover:scale-105 transition" title="{{ tournament.name }} &bull; Open Public Portal">
+                    K
+                </a>
+                <button @click="navCollapsed = false" type="button" class="p-1 rounded-lg text-theme-body/60 hover:text-theme-heading hover:bg-theme-base transition" title="Expand navigation">
+                    <i class="ph-bold ph-sidebar-simple text-base rotate-180"></i>
+                </button>
+            </div>
+
+            <!-- COLLAPSED RAIL: Exactly One Icon per Phase (~10 items, NEVER overflows) -->
+            <div x-show="isDesktop && navCollapsed" class="hidden lg:flex flex-col items-center py-3 space-y-2 flex-1 justify-between select-none">
+                <div class="flex flex-col items-center space-y-2 w-full">
+                    <!-- Control Center -->
+                    <a href="/admin"
+                       class="p-2.5 rounded-xl transition flex items-center justify-center {% if request.url.path in ('/admin', '/admin/') %}bg-kwuo-bronze text-white shadow-xs{% else %}text-theme-heading hover:bg-theme-base{% endif %}"
+                       title="Control Center Hub">
+                        <i class="ph-bold ph-squares-four text-lg"></i>
+                    </a>
+
+                    <div class="w-8 h-px bg-theme-border/60 my-0.5"></div>
+
+                    <!-- Phase 1: Organization (Icon + Flyout on Hover/Click) -->
+                    <div class="relative" @mouseenter="activeFlyout = 'org'" @mouseleave="activeFlyout = null">
+                        <button type="button" @click="activeFlyout = (activeFlyout === 'org' ? null : 'org')"
+                                class="relative p-2.5 rounded-xl transition flex items-center justify-center {% if request.url.path in ('/admin/settings', '/admin/documents', '/admin/rubric', '/admin/speakers', '/admin/judges', '/admin/institutions', '/admin/officials', '/admin/authorization') %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading hover:bg-theme-base{% endif %}"
+                                title="Organization Phase (8 Steps)">
+                            <i class="ph-bold ph-gear text-lg"></i>
+                            <span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-theme-surface"></span>
+                        </button>
+
+                        <!-- Organization Flyout -->
+                        <div x-show="activeFlyout === 'org'" x-cloak
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-x-2"
+                             x-transition:enter-end="opacity-100 translate-x-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-x-0"
+                             x-transition:leave-end="opacity-0 translate-x-2"
+                             class="fixed left-16 top-24 z-[999999] w-64 rounded-2xl border border-theme-border bg-theme-surface shadow-2xl p-2.5 font-body space-y-1">
+                            <div class="px-2 py-1 text-[10px] font-heading font-extrabold uppercase tracking-widest text-kwuo-bronze border-b border-theme-border/50 flex items-center justify-between">
+                                <span>Organization Steps</span>
+                                <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">✓ 8/8 Ready</span>
+                            </div>
+                            <div class="py-1 space-y-0.5 text-xs">
+                                <a href="/admin/settings" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/settings' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
+                                    <span class="flex items-center gap-2"><i class="ph-bold ph-gear text-sm"></i> Settings</span>
+                                    <i class="ph-bold ph-check text-emerald-600 text-xs"></i>
+                                </a>
+                                <a href="/admin/documents" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/documents' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
+                                    <span class="flex items-center gap-2"><i class="ph-bold ph-files text-sm"></i> Documents</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ tournament.attachments|length }}</span>
+                                </a>
+                                <a href="/admin/rubric" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/rubric' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
+                                    <span class="flex items-center gap-2"><i class="ph-bold ph-sliders text-sm"></i> Rubric</span>
+                                    <i class="ph-bold ph-check text-emerald-600 text-xs"></i>
+                                </a>
+                                <a href="/admin/speakers" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/speakers' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
+                                    <span class="flex items-center gap-2"><i class="ph-bold ph-microphone text-sm"></i> Speakers</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ tournament.total_speakers_count }}</span>
+                                </a>
+                                <a href="/admin/judges" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/judges' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
+                                    <span class="flex items-center gap-2"><i class="ph-bold ph-scales text-sm"></i> Adjudicators</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ tournament.total_judges_count }}</span>
+                                </a>
+                                <a href="/admin/institutions" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/institutions' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
+                                    <span class="flex items-center gap-2"><i class="ph-bold ph-buildings text-sm"></i> Institutions</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ tournament.total_institutions_count }}</span>
+                                </a>
+                                <a href="/admin/officials" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/officials' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
+                                    <span class="flex items-center gap-2"><i class="ph-bold ph-users-three text-sm"></i> Staff</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ tournament.total_officials_count }}</span>
+                                </a>
+                                <a href="/admin/authorization" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-theme-base text-theme-heading transition {% if request.url.path == '/admin/authorization' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% endif %}">
+                                    <span class="flex items-center gap-2"><i class="ph-bold ph-shield-check text-sm"></i> Authorization</span>
+                                    <span class="text-[10px] text-theme-body/60">{{ tournament.roles|length }}</span>
+                                </a>
+                            </div>
                         </div>
                     </div>
 
-                    <div x-show="open" x-transition class="space-y-0.5 pt-1">
-                        <!-- Tournament settings -->
-                        <a href="/admin/settings" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/settings' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
-                            <div class="flex items-center gap-2">
-                                <i class="ph-bold ph-gear text-sm"></i>
-                                <span>Tournament settings</span>
+                    <!-- Phase 2: Rounds (Icon + Flyout on Hover/Click) -->
+                    <div class="relative" @mouseenter="activeFlyout = 'rounds'" @mouseleave="activeFlyout = null">
+                        <button type="button" @click="activeFlyout = (activeFlyout === 'rounds' ? null : 'rounds')"
+                                class="relative p-2.5 rounded-xl transition flex items-center justify-center text-theme-heading hover:bg-theme-base"
+                                title="Rounds Phase (Round 1 Ready)">
+                            <i class="ph-bold ph-clock-counter-clockwise text-lg"></i>
+                            <span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-theme-surface"></span>
+                        </button>
+
+                        <!-- Rounds Flyout -->
+                        <div x-show="activeFlyout === 'rounds'" x-cloak
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-x-2"
+                             x-transition:enter-end="opacity-100 translate-x-0"
+                             class="fixed left-16 top-36 z-[999999] w-56 rounded-2xl border border-theme-border bg-theme-surface shadow-2xl p-2.5 font-body space-y-1">
+                            <div class="px-2 py-1 text-[10px] font-heading font-extrabold uppercase tracking-widest text-theme-body/50 border-b border-theme-border/50">
+                                Rounds Timeline
                             </div>
-                            <i class="ph-bold ph-check text-emerald-600 dark:text-emerald-400 text-xs" title="Configured"></i>
+                            <div class="py-1 space-y-0.5 text-xs">
+                                <div class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-theme-base text-theme-heading font-semibold">
+                                    <span class="flex items-center gap-2"><i class="ph-bold ph-circle text-emerald-500 text-[10px]"></i> Round 1</span>
+                                    <span class="text-[9px] uppercase font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.2 rounded">Ready</span>
+                                </div>
+                                <div class="flex items-center justify-between px-2.5 py-1.5 text-theme-body/40">
+                                    <span class="flex items-center gap-2"><i class="ph-bold ph-lock text-[10px]"></i> Round 2</span>
+                                    <span class="text-[9px] uppercase font-bold">Locked</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phase 3: Outrounds (Locked Icon) -->
+                    <div class="p-2.5 rounded-xl text-theme-body/30 cursor-not-allowed flex items-center justify-center" title="Outrounds & Break (Locked until prelims conclude)">
+                        <i class="ph-bold ph-crosshair-simple text-lg"></i>
+                    </div>
+
+                    <!-- Phase 4: Conclusion (Locked Icon) -->
+                    <div class="p-2.5 rounded-xl text-theme-body/30 cursor-not-allowed flex items-center justify-center" title="Conclusion & Certified Results (Locked)">
+                        <i class="ph-bold ph-flag text-lg"></i>
+                    </div>
+                </div>
+
+                <!-- Bottom Pinned Asides & User in Rail -->
+                <div class="flex flex-col items-center space-y-2 w-full pt-2 border-t border-theme-border/60">
+                    <a href="/admin/settings" class="relative p-2 rounded-xl text-amber-500 hover:bg-amber-500/10 transition flex items-center justify-center" title="Clashes: 0 open compliance issues">
+                        <i class="ph-bold ph-warning text-base"></i>
+                        <span class="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                    </a>
+                    <a href="/admin/documents" class="p-2 rounded-xl text-theme-heading hover:bg-theme-base transition flex items-center justify-center" title="Equity Desk: Clear">
+                        <i class="ph-bold ph-shield text-base text-theme-body/70"></i>
+                    </a>
+                    <a href="/admin/rubric" class="p-2 rounded-xl text-theme-heading hover:bg-theme-base transition flex items-center justify-center" title="Feedback & Ballots: 0 in">
+                        <i class="ph-bold ph-chat-circle-dots text-base text-theme-body/70"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- EXPANDED NAVIGATION ITEMS (Scrollable mid-section, ALWAYS visible on mobile drawer) -->
+            <div x-show="!isDesktop || !navCollapsed" class="overflow-y-auto flex-1 p-2 space-y-3 font-body">
+                <!-- Cockpit Home -->
+                <a href="/admin" @click="if (!isDesktop) drawerOpen = false"
+                   class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition text-xs font-bold {% if request.url.path in ('/admin', '/admin/') %}bg-kwuo-bronze text-white shadow-xs{% else %}text-theme-heading hover:bg-theme-base{% endif %}"
+                   title="Control Center Hub">
+                    <i class="ph-bold ph-squares-four text-base shrink-0"></i>
+                    <span class="truncate">Control Center</span>
+                </a>
+
+                <!-- SECTION 1: ORGANIZATION (Collapsible accordion) -->
+                <div class="space-y-0.5">
+                    <button type="button" @click.stop="orgExpanded = !orgExpanded"
+                         class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[10px] font-heading font-extrabold uppercase tracking-widest text-kwuo-bronze cursor-pointer select-none hover:bg-theme-base/60 transition text-left">
+                        <span class="truncate">Organization</span>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">✓ 8/8</span>
+                            <i :class="orgExpanded ? 'ph-bold ph-caret-down' : 'ph-bold ph-caret-right'" class="text-[10px]"></i>
+                        </div>
+                    </button>
+
+                    <div x-show="orgExpanded" x-collapse.duration.150ms class="space-y-0.5 pt-0.5">
+                        <!-- Tournament settings -->
+                        <a href="/admin/settings" @click="if (!isDesktop) drawerOpen = false"
+                           class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition {% if request.url.path == '/admin/settings' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %}">
+                            <div class="flex items-center gap-2 truncate">
+                                <i class="ph-bold ph-gear text-sm shrink-0"></i>
+                                <span class="truncate">Settings</span>
+                            </div>
+                            <i class="ph-bold ph-check text-emerald-600 dark:text-emerald-400 text-xs shrink-0" title="Configured"></i>
                         </a>
 
                         <!-- Documents -->
-                        <a href="/admin/documents" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/documents' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
-                            <div class="flex items-center gap-2">
-                                <i class="ph-bold ph-files text-sm"></i>
-                                <span>Documents &amp; Files</span>
+                        <a href="/admin/documents" @click="if (!isDesktop) drawerOpen = false"
+                           class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition {% if request.url.path == '/admin/documents' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %}">
+                            <div class="flex items-center gap-2 truncate">
+                                <i class="ph-bold ph-files text-sm shrink-0"></i>
+                                <span class="truncate">Documents</span>
                             </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70">{{ tournament.attachments|length }}</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.attachments|length }}</span>
                         </a>
 
                         <!-- Scoring Criteria / Rubric -->
-                        <a href="/admin/rubric" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/rubric' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
-                            <div class="flex items-center gap-2">
-                                <i class="ph-bold ph-sliders text-sm"></i>
-                                <span>Scoring criteria</span>
+                        <a href="/admin/rubric" @click="if (!isDesktop) drawerOpen = false"
+                           class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition {% if request.url.path == '/admin/rubric' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %}">
+                            <div class="flex items-center gap-2 truncate">
+                                <i class="ph-bold ph-sliders text-sm shrink-0"></i>
+                                <span class="truncate">Rubric</span>
                             </div>
-                            <i class="ph-bold ph-check text-emerald-600 dark:text-emerald-400 text-xs" title="Rubric Set"></i>
+                            <i class="ph-bold ph-check text-emerald-600 dark:text-emerald-400 text-xs shrink-0" title="Rubric Set"></i>
                         </a>
 
                         <!-- Speakers -->
-                        <a href="/admin/speakers" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/speakers' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
-                            <div class="flex items-center gap-2">
-                                <i class="ph-bold ph-microphone text-sm"></i>
-                                <span>Speakers roster</span>
+                        <a href="/admin/speakers" @click="if (!isDesktop) drawerOpen = false"
+                           class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition {% if request.url.path == '/admin/speakers' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %}">
+                            <div class="flex items-center gap-2 truncate">
+                                <i class="ph-bold ph-microphone text-sm shrink-0"></i>
+                                <span class="truncate">Speakers</span>
                             </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70">{{ tournament.total_speakers_count }}</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.total_speakers_count }}</span>
                         </a>
 
                         <!-- Judges -->
-                        <a href="/admin/judges" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/judges' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
-                            <div class="flex items-center gap-2">
-                                <i class="ph-bold ph-scales text-sm"></i>
-                                <span>Judges &amp; Panels</span>
+                        <a href="/admin/judges" @click="if (!isDesktop) drawerOpen = false"
+                           class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition {% if request.url.path == '/admin/judges' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %}">
+                            <div class="flex items-center gap-2 truncate">
+                                <i class="ph-bold ph-scales text-sm shrink-0"></i>
+                                <span class="truncate">Adjudicators</span>
                             </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70">{{ tournament.total_judges_count }}</span>
-                        </a>
-
-                        <!-- Officials -->
-                        <a href="/admin/officials" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/officials' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
-                            <div class="flex items-center gap-2">
-                                <i class="ph-bold ph-shield-check text-sm"></i>
-                                <span>Rooms &amp; Officials</span>
-                            </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70">{{ tournament.total_officials_count }}</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.total_judges_count }}</span>
                         </a>
 
                         <!-- Institutions -->
-                        <a href="/admin/institutions" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold {% if request.url.path == '/admin/institutions' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %} transition">
-                            <div class="flex items-center gap-2">
-                                <i class="ph-bold ph-buildings text-sm"></i>
-                                <span>Institutions</span>
+                        <a href="/admin/institutions" @click="if (!isDesktop) drawerOpen = false"
+                           class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition {% if request.url.path == '/admin/institutions' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %}">
+                            <div class="flex items-center gap-2 truncate">
+                                <i class="ph-bold ph-buildings text-sm shrink-0"></i>
+                                <span class="truncate">Institutions</span>
                             </div>
-                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70">{{ tournament.total_institutions_count }}</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.total_institutions_count }}</span>
+                        </a>
+
+                        <!-- Officials / Staff -->
+                        <a href="/admin/officials" @click="if (!isDesktop) drawerOpen = false"
+                           class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition {% if request.url.path == '/admin/officials' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %}">
+                            <div class="flex items-center gap-2 truncate">
+                                <i class="ph-bold ph-users-three text-sm shrink-0"></i>
+                                <span class="truncate">Staff</span>
+                            </div>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.total_officials_count }}</span>
+                        </a>
+
+                        <!-- Authorization & RBAC -->
+                        <a href="/admin/authorization" @click="if (!isDesktop) drawerOpen = false"
+                           class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition {% if request.url.path == '/admin/authorization' %}bg-kwuo-bronze/10 text-kwuo-bronze font-bold{% else %}text-theme-heading/80 hover:bg-theme-base hover:text-theme-heading{% endif %}">
+                            <div class="flex items-center gap-2 truncate">
+                                <i class="ph-bold ph-shield-check text-sm shrink-0"></i>
+                                <span class="truncate">Authorization</span>
+                            </div>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-theme-base border border-theme-border text-theme-body/70 shrink-0">{{ tournament.roles|length }}</span>
                         </a>
                     </div>
                 </div>
 
                 <!-- SECTION 2: ROUNDS -->
-                <div x-data="{ open: true }" class="space-y-1">
-                    <div @click="open = !open" class="flex items-center justify-between px-3 py-1 text-[11px] font-heading font-extrabold uppercase tracking-widest text-theme-body/50 cursor-pointer select-none">
-                        <span>Rounds</span>
-                        <i :class="open ? 'ph-bold ph-caret-down' : 'ph-bold ph-caret-right'" class="text-xs"></i>
-                    </div>
-
-                    <div x-show="open" x-transition class="space-y-0.5 pt-1">
-                        <div class="flex items-center justify-between px-3 py-1.5 text-xs text-theme-body/60">
-                            <span class="flex items-center gap-2"><i class="ph-bold ph-circle text-[10px]"></i> Round 1</span>
-                            <span class="text-[10px] uppercase font-bold text-theme-body/40">Ready</span>
+                <div class="space-y-0.5">
+                    <button type="button" @click.stop="roundsExpanded = !roundsExpanded"
+                         class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[10px] font-heading font-extrabold uppercase tracking-widest text-theme-body/60 cursor-pointer select-none hover:bg-theme-base/60 transition text-left">
+                        <span class="truncate">Rounds</span>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="text-[9px] uppercase font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.2 rounded">R1 Active</span>
+                            <i :class="roundsExpanded ? 'ph-bold ph-caret-down' : 'ph-bold ph-caret-right'" class="text-[10px]"></i>
                         </div>
-                        <div class="flex items-center justify-between px-3 py-1.5 text-xs text-theme-body/40">
+                    </button>
+
+                    <div x-show="roundsExpanded" x-collapse.duration.150ms class="space-y-0.5 pt-0.5">
+                        <div class="flex items-center justify-between px-2.5 py-1 text-xs text-theme-heading font-semibold bg-theme-base/40 rounded-lg">
+                            <span class="flex items-center gap-2"><i class="ph-bold ph-circle text-emerald-500 text-[10px]"></i> Round 1</span>
+                            <span class="text-[9px] uppercase font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.2 rounded">Ready</span>
+                        </div>
+                        <div class="flex items-center justify-between px-2.5 py-1 text-xs text-theme-body/40">
                             <span class="flex items-center gap-2"><i class="ph-bold ph-lock text-[10px]"></i> Round 2</span>
-                            <span class="text-[10px] uppercase font-bold">Locked</span>
-                        </div>
-                        <div class="flex items-center justify-between px-3 py-1.5 text-xs text-theme-body/40">
-                            <span class="flex items-center gap-2"><i class="ph-bold ph-lock text-[10px]"></i> Round 3</span>
-                            <span class="text-[10px] uppercase font-bold">Locked</span>
+                            <span class="text-[9px] uppercase font-bold">Locked</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- SECTION 3: OUTROUNDS -->
-                <div x-data="{ open: false }" class="space-y-1">
-                    <div @click="open = !open" class="flex items-center justify-between px-3 py-1 text-[11px] font-heading font-extrabold uppercase tracking-widest text-theme-body/50 cursor-pointer select-none">
-                        <span>Outrounds</span>
-                        <i :class="open ? 'ph-bold ph-caret-down' : 'ph-bold ph-caret-right'" class="text-xs"></i>
-                    </div>
-                    <div x-show="open" class="space-y-0.5 pt-1 text-xs text-theme-body/40 px-3 py-1">
-                        <div>Decide breaks</div>
-                        <div>Quarters &bull; Semis &bull; Finals</div>
-                        <div>Champion</div>
-                    </div>
+                <!-- SECTION 3: OUTROUNDS (Locked) -->
+                <div class="flex items-center justify-between px-2.5 py-1.5 text-xs text-theme-body/40 cursor-not-allowed">
+                    <span class="flex items-center gap-2"><i class="ph-bold ph-crosshair-simple text-sm"></i> Outrounds</span>
+                    <span class="text-[9px] uppercase font-bold text-theme-body/30">Locked</span>
                 </div>
 
-                <!-- SECTION 4: CONCLUSION -->
-                <div x-data="{ open: false }" class="space-y-1">
-                    <div @click="open = !open" class="flex items-center justify-between px-3 py-1 text-[11px] font-heading font-extrabold uppercase tracking-widest text-theme-body/50 cursor-pointer select-none">
-                        <span>Conclusion</span>
-                        <i :class="open ? 'ph-bold ph-caret-down' : 'ph-bold ph-caret-right'" class="text-xs"></i>
+                <!-- SECTION 4: CONCLUSION (Locked) -->
+                <div class="flex items-center justify-between px-2.5 py-1.5 text-xs text-theme-body/40 cursor-not-allowed">
+                    <span class="flex items-center gap-2"><i class="ph-bold ph-flag text-sm"></i> Conclusion</span>
+                    <span class="text-[9px] uppercase font-bold text-theme-body/30">Locked</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PINNED ASIDES & COMPLIANCE (Fixed above the user footer, NEVER scrolled out of view) -->
+        <div x-show="!isDesktop || !navCollapsed" class="p-2.5 border-t border-theme-border/60 bg-theme-base/30 space-y-1 shrink-0 font-body">
+            <div class="px-2 py-0.5 text-[9px] font-heading font-bold uppercase tracking-wider text-theme-body/50">
+                Live Asides &amp; Compliance
+            </div>
+            <div class="flex items-center justify-between px-2.5 py-1 text-xs text-theme-heading rounded-lg hover:bg-theme-base/60 transition">
+                <span class="flex items-center gap-1.5 text-xs">
+                    <i class="ph-bold ph-warning text-amber-500 text-xs"></i>
+                    <span>Clashes</span>
+                </span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">0 open</span>
+            </div>
+            <div class="flex items-center justify-between px-2.5 py-1 text-xs text-theme-heading rounded-lg hover:bg-theme-base/60 transition">
+                <span class="flex items-center gap-1.5 text-xs">
+                    <i class="ph-bold ph-shield text-theme-body/70 text-xs"></i>
+                    <span>Equity Desk</span>
+                </span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-theme-base text-theme-body/60 font-bold">Clear</span>
+            </div>
+            <div class="flex items-center justify-between px-2.5 py-1 text-xs text-theme-heading rounded-lg hover:bg-theme-base/60 transition">
+                <span class="flex items-center gap-1.5 text-xs">
+                    <i class="ph-bold ph-chat-circle-dots text-theme-body/70 text-xs"></i>
+                    <span>Feedback</span>
+                </span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-theme-base text-theme-body/60 font-bold">0 in</span>
+            </div>
+        </div>
+
+        <!-- SIDEBAR FOOTER: User Profile & Quick Actions -->
+        <div class="shrink-0">
+            <!-- Expanded Footer -->
+            <div x-show="!isDesktop || !navCollapsed" class="p-3 border-t border-theme-border bg-theme-base/40 space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <div class="text-xs font-bold text-theme-heading truncate leading-tight">{{ official.name }}</div>
+                        <div class="text-[10px] font-semibold text-kwuo-bronze uppercase tracking-wider truncate">{{ official.role }}</div>
                     </div>
-                    <div x-show="open" class="space-y-0.5 pt-1 text-xs text-theme-body/40 px-3 py-1">
-                        <div>Final results &amp; awards</div>
-                        <div>Archive &bull; export</div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <!-- Public Portal link -->
+                        <a href="/" target="_blank" rel="noopener noreferrer"
+                           class="p-1.5 rounded-lg border border-theme-border text-theme-heading hover:bg-theme-surface transition"
+                           title="Open Public Portal">
+                            <i class="ph-bold ph-arrow-square-out text-sm"></i>
+                        </a>
+
+                        <!-- Dark Mode Toggle -->
+                        <button @click="darkMode = !darkMode" type="button"
+                                class="p-1.5 rounded-lg border border-theme-border text-theme-heading hover:bg-theme-surface transition"
+                                aria-label="Toggle theme" title="Toggle theme">
+                            <i x-show="!darkMode" class="ph-bold ph-moon text-sm"></i>
+                            <i x-show="darkMode" class="ph-bold ph-sun text-sm"></i>
+                        </button>
+
+                        <!-- Sign Out Button -->
+                        <form method="POST" action="/admin/logout" class="inline">
+                            <button type="submit"
+                                    class="p-1.5 rounded-lg border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 transition"
+                                    title="Sign Out">
+                                <i class="ph-bold ph-sign-out text-sm"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
 
-            <!-- DOCKED ASIDES (Bottom Rail) -->
-            <div class="p-3 border-t border-theme-border bg-theme-base/50 space-y-1 text-xs font-semibold">
-                <div class="px-3 py-1 text-[10px] font-heading font-bold uppercase tracking-wider text-theme-body/50">
-                    Asides &amp; Compliance
+            <!-- Collapsed Footer (Icon Only Rail) -->
+            <div x-show="isDesktop && navCollapsed" class="p-2 border-t border-theme-border hidden lg:flex flex-col items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-kwuo-bronze/10 text-kwuo-bronze font-bold text-xs flex items-center justify-center cursor-default"
+                     title="{{ official.name }} &bull; {{ official.role }}">
+                    {{ (official.name[0] if official.name else 'O')|upper }}
                 </div>
-                <div class="flex items-center justify-between px-3 py-1.5 rounded-lg text-theme-heading hover:bg-theme-surface transition">
-                    <span class="flex items-center gap-2">
-                        <i class="ph-bold ph-warning text-amber-500"></i>
-                        <span>Clashes</span>
-                    </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">0 open</span>
-                </div>
-                <div class="flex items-center justify-between px-3 py-1.5 rounded-lg text-theme-heading hover:bg-theme-surface transition">
-                    <span class="flex items-center gap-2">
-                        <i class="ph-bold ph-scales text-indigo-500"></i>
-                        <span>Equity Desk</span>
-                    </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-theme-base text-theme-body/60 font-bold">clear</span>
-                </div>
-                <div class="flex items-center justify-between px-3 py-1.5 rounded-lg text-theme-heading hover:bg-theme-surface transition">
-                    <span class="flex items-center gap-2">
-                        <i class="ph-bold ph-note-pencil text-teal-500"></i>
-                        <span>Judge Feedback</span>
-                    </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-theme-base text-theme-body/60 font-bold">0</span>
-                </div>
+                <a href="/" target="_blank" rel="noopener noreferrer"
+                   class="p-1.5 rounded-lg text-theme-heading hover:bg-theme-base transition"
+                   title="Open Public Portal">
+                    <i class="ph-bold ph-arrow-square-out text-base"></i>
+                </a>
+                <button @click="darkMode = !darkMode" type="button"
+                        class="p-1.5 rounded-lg text-theme-heading hover:bg-theme-base transition"
+                        title="Toggle theme">
+                    <i x-show="!darkMode" class="ph-bold ph-moon text-base"></i>
+                    <i x-show="darkMode" class="ph-bold ph-sun text-base"></i>
+                </button>
+                <form method="POST" action="/admin/logout">
+                    <button type="submit"
+                            class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-500/10 transition"
+                            title="Sign Out">
+                        <i class="ph-bold ph-sign-out text-base"></i>
+                    </button>
+                </form>
             </div>
-        </aside>
+        </div>
+    </aside>
 
-        <!-- Right Main Workspace -->
-        <main class="flex-grow p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+    <!-- Right Main Workspace (Starts at top of screen on desktop, maximizing central canvas; NO overflow-x-hidden so sticky toolbars stick relative to window scroll) -->
+    <main class="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 font-body">
+        <div class="max-w-7xl mx-auto">
             {% block admin_content %}{% endblock %}
-        </main>
-    </div>
+        </div>
+    </main>
 
     <!-- Global Kwuo Toast Notifications Container -->
     <div x-data="kwuoToastSystem()"
@@ -494,12 +675,18 @@
          x-init="
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('msg')) {
-                add({ message: urlParams.get('msg'), type: 'success' });
-                window.history.replaceState({}, document.title, window.location.pathname);
+                const msgVal = urlParams.get('msg');
+                add({ message: msgVal, type: 'success' });
+                urlParams.delete('msg');
+                const newSearch = urlParams.toString() ? ('?' + urlParams.toString()) : '';
+                window.history.replaceState({}, document.title, window.location.pathname + newSearch);
             }
             if (urlParams.has('error')) {
-                add({ message: urlParams.get('error'), type: 'error' });
-                window.history.replaceState({}, document.title, window.location.pathname);
+                const errVal = urlParams.get('error');
+                add({ message: errVal, type: 'error' });
+                urlParams.delete('error');
+                const newSearch = urlParams.toString() ? ('?' + urlParams.toString()) : '';
+                window.history.replaceState({}, document.title, window.location.pathname + newSearch);
             }
          "
          class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
@@ -529,11 +716,11 @@
     </div>
 
     <script>
+        window._lastToastTime = window._lastToastTime || {};
+
         function kwuoToastSystem() {
             return {
                 toasts: [],
-                lastMessage: '',
-                lastTime: 0,
                 add(detail) {
                     if (!detail) return;
                     const message = typeof detail === 'string' ? detail : detail.message;
@@ -541,10 +728,16 @@
                     const duration = (typeof detail === 'object' && detail.duration) ? detail.duration : 4500;
                     if (!message) return;
 
+                    // Strict deduplication: never allow identical message if currently visible or displayed in last 3s
+                    if (this.toasts.some(t => t.message === message && t.visible)) {
+                        return;
+                    }
                     const now = Date.now();
-                    if (this.lastMessage === message && (now - this.lastTime < 1000)) return;
-                    this.lastMessage = message;
-                    this.lastTime = now;
+                    const last = window._lastToastTime[message];
+                    if (last && (now - last < 3000)) {
+                        return;
+                    }
+                    window._lastToastTime[message] = now;
 
                     const id = now + Math.random();
                     const toast = { id, message, type, visible: true };
@@ -561,8 +754,44 @@
             };
         }
         window.showToast = function (message, type = 'success', duration = 4500) {
+            if (!message) return;
             window.dispatchEvent(new CustomEvent('toast', { detail: { message, type, duration } }));
         };
+
+        function removeCloak(target) {
+            if (!target) return;
+            if (target.hasAttribute && target.hasAttribute('x-cloak')) {
+                target.removeAttribute('x-cloak');
+            }
+            if (target.querySelectorAll) {
+                target.querySelectorAll('[x-cloak]').forEach(function (el) {
+                    el.removeAttribute('x-cloak');
+                });
+            }
+        }
+
+        document.addEventListener('htmx:afterSwap', function (evt) {
+            if (evt.detail && evt.detail.target) {
+                removeCloak(evt.detail.target);
+                if (window.Alpine) {
+                    window.Alpine.initTree(evt.detail.target);
+                }
+            }
+        });
+        document.addEventListener('htmx:afterSettle', function (evt) {
+            if (evt.detail && evt.detail.target) {
+                removeCloak(evt.detail.target);
+                if (window.Alpine) {
+                    window.Alpine.initTree(evt.detail.target);
+                }
+            }
+        });
+        document.addEventListener('htmx:historyRestore', function () {
+            removeCloak(document.body);
+            if (window.Alpine) {
+                window.Alpine.initTree(document.body);
+            }
+        });
     </script>
 
     {% if msg %}

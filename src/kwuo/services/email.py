@@ -153,3 +153,73 @@ async def send_password_reset_otp_email(to_email: str, otp_code: str, name: str 
             metadata={"action": "password_reset"},
         )
     return True
+
+
+async def send_official_invitation_email(
+    to_email: str,
+    name: str,
+    setup_url: str,
+    tournament_name: str,
+    roles: Optional[List[str]] = None,
+) -> bool:
+    """Send Tab Room official setup / password reset invitation link."""
+    greeting = f"Hello {name.strip()}," if name else "Hello,"
+    roles_text = f" ({', '.join(roles)})" if roles else ""
+    body = (
+        f"{greeting}\n\n"
+        f"You have been accredited as a Tab Room Official{roles_text} for:\n"
+        f"    {tournament_name}\n\n"
+        f"To complete your registration and establish your secure password, please visit:\n"
+        f"    {setup_url}\n\n"
+        f"This setup link is unique to your credentials and will remain active for the duration of the tournament.\n"
+        f"If you did not expect this invitation, please contact the tournament administration."
+    )
+    subject = f"Accreditation & Password Setup — {tournament_name}"
+    enqueued = await enqueue_job(
+        "send_email_task",
+        to_email=to_email,
+        subject=subject,
+        body=body,
+        metadata={"action": "official_invitation", "name": name, "setup_url": setup_url},
+    )
+    if not enqueued:
+        return await send_email(
+            to_email=to_email,
+            subject=subject,
+            body=body,
+            metadata={"action": "official_invitation", "setup_url": setup_url},
+        )
+    return True
+
+
+async def send_magic_link_email(
+    to_email: str,
+    name: str,
+    magic_url: str,
+    tournament_name: str,
+) -> bool:
+    """Send private zero-auth competitor magic access link via ARQ background worker."""
+    greeting = f"Hello {name.strip()}," if name else "Hello,"
+    body = (
+        f"{greeting}\n\n"
+        f"Here is your private magic access link for {tournament_name}:\n\n"
+        f"{magic_url}\n\n"
+        f"Keep this link safe. You can use it anytime to view your speaking times, room allocations, and ballots.\n\n"
+        f"Best regards,\n{tournament_name} Tab Room"
+    )
+    subject = f"Your Magic Access Link — {tournament_name}"
+    enqueued = await enqueue_job(
+        "send_email_task",
+        to_email=to_email,
+        subject=subject,
+        body=body,
+        metadata={"action": "magic_link", "name": name, "magic_url": magic_url},
+    )
+    if not enqueued:
+        return await send_email(
+            to_email=to_email,
+            subject=subject,
+            body=body,
+            metadata={"action": "magic_link", "magic_url": magic_url},
+        )
+    return True

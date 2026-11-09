@@ -4,46 +4,65 @@
 {% block title %}Dashboard — Kwuo{% endblock %}
 
 {% block content %}
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" x-data="{ 
-    createModalOpen: false, 
-    deleteModalOpen: false,
-    deleteTournId: '',
-    deleteTournName: '',
-    docsModalOpen: false,
-    activeTournId: '',
-    activeTournName: '',
-    docsTab: 'list',
-    tournName: '', 
-    tournSlug: '', 
-    autoSlug: true,
-    tournamentsDocs: {
-        {% for t in tournaments %}
-        '{{ t.id }}': [
-            {% for a in t.attachments %}
-            {
-                id: '{{ a.id }}',
-                title: {{ a.title | tojson }},
-                category: '{{ a.category.value }}',
-                filename: {{ a.filename | tojson }},
-                extension: '{{ a.extension }}',
-                formatted_size: '{{ a.formatted_size }}',
-                icon: '{{ a.phosphor_icon }}',
-                is_public: {{ 'true' if a.is_public else 'false' }},
-                task_id: {{ (a.task_id or '') | tojson }}
-            },
-            {% endfor %}
-        ],
+<script id="tournaments-docs-data" type="application/json">
+{
+    {% for t in tournaments %}
+    "{{ t.id }}": [
+        {% for a in t.attachments %}
+        {
+            "id": "{{ a.id }}",
+            "title": {{ a.title | tojson }},
+            "category": "{{ a.category.value }}",
+            "filename": {{ a.filename | tojson }},
+            "extension": "{{ a.extension }}",
+            "formatted_size": "{{ a.formatted_size }}",
+            "icon": "{{ a.phosphor_icon }}",
+            "is_public": {{ 'true' if a.is_public else 'false' }},
+            "task_id": {{ (a.task_id or '') | tojson }}
+        }{% if not loop.last %},{% endif %}
         {% endfor %}
-    },
-    slugify(text) {
-        return text.toString().toLowerCase().trim()
-            .replace(/\s+/g, '-')
-            .replace(/[^\w\-]+/g, '')
-            .replace(/\-\-+/g, '-')
-            .replace(/^-+/, '')
-            .replace(/-+$/, '');
+    ]{% if not loop.last %},{% endif %}
+    {% endfor %}
+}
+</script>
+
+<script>
+function kwuoDashboardState() {
+    let docs = {};
+    try {
+        const el = document.getElementById('tournaments-docs-data');
+        if (el && el.textContent) {
+            docs = JSON.parse(el.textContent);
+        }
+    } catch (e) {
+        console.error('Failed to parse tournamentsDocs:', e);
     }
-}" x-init="{% if msg %}showToast('{{ msg }}', 'success'){% endif %}">
+    return {
+        createModalOpen: false, 
+        deleteModalOpen: false,
+        deleteTournId: '',
+        deleteTournName: '',
+        docsModalOpen: false,
+        activeTournId: '',
+        activeTournName: '',
+        docsTab: 'list',
+        tournName: '', 
+        tournSlug: '', 
+        autoSlug: true,
+        tournamentsDocs: docs,
+        slugify(text) {
+            return text.toString().toLowerCase().trim()
+                .replace(/\s+/g, '-')
+                .replace(/[^\w\-]+/g, '')
+                .replace(/\-\-+/g, '-')
+                .replace(/^-+/, '')
+                .replace(/-+$/, '');
+        }
+    };
+}
+</script>
+
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" x-data="kwuoDashboardState()" x-init="{% if msg %}window.showToast && window.showToast('{{ msg }}', 'success');{% endif %}">
     <!-- Header banner -->
     <div class="md:flex md:items-center md:justify-between border-b border-theme-border pb-6">
         <div class="min-w-0 flex-1">
@@ -75,7 +94,7 @@
                 <span>Site Administration</span>
             </a>
             {% endif %}
-            <button @click="createModalOpen = true" type="button"
+            <button @click.prevent="createModalOpen = true" type="button"
                 class=" kwuo-btn kwuo-btn-primary kwuo-btn-md inline-flex items-center gap-1.5 bg-kwuo-bronze px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-kwuo-mahogany transition">
                 <i class="ph-bold ph-plus"></i>
                 <span>New Tournament</span>
@@ -106,7 +125,7 @@
                 Launch your tournament tabulation docket. Every event receives an isolated subdomain portal.
             </p>
             <div class="pt-2">
-                <button @click="createModalOpen = true" type="button"
+                <button @click.prevent="createModalOpen = true" type="button"
                     class="inline-flex kwuo-btn kwuo-btn-primary kwuo-btn-md items-center gap-1.5 bg-kwuo-bronze px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-kwuo-mahogany transition">
                     <i class="ph-bold ph-plus"></i>
                     <span>Create your first tournament</span>
@@ -177,32 +196,19 @@
                         <i class="ph-bold ph-users text-kwuo-bronze shrink-0"></i>
                         <span>{{ t.participants|length }} participants enrolled</span>
                     </div>
-                    <div class="flex items-center gap-1.5">
-                        <i class="ph-bold ph-folder-open text-kwuo-bronze shrink-0"></i>
-                        <span>{{ t.attachments|length }} {% if t.attachments|length == 1 %}document{% else %}documents{% endif %} attached</span>
-                    </div>
                 </div>
             </div>
 
             <!-- Docket Footer Actions -->
             <div class="mt-6 pt-4 border-t border-theme-border/60 flex items-center justify-between gap-2">
-                <!-- Launch Subdomain Button -->
-                <a href="{{ tournament_url(t.slug, request) }}" target="_blank" rel="noopener noreferrer"
+                <!-- Manage Tournament Button -->
+                <a href="{{ tournament_url(t.slug, request) }}/admin" target="_blank" rel="noopener noreferrer"
                     class="inline-flex items-center kwuo-btn kwuo-btn-md kwuo-btn-primary transition">
-                    <i class="ph-bold ph-arrow-square-out text-sm"></i>
-                    <span>View Tournament</span>
+                    <i class="ph-bold ph-gear text-sm"></i>
+                    <span>Manage Tournament</span>
                 </a>
 
-                <div class="flex items-center gap-2">
-                    <!-- Manage Documents Button -->
-                    <button type="button"
-                        @click="activeTournId = '{{ t.id }}'; activeTournName = '{{ t.name|replace('\'', '\\\'') }}'; docsTab = 'list'; docsModalOpen = true"
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-kwuo-bronze hover:text-kwuo-mahogany dark:hover:text-kwuo-sand hover:bg-kwuo-sand/40 dark:hover:bg-kwuo-dark-accent border border-kwuo-bronze/30 transition"
-                        title="Manage tournament documents, briefings & task files">
-                        <i class="ph-bold ph-files text-sm"></i>
-                        <span>Files ({{ t.attachments|length }})</span>
-                    </button>
-
+                <div>
                     <!-- Delete Button -->
                     <button type="button"
                         @click="deleteTournId = '{{ t.id }}'; deleteTournName = '{{ t.name|replace('\'', '\\\'') }}'; deleteModalOpen = true"
@@ -220,154 +226,154 @@
     </div>
 
     <!-- Create Tournament Modal (Archival Docket / Slip Aesthetic) -->
-    <div x-show="createModalOpen" x-transition:enter="transition ease-out duration-200"
+    <div x-show="createModalOpen" x-cloak
+        @click.self="createModalOpen = false"
+        x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
-        class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-        style="display: none;">
+        class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
 
-        {% call edit.torn_docket(wrapper_class="h-full", class="relative w-full max-w-lg h-[90dvh] overflow-y-auto bg-theme-surface border-2 border-theme-border px-6 sm:px-8  pt-0 shadow-2xl",
-        attrs='@click.away="createModalOpen = false"'
-        ) %}
-            <!-- Docket Header -->
-            <div
-                class="flex items-center sticky top-0 bg-theme-surface justify-between p-4 border-b-2 sticky border-theme-border">
-                <div class="flex items-center gap-2.5">
-                    <div
-                        class="flex h-8 w-8 items-center justify-center bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/30">
-                        <i class="ph-bold ph-trophy text-lg"></i>
+        <!-- Dialog Container in Torn-Docket Styling -->
+        <div class="relative w-full max-w-lg kwuo-torn-docket-wrapper z-10" @keydown.escape.window="createModalOpen = false">
+            <article class="kwuo-torn-docket relative w-full max-h-[88vh] overflow-y-auto bg-theme-surface border-2 border-theme-border p-6 sm:p-8 shadow-2xl space-y-5">
+                <!-- Docket Header -->
+                <div class="flex items-center justify-between pb-3 border-b-2 border-theme-border">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/30">
+                            <i class="ph-bold ph-trophy text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-heading font-extrabold text-theme-heading">New Tournament</h3>
+                            <p class="text-[11px] font-body text-theme-body/60">Provision a new tournament portal and default division</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="text-xl font-heading font-extrabold text-theme-heading">New Tournament</h3>
-                    </div>
-                </div>
-                <button @click="createModalOpen = false" type="button"
-                    class="text-theme-body/50 hover:text-theme-heading transition p-1">
-                    <i class="ph-bold ph-x text-lg"></i>
-                </button>
-            </div>
-
-            <!-- Creation Form -->
-            <form action="/tournaments" method="POST" class="mt-6 space-y-4">
-                <!-- Name -->
-                <div>
-                    <label for="name"
-                        class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
-                        Tournament Name *
-                    </label>
-                    <input type="text" id="name" name="name" required x-model="tournName"
-                        @input="if (autoSlug) { tournSlug = slugify(tournName) }"
-                        placeholder="e.g. Yale Public Speaking Invitational 2026"
-                        class="w-full border border-slate-300 dark:border-kwuo-dark-border bg-white dark:bg-kwuo-dark-surface px-3.5 py-2.5 text-sm text-slate-900 dark:text-kwuo-sand placeholder:text-slate-400 dark:placeholder:text-kwuo-sage/50 focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
-                </div>
-
-                <!-- Slug -->
-                <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <label for="slug" class="block text-xs font-bold uppercase tracking-wider text-theme-heading">
-                            Subdomain Slug *
-                        </label>
-                        <span class="text-[11px] font-body text-slate-500 dark:text-kwuo-sage">
-                            [slug].kwuo.com
-                        </span>
-                    </div>
-                    <input type="text" id="slug" name="slug" required x-model="tournSlug" @input="autoSlug = false"
-                        placeholder="e.g. yale-invitational-2026"
-                        class="w-full border border-slate-300 dark:border-kwuo-dark-border bg-white dark:bg-kwuo-dark-surface px-3.5 py-2.5 text-sm font-body text-slate-900 dark:text-kwuo-sand placeholder:text-slate-400 dark:placeholder:text-kwuo-sage/50 focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
-                    <p class="mt-1 text-[11px] text-slate-500 dark:text-kwuo-sage">
-                        Subdomain where tournament portal lives. Only lowercase letters, numbers, and hyphens.
-                    </p>
-                </div>
-
-                <!-- Format & Location in semantic grid -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="location_type"
-                            class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
-                            Event Format *
-                        </label>
-                        {{ edit.custom_select(
-                            name="location_type",
-                            id="location_type",
-                            value="physical",
-                            required=true,
-                            options=[
-                                {"value": "physical", "label": "Physical (In-Person Venue)", "icon": "ph-map-pin"},
-                                {"value": "virtual", "label": "Virtual (Online / Zoom / Discord)", "icon": "ph-video-camera"},
-                                {"value": "hybrid", "label": "Hybrid (In-Person & Online)", "icon": "ph-globe"}
-                            ]
-                        ) }}
-                    </div>
-
-                    <div>
-                        <label for="location"
-                            class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
-                            Location / Venue Details
-                        </label>
-                        <input type="text" id="location" name="location"
-                            placeholder="e.g. New Haven, CT or Discord / Zoom"
-                            class="w-full border border-slate-300 dark:border-kwuo-dark-border bg-white dark:bg-kwuo-dark-surface px-3.5 py-2.5 text-sm text-slate-900 dark:text-kwuo-sand placeholder:text-slate-400 dark:placeholder:text-kwuo-sage/50 focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze rounded-xl font-body">
-                    </div>
-                </div>
-
-                <!-- Dates Grid -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label for="start_date"
-                            class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
-                            Start Date
-                        </label>
-                        <input type="date" id="start_date" name="start_date"
-                            class="w-full border border-slate-300 dark:border-kwuo-dark-border bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-sm text-slate-900 dark:text-kwuo-sand focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
-                    </div>
-                    <div>
-                        <label for="end_date"
-                            class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
-                            End Date
-                        </label>
-                        <input type="date" id="end_date" name="end_date"
-                            class="w-full border border-slate-300 dark:border-kwuo-dark-border bg-white dark:bg-kwuo-dark-surface px-3 py-2 text-sm text-slate-900 dark:text-kwuo-sand focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
-                    </div>
-                </div>
-
-                <!-- Description -->
-                <div>
-                    <label for="description"
-                        class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5">
-                        Description
-                    </label>
-                    <textarea id="description" name="description" rows="3"
-                        placeholder="Brief description of the tournament..."
-                        class="w-full border border-slate-300 dark:border-kwuo-dark-border bg-white dark:bg-kwuo-dark-surface px-3.5 py-2 text-sm text-slate-900 dark:text-kwuo-sand placeholder:text-slate-400 dark:placeholder:text-kwuo-sage/50 focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze"></textarea>
-                </div>
-
-                <!-- Modal Actions -->
-                <div class="mt-6 py-4 border-t-2 border-theme-border flex items-center justify-center gap-4">
                     <button @click="createModalOpen = false" type="button"
-                        class="px-4 py-2 kwuo-btn-danger-outline kwuo-btn kwuo-btn-md font-semibold text-slate-600 dark:text-kwuo-sage hover:text-theme-heading transition">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                        class="inline-flex kwuo-btn kwuo-btn-md items-center gap-1.5 bg-kwuo-bronze px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-kwuo-mahogany transition">
-                        <i class="ph-bold ph-check"></i>
-                        <span>Create Tournament</span>
+                        class="text-theme-body/50 hover:text-theme-heading transition p-1 rounded-lg hover:bg-theme-base">
+                        <i class="ph-bold ph-x text-lg"></i>
                     </button>
                 </div>
-            </form>
-        {% endcall %}
+
+                <!-- Creation Form -->
+                <form action="/tournaments" method="POST" class="space-y-4">
+                    <!-- Name -->
+                    <div>
+                        <label for="name"
+                            class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Tournament Name *
+                        </label>
+                        <input type="text" id="name" name="name" required x-model="tournName"
+                            @input="if (autoSlug) { tournSlug = slugify(tournName) }"
+                            placeholder="e.g. Yale Public Speaking Invitational 2026"
+                            class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2.5 text-sm text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                    </div>
+
+                    <!-- Slug -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label for="slug" class="block text-xs font-bold uppercase tracking-wider text-theme-heading font-body">
+                                Subdomain Slug *
+                            </label>
+                            <span class="text-[11px] font-body text-theme-body/60">
+                                [slug].kwuo.com
+                            </span>
+                        </div>
+                        <input type="text" id="slug" name="slug" required x-model="tournSlug" @input="autoSlug = false"
+                            placeholder="e.g. yale-invitational-2026"
+                            class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2.5 text-sm font-body text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze">
+                        <p class="mt-1 text-[11px] text-theme-body/60 font-body">
+                            Subdomain where tournament portal lives. Only lowercase letters, numbers, and hyphens.
+                        </p>
+                    </div>
+
+                    <!-- Format & Location in semantic grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="location_type"
+                                class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                                Event Format *
+                            </label>
+                            {{ edit.custom_select(
+                                name="location_type",
+                                id="location_type",
+                                value="physical",
+                                options=[
+                                    {"value": "physical", "label": "Physical (In-Person Venue)", "icon": "ph-map-pin"},
+                                    {"value": "virtual", "label": "Virtual (Online / Zoom / Discord)", "icon": "ph-video-camera"},
+                                    {"value": "hybrid", "label": "Hybrid (In-Person & Online)", "icon": "ph-globe"}
+                                ]
+                            ) }}
+                        </div>
+
+                        <div>
+                            <label for="location"
+                                class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                                Location / Venue Details
+                            </label>
+                            <input type="text" id="location" name="location"
+                                placeholder="e.g. New Haven, CT or Discord / Zoom"
+                                class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2.5 text-sm text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                        </div>
+                    </div>
+
+                    <!-- Dates Grid -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="start_date"
+                                class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                                Start Date
+                            </label>
+                            <input type="date" id="start_date" name="start_date"
+                                class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-sm text-theme-heading focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                        </div>
+                        <div>
+                            <label for="end_date"
+                                class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                                End Date
+                            </label>
+                            <input type="date" id="end_date" name="end_date"
+                                class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-sm text-theme-heading focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body">
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div>
+                        <label for="description"
+                            class="block text-xs font-bold uppercase tracking-wider text-theme-heading mb-1.5 font-body">
+                            Description
+                        </label>
+                        <textarea id="description" name="description" rows="3"
+                            placeholder="Brief description of the tournament..."
+                            class="w-full rounded-xl border border-theme-border bg-theme-base px-3.5 py-2 text-sm text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:border-kwuo-bronze focus:ring-1 focus:ring-kwuo-bronze font-body"></textarea>
+                    </div>
+
+                    <!-- Modal Actions -->
+                    <div class="pt-4 border-t border-theme-border flex items-center justify-end gap-3 font-body">
+                        <button @click="createModalOpen = false" type="button"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:text-theme-heading hover:bg-theme-base transition font-body">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="inline-flex items-center gap-1.5 bg-kwuo-bronze hover:bg-kwuo-mahogany px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition font-body">
+                            <i class="ph-bold ph-plus text-sm"></i>
+                            <span>Create Tournament</span>
+                        </button>
+                    </div>
+                </form>
+            </article>
+        </div>
     </div>
 
     <!-- Delete Confirmation Modal (Archival Slip Aesthetic) -->
-    <div x-show="deleteModalOpen" x-transition:enter="transition ease-out duration-200"
+    <div x-show="deleteModalOpen" x-cloak
+        @click.self="deleteModalOpen = false"
+        x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
-        class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-        style="display: none;">
+        class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
 
-        <div @click.away="deleteModalOpen = false"
-            class="relative w-full max-w-md bg-theme-surface border-2 border-rose-300 dark:border-rose-900 p-6 sm:p-7 shadow-2xl">
+        <div class="relative w-full max-w-md bg-theme-surface border-2 border-rose-300 dark:border-rose-900 p-6 sm:p-7 shadow-2xl">
 
             <div class="flex items-center gap-3 pb-3 border-b border-theme-border">
                 <div
@@ -402,51 +408,51 @@
     </div>
 
     <!-- Documents & Attachments Management Modal (Torn-Docket Aesthetic) -->
-    <div x-show="docsModalOpen" x-transition:enter="transition ease-out duration-200"
+    <div x-show="docsModalOpen" x-cloak
+        @click.self="docsModalOpen = false"
+        x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
-        class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-        style="display: none;">
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
 
-        {% call edit.torn_docket(wrapper_class="h-full", class="relative w-full max-w-2xl max-h-[90dvh] overflow-y-auto bg-theme-surface border-2 border-theme-border px-6 sm:px-8 pt-0 shadow-2xl",
-        attrs='@click.away="docsModalOpen = false"'
-        ) %}
+        {% call edit.torn_docket(wrapper_class="relative w-full max-w-2xl z-10", class="relative w-full max-h-[90vh] flex flex-col bg-theme-surface border-2 border-theme-border px-6 sm:px-8 py-5 shadow-2xl") %}
             <!-- Modal Header -->
-            <div class="flex items-center sticky top-0 bg-theme-surface justify-between py-4 border-b-2 border-theme-border z-10">
+            <div class="flex items-center justify-between pb-3 border-b-2 border-theme-border shrink-0">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-9 w-9 items-center justify-center bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/30">
+                    <div class="flex h-9 w-9 items-center justify-center bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/30 rounded-lg">
                         <i class="ph-bold ph-files text-xl"></i>
                     </div>
                     <div>
-                        <h3 class="text-lg font-heading font-extrabold text-theme-heading">Documents & Task Files</h3>
+                        <h3 class="text-lg font-heading font-extrabold text-theme-heading">Documents &amp; Task Files</h3>
                         <p class="text-xs text-theme-body/60 font-body" x-text="activeTournName"></p>
                     </div>
                 </div>
                 <button @click="docsModalOpen = false" type="button"
-                    class="p-1.5 text-slate-500 hover:text-theme-heading transition" aria-label="Close dialog">
+                    class="p-1.5 text-slate-500 hover:text-theme-heading rounded-lg hover:bg-theme-base transition" aria-label="Close dialog">
                     <i class="ph-bold ph-x text-lg"></i>
                 </button>
             </div>
 
             <!-- Tab Switcher -->
-            <div class="flex items-center gap-2 mt-4 border-b border-theme-border pb-3">
+            <div class="flex items-center gap-2 my-3 border-b border-theme-border pb-3 shrink-0">
                 <button type="button" @click="docsTab = 'list'"
                     :class="docsTab === 'list' ? 'bg-kwuo-bronze text-white font-bold' : 'bg-theme-canvas text-theme-body/80 border border-theme-border hover:bg-theme-surface'"
-                    class="px-3 py-1.5 text-xs font-semibold transition">
+                    class="px-3 py-1.5 text-xs font-semibold rounded-lg transition font-body">
                     <i class="ph-bold ph-list mr-1"></i>
                     <span>Attached Files (<span x-text="(tournamentsDocs[activeTournId] || []).length"></span>)</span>
                 </button>
                 <button type="button" @click="docsTab = 'upload'"
                     :class="docsTab === 'upload' ? 'bg-kwuo-bronze text-white font-bold' : 'bg-theme-canvas text-theme-body/80 border border-theme-border hover:bg-theme-surface'"
-                    class="px-3 py-1.5 text-xs font-semibold transition">
+                    class="px-3 py-1.5 text-xs font-semibold rounded-lg transition font-body">
                     <i class="ph-bold ph-upload-simple mr-1"></i>
                     <span>+ Upload Document</span>
                 </button>
             </div>
 
+            <div class="overflow-y-auto max-h-[calc(90vh-170px)] pr-1 font-body">
             <!-- Tab 1: Documents List -->
-            <div x-show="docsTab === 'list'" class="py-4 space-y-3">
+            <div x-show="docsTab === 'list'" class="py-2 space-y-3">
                 <template x-if="(tournamentsDocs[activeTournId] || []).length === 0">
                     <div class="py-8 text-center space-y-3 bg-theme-canvas/50 border border-dashed border-theme-border p-6">
                         <i class="ph-bold ph-folder-dashed text-3xl text-theme-body/40"></i>
@@ -592,6 +598,7 @@
                         </button>
                     </div>
                 </form>
+            </div>
             </div>
         {% endcall %}
     </div>

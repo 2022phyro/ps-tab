@@ -1,8 +1,10 @@
 """Kwuo application factory and root entrypoint."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from kwuo.core.config import settings
 from kwuo.core.cache import get_redis_client
 from kwuo.core.queue import close_arq_pool
@@ -29,6 +31,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Ensure database tables exist (development convenience)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        try:
+            from sqlalchemy import text
+            await conn.execute(text("ALTER TABLE tournaments ALTER COLUMN status TYPE VARCHAR(32);"))
+        except Exception:
+            pass
 
     # Seed pre-defined system security groups and permissions
     try:
@@ -72,6 +79,12 @@ def create_app() -> FastAPI:
 
     # Register tenant subdomain resolution middleware
     app.add_middleware(TenantSubdomainMiddleware)
+
+    # Mount static assets directory
+    base_dir = Path(__file__).resolve().parent.parent.parent
+    static_dir = base_dir / "static"
+    static_dir.mkdir(exist_ok=True)
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
     @app.get("/health")
     async def health_check():

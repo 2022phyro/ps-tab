@@ -96,15 +96,13 @@
                 {% if instance.created_at is defined and instance.created_at %}
                 <div>
                     <span class="block text-slate-500 dark:text-kwuo-sage font-medium">Created At</span>
-                    <span class="text-slate-800 dark:text-kwuo-sand">{{ instance.created_at.strftime('%Y-%m-%d %H:%M:%S
-                        UTC') }}</span>
+                    <span class="text-slate-800 dark:text-kwuo-sand">{{ instance.created_at.strftime('%Y-%m-%d %I:%M:%S %p UTC') }}</span>
                 </div>
                 {% endif %}
                 {% if instance.updated_at is defined and instance.updated_at %}
                 <div>
                     <span class="block text-slate-500 dark:text-kwuo-sage font-medium">Last Modified</span>
-                    <span class="text-slate-800 dark:text-kwuo-sand">{{ instance.updated_at.strftime('%Y-%m-%d %H:%M:%S
-                        UTC') }}</span>
+                    <span class="text-slate-800 dark:text-kwuo-sand">{{ instance.updated_at.strftime('%Y-%m-%d %I:%M:%S %p UTC') }}</span>
                 </div>
                 {% endif %}
             </div>
@@ -409,7 +407,7 @@
                         {% endif %}
                     </div>
                     <div class="text-xs text-slate-500 font-body">
-                        {{ instance.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') if instance.created_at else '' }}
+                        {{ instance.created_at.strftime('%Y-%m-%d %I:%M:%S %p UTC') if instance.created_at else '' }}
                     </div>
                 </div>
 

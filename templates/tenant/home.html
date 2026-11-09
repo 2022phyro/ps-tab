@@ -5,11 +5,14 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
-    <!-- Hero Banner (Torn-Docket Aesthetic) -->
+    <!-- ========================================================================= -->
+    <!-- SECTION 1: MAIN TOURNAMENT CARD & COMPETITOR DIVISIONS                     -->
+    <!-- ========================================================================= -->
     <div class="kwuo-torn-docket-wrapper">
-        <article class="kwuo-torn-docket !p-8 sm:!p-12 relative overflow-hidden">
-            <div class="max-w-3xl">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-kwuo-bronze/10 text-kwuo-bronze text-xs font-bold uppercase tracking-wider mb-4 border border-kwuo-bronze/20">
+        <article class="kwuo-torn-docket !p-7 sm:!p-11 relative overflow-hidden space-y-8 font-body">
+            <!-- Tournament Overview Header -->
+            <div class="max-w-3xl space-y-4">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-kwuo-bronze/10 text-kwuo-bronze text-xs font-bold uppercase tracking-wider border border-kwuo-bronze/20 font-body">
                     <i class="ph-bold ph-seal-check"></i>
                     <span>{{ tournament.status.value }} Tournament</span>
                 </div>
@@ -17,13 +20,13 @@
                     {{ tournament.name }}
                 </h1>
                 {% if tournament.description %}
-                <p class="mt-4 text-base sm:text-lg text-theme-body/80 leading-relaxed">
+                <p class="text-base sm:text-lg text-theme-body/80 leading-relaxed font-body">
                     {{ tournament.description }}
                 </p>
                 {% endif %}
 
                 <!-- Metadata Pills -->
-                <div class="mt-6 flex flex-wrap gap-3 text-xs sm:text-sm text-theme-body/80">
+                <div class="flex flex-wrap gap-3 text-xs sm:text-sm text-theme-body/80 font-body pt-1">
                     <div class="flex items-center gap-2 bg-theme-base px-3.5 py-1.5 rounded-xl border border-theme-border">
                         {% if tournament.location_type and tournament.location_type.value == 'virtual' %}
                         <i class="ph-bold ph-video-camera text-kwuo-bronze"></i>
@@ -38,6 +41,7 @@
                     </div>
                     {% if tournament.location %}
                     <div class="flex items-center gap-2 bg-theme-base px-3.5 py-1.5 rounded-xl border border-theme-border">
+                        <i class="ph-bold ph-buildings text-kwuo-bronze"></i>
                         <span>{{ tournament.location }}</span>
                     </div>
                     {% endif %}
@@ -49,11 +53,82 @@
                     {% endif %}
                 </div>
             </div>
+
+            {% if tournament.public_links %}
+            <!-- Tournament Communication & Official Links Strip -->
+            <div id="channels" class="pt-6 border-t border-theme-border space-y-3 font-body">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-bold ph-link text-kwuo-bronze text-sm"></i>
+                        <h2 class="text-xs font-bold uppercase tracking-wider text-theme-heading font-body">Official Channels &amp; Links</h2>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2.5">
+                    {% for l in tournament.public_links %}
+                    <a href="{{ l.url }}" target="_blank" rel="noopener noreferrer"
+                       class="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl border border-theme-border bg-theme-base/80 hover:bg-theme-base hover:border-kwuo-bronze/40 transition text-xs font-semibold text-theme-heading shadow-2xs group font-body">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg {{ l.badge_color }} shrink-0">
+                            <i class="{{ l.icon }} text-sm {{ l.icon_color }}"></i>
+                        </span>
+                        <div class="flex flex-col text-left min-w-0">
+                            <span class="group-hover:text-kwuo-bronze transition font-bold leading-tight truncate">{{ l.label }}</span>
+                            {% if l.description %}
+                            <span class="text-[10px] text-theme-body/60 font-normal leading-tight truncate">{{ l.description }}</span>
+                            {% endif %}
+                        </div>
+                        <i class="ph-bold ph-arrow-square-out text-theme-body/40 group-hover:text-kwuo-bronze transition text-xs ml-0.5 shrink-0"></i>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Integrated Competitor Divisions Sub-Section -->
+            <div id="divisions" class="pt-7 border-t border-theme-border space-y-4">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                            <i class="ph-bold ph-tag text-base"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base sm:text-lg font-heading font-bold text-theme-heading">Competitor Divisions</h2>
+                            <p class="text-[11px] text-theme-body/60">Competitive tiers and eligibility categories</p>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                        {{ tournament.divisions|length }} Active
+                    </span>
+                </div>
+
+                {% if tournament.divisions %}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {% for div in tournament.divisions %}
+                    <div class="p-4 rounded-xl border border-theme-border bg-theme-base/60 hover:bg-theme-base hover:border-kwuo-bronze/30 transition flex flex-col justify-between gap-2.5 shadow-2xs">
+                        <div class="space-y-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <h3 class="font-heading font-bold text-sm text-theme-heading">{{ div.name }}</h3>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                                    {{ div.speakers|length }} {{ 'Competitor' if div.speakers|length == 1 else 'Competitors' }}
+                                </span>
+                            </div>
+                            {% if div.description %}
+                            <p class="text-xs text-theme-body/70 leading-snug font-body">{{ div.description }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-theme-body/60 italic font-body">All speakers compete in the Open division.</p>
+                {% endif %}
+            </div>
         </article>
     </div>
 
-    <!-- Live Headcount & Metrics Strip (Torn-Docket Cards) -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+    <!-- ========================================================================= -->
+    <!-- SECTION 2: LIVE HEADCOUNT & STATS STRIP                                   -->
+    <!-- ========================================================================= -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 font-body">
         <!-- Speakers -->
         <div class="kwuo-torn-docket-wrapper">
             <article class="kwuo-torn-docket !p-5 text-center flex flex-col items-center justify-center h-full">
@@ -61,7 +136,7 @@
                     <i class="ph-bold ph-microphone-stage text-xl"></i>
                 </div>
                 <span class="text-3xl font-heading font-extrabold text-theme-heading">{{ tournament.total_speakers_count }}</span>
-                <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider">Registered Speakers</span>
+                <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider font-body">Registered Speakers</span>
             </article>
         </div>
 
@@ -72,7 +147,7 @@
                     <i class="ph-bold ph-scales text-xl"></i>
                 </div>
                 <span class="text-3xl font-heading font-extrabold text-theme-heading">{{ tournament.total_judges_count }}</span>
-                <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider">Accredited Judges</span>
+                <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider font-body">Accredited Judges</span>
             </article>
         </div>
 
@@ -83,7 +158,7 @@
                     <i class="ph-bold ph-buildings text-xl"></i>
                 </div>
                 <span class="text-3xl font-heading font-extrabold text-theme-heading">{{ tournament.total_institutions_count }}</span>
-                <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider">Institutions</span>
+                <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider font-body">Institutions</span>
             </article>
         </div>
 
@@ -94,99 +169,112 @@
                     <i class="ph-bold ph-tag text-xl"></i>
                 </div>
                 <span class="text-3xl font-heading font-extrabold text-theme-heading">{{ tournament.divisions|length }}</span>
-                <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider">Active Divisions</span>
+                <span class="text-xs font-semibold text-theme-body/70 mt-1 uppercase tracking-wider font-body">Active Divisions</span>
             </article>
         </div>
     </div>
 
-    <!-- Competition Divisions & Tournament Officials Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <!-- Divisions -->
-        <div id="divisions" class="kwuo-torn-docket-wrapper">
-            <article class="kwuo-torn-docket !p-6 sm:!p-8 h-full">
-                <div class="flex items-center gap-3 mb-6 pb-4 border-b border-theme-border">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
-                        <i class="ph-bold ph-tag text-xl"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-heading font-bold text-theme-heading">Competition Divisions</h2>
-                        <p class="text-xs text-theme-body/60">Competitive tiers and break categories</p>
-                    </div>
-                </div>
-
-                {% if tournament.divisions %}
-                <div class="divide-y divide-theme-border">
-                    {% for div in tournament.divisions %}
-                    <div class="py-4 first:pt-0 last:pb-0 flex items-center justify-between">
-                        <div>
-                            <h4 class="font-heading font-bold text-theme-heading">{{ div.name }}</h4>
-                            {% if div.description %}
-                            <p class="text-xs text-theme-body/70 mt-0.5">{{ div.description }}</p>
-                            {% endif %}
-                        </div>
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-theme-base border border-theme-border text-theme-body">
-                            {{ div.speakers|length }} Competitors
-                        </span>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <p class="text-sm text-theme-body/60 italic">All speakers compete in Open division.</p>
-                {% endif %}
-            </article>
-        </div>
-
-        <!-- Officials & Governance -->
-        <div id="officials" class="kwuo-torn-docket-wrapper">
-            <article class="kwuo-torn-docket !p-6 sm:!p-8 h-full">
-                <div class="flex items-center gap-3 mb-6 pb-4 border-b border-theme-border">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze">
+    <!-- ========================================================================= -->
+    <!-- SECTION 3: TOURNAMENT OFFICIALS & GOVERNANCE (FULL WIDTH)                 -->
+    <!-- ========================================================================= -->
+    <div id="officials" class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-10 space-y-6 font-body">
+            <!-- Officials Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-theme-border flex-wrap gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze shrink-0">
                         <i class="ph-bold ph-users-three text-xl"></i>
                     </div>
                     <div>
-                        <h2 class="text-xl font-heading font-bold text-theme-heading">Tournament Officials</h2>
-                        <p class="text-xs text-theme-body/60">Directorate, Tabulation Staff & Equity Panel</p>
+                        <h2 class="text-xl sm:text-2xl font-heading font-bold text-theme-heading">Tournament Officials</h2>
+                        <p class="text-xs text-theme-body/60">Directorate, Tabulation Staff &amp; Adjudication Panel</p>
                     </div>
                 </div>
+            </div>
 
-                {% if tournament.officials %}
-                <div class="divide-y divide-theme-border">
-                    {% for off in tournament.officials %}
-                    <div class="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between">
+            {% if tournament.officials %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                {% for off in tournament.officials %}
+                {% set profile = off.official_profile %}
+                {% set display_title = profile.title if profile and profile.title else (profile.effective_title if profile else 'Tab Staff') %}
+                {% set secondary_affils = off.affiliations|rejectattr('is_primary')|list if off.affiliations else [] %}
+
+                <div class="p-4 sm:p-5 rounded-xl border border-theme-border bg-theme-surface hover:border-kwuo-bronze/40 transition flex flex-col justify-between gap-3 shadow-xs">
+                    <div class="space-y-3">
+                        <!-- Name, Roles & Title -->
                         <div>
-                            <h4 class="font-heading font-bold text-sm text-theme-heading">{{ off.name }}</h4>
-                            <p class="text-xs text-theme-body/60">{{ off.institution_name }}</p>
+                            <div class="flex items-start justify-between gap-2">
+                                <h3 class="font-heading font-bold text-sm sm:text-base text-theme-heading leading-snug break-words">
+                                    {{ off.name }}
+                                </h3>
+                                {% if profile and profile.roles %}
+                                    <div class="flex items-center gap-1 flex-wrap justify-end shrink-0">
+                                        {% for r in profile.roles %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                                            {{ r.name }}
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                {% elif profile and profile.role %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body shrink-0">
+                                        {{ profile.role.value|upper }}
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-theme-base text-theme-body/60 border border-theme-border font-body shrink-0">
+                                        STAFF
+                                    </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Title (Spanning full width under name, ensuring no overflow) -->
+                            <div class="text-xs font-semibold text-kwuo-bronze font-body mt-1 break-words leading-snug">
+                                {{ display_title }}
+                            </div>
                         </div>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
-                            {{ off.official_profile.role.value|upper if off.official_profile else 'TAB STAFF' }}
-                        </span>
+
+                        <!-- Institutions & Affiliations -->
+                        <div class="text-xs text-theme-body/70 space-y-1.5 font-body pt-2 border-t border-theme-border/60">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <i class="ph-bold ph-buildings text-theme-body/50 text-xs shrink-0"></i>
+                                {% if off.institution %}
+                                    <span class="font-semibold text-theme-heading">{{ off.institution.name }}</span>
+                                    {% if off.institution.code %}
+                                        <span class="text-[10px] text-kwuo-bronze font-bold font-body">({{ off.institution.code }})</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="italic text-theme-body/50">Independent</span>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
-                    {% endfor %}
                 </div>
-                {% else %}
-                <div class="py-4 text-center">
-                    <p class="text-xs text-theme-body/60 italic">Officials and panel appointments will be published prior to check-in.</p>
-                </div>
-                {% endif %}
-            </article>
-        </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="py-8 text-center font-body">
+                <p class="text-xs text-theme-body/60 italic">Officials and panel appointments will be published prior to check-in.</p>
+            </div>
+            {% endif %}
+        </article>
     </div>
 
-    <!-- Concluded Tournament Podium / Honor Roll (Conditional) -->
+    <!-- ========================================================================= -->
+    <!-- CONCLUDED TOURNAMENT PODIUM / HONOR ROLL (CONDITIONAL)                     -->
+    <!-- ========================================================================= -->
     {% if tournament.status.value == 'concluded' %}
     <div class="kwuo-torn-docket-wrapper">
-        <article class="kwuo-torn-docket !p-6 sm:!p-8 text-center space-y-4">
+        <article class="kwuo-torn-docket !p-6 sm:!p-8 text-center space-y-4 font-body">
             <div class="inline-flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/10 text-amber-500 text-2xl mx-auto">
                 <i class="ph-bold ph-trophy"></i>
             </div>
-            <h2 class="text-2xl font-heading font-extrabold text-theme-heading">Tournament Concluded & Final Honors</h2>
-            <p class="text-xs sm:text-sm text-theme-body/80 max-w-xl mx-auto">
+            <h2 class="text-2xl font-heading font-extrabold text-theme-heading">Tournament Concluded &amp; Final Honors</h2>
+            <p class="text-xs sm:text-sm text-theme-body/80 max-w-xl mx-auto font-body">
                 Official final standings, breaker allocations, and speaker awards have been ratified and published by the Tabulation Director.
             </p>
             <div class="pt-2">
-                <a href="/rankings" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-kwuo-bronze text-white font-bold text-xs shadow-sm hover:bg-kwuo-mahogany transition">
+                <a href="/rankings" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-kwuo-bronze text-white font-bold text-xs shadow-sm hover:bg-kwuo-mahogany transition font-body">
                     <i class="ph-bold ph-chart-line-up text-sm"></i>
-                    <span>View Official Standings & Breaks</span>
+                    <span>View Official Standings &amp; Breaks</span>
                 </a>
             </div>
         </article>

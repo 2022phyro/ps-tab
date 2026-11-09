@@ -271,7 +271,6 @@ def get_document(slug: str) -> Optional[ParsedDoc]:
     # Parse document
     post = frontmatter.load(file_path)
     title, _ = _get_doc_title_and_badge(file_path)
-    headings = _extract_headings(post.content)
 
     # Convert Markdown to HTML
     md_parser = markdown.Markdown(extensions=[
@@ -284,6 +283,24 @@ def get_document(slug: str) -> Optional[ParsedDoc]:
     ])
     raw_html = md_parser.convert(post.content)
     formatted_html = _format_github_alerts(raw_html)
+
+    # Extract TOC from markdown's toc_tokens for 100% exact DOM id matching
+    headings: List[TocHeading] = []
+    def _collect_tokens(tokens: List[Dict[str, Any]]):
+        for tok in tokens:
+            lvl = tok.get("level", 2)
+            if lvl in (2, 3):
+                headings.append(TocHeading(
+                    level=lvl,
+                    title=tok.get("name", ""),
+                    anchor=tok.get("id", "")
+                ))
+            if "children" in tok and tok["children"]:
+                _collect_tokens(tok["children"])
+
+    _collect_tokens(getattr(md_parser, "toc_tokens", []))
+    if not headings:
+        headings = _extract_headings(post.content)
 
     # Compute breadcrumbs
     parts = target_item.slug.split("/")

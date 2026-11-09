@@ -4,50 +4,1053 @@
 {% block title %}Officials & Staff Directory — Tab Room{% endblock %}
 
 {% block admin_content %}
-<div class="max-w-5xl mx-auto space-y-6">
+<script>
+    function kwuoDropdown() {
+        return {
+            open: false,
+            menuStyle: '',
+            toggle() {
+                if (this.open) {
+                    this.close();
+                } else {
+                    this.open = true;
+                    this.$nextTick(() => {
+                        this.updatePos();
+                    });
+                    this._reposition = () => {
+                        if (this.open) this.updatePos();
+                    };
+                    window.addEventListener('scroll', this._reposition, true);
+                    window.addEventListener('resize', this._reposition);
+                }
+            },
+            close() {
+                this.open = false;
+                if (this._reposition) {
+                    window.removeEventListener('scroll', this._reposition, true);
+                    window.removeEventListener('resize', this._reposition);
+                    this._reposition = null;
+                }
+            },
+            updatePos() {
+                const btn = this.$refs.trigger;
+                if (!btn) return;
+                const rect = btn.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const minW = Math.max(rect.width, 220);
+                const maxH = 260;
+                let topCss = '';
+                if (spaceBelow < 220 && rect.top > spaceBelow) {
+                    topCss = 'bottom: ' + Math.round(window.innerHeight - rect.top + 4) + 'px; max-height: ' + Math.min(maxH, rect.top - 12) + 'px;';
+                } else {
+                    topCss = 'top: ' + Math.round(rect.bottom + 4) + 'px; max-height: ' + Math.min(maxH, spaceBelow - 12) + 'px;';
+                }
+                let leftPos = rect.left;
+                if (leftPos + minW > window.innerWidth - 12) {
+                    leftPos = Math.max(12, window.innerWidth - minW - 12);
+                }
+                this.menuStyle = 'position: fixed; left: ' + Math.round(leftPos) + 'px; width: ' + Math.round(minW) + 'px; z-index: 999999; ' + topCss;
+            }
+        };
+    }
+
+    function officialsManager() {
+        return {
+            addModal: false,
+            importModal: false,
+            editModal: false,
+            deleteModal: false,
+            deleteTargetId: '',
+            deleteTargetName: '',
+            viewMode: 'table',
+            searchQuery: '',
+            selectedIds: [],
+            resendingId: null,
+            bulkSending: false,
+            importing: false,
+            editSaving: false,
+            sortCol: 'name',
+            sortAsc: true,
+            sortBy(col) {
+                if (this.sortCol === col) {
+                    this.sortAsc = !this.sortAsc;
+                } else {
+                    this.sortCol = col;
+                    this.sortAsc = true;
+                }
+                const tbody = document.getElementById('officials-tbody');
+                if (tbody) {
+                    const rows = Array.from(tbody.querySelectorAll('tr.official-row'));
+                    rows.sort((a, b) => {
+                        let vA = (a.dataset[col] || '').toLowerCase();
+                        let vB = (b.dataset[col] || '').toLowerCase();
+                        if (vA < vB) return this.sortAsc ? -1 : 1;
+                        if (vA > vB) return this.sortAsc ? 1 : -1;
+                        return 0;
+                    });
+                    rows.forEach(r => tbody.appendChild(r));
+                }
+                const cardsContainer = document.getElementById('officials-cards-container');
+                if (cardsContainer) {
+                    const cards = Array.from(cardsContainer.querySelectorAll('.official-card'));
+                    cards.sort((a, b) => {
+                        let vA = (a.dataset[col] || '').toLowerCase();
+                        let vB = (b.dataset[col] || '').toLowerCase();
+                        if (vA < vB) return this.sortAsc ? -1 : 1;
+                        if (vA > vB) return this.sortAsc ? 1 : -1;
+                        return 0;
+                    });
+                    cards.forEach(c => cardsContainer.appendChild(c));
+                }
+            },
+            newOfficial: {
+                primary_institution_id: ''
+            },
+            institutions: [
+                {% for inst in institutions %}
+                { id: {{ inst.id|tojson }}, name: {{ inst.name|tojson }}, code: {{ (inst.code or '')|tojson }} },
+                {% endfor %}
+            ],
+            tieTypes: [
+                { value: 'alumnus', label: 'Alumnus' },
+                { value: 'coach', label: 'Coach' },
+                { value: 'former_member', label: 'Former Member' },
+                { value: 'employee', label: 'Employee' }
+            ],
+
+            getInstitutionLabel(id) {
+                if (!id) return 'Independent / No primary representation';
+                const inst = this.institutions.find(i => String(i.id) === String(id));
+                if (!inst) return 'Independent / No primary representation';
+                return inst.name + (inst.code ? ' (' + inst.code + ')' : '');
+            },
+
+            getAffiliationInstLabel(id) {
+                if (!id) return 'Select institution...';
+                const inst = this.institutions.find(i => String(i.id) === String(id));
+                if (!inst) return 'Select institution...';
+                return inst.name + (inst.code ? ' (' + inst.code + ')' : '');
+            },
+
+            getTieTypeLabel(val) {
+                const t = this.tieTypes.find(x => x.value === val);
+                return t ? t.label : (val ? val.charAt(0).toUpperCase() + val.slice(1) : 'Select tie...');
+            },
+
+            openAddModal() {
+                this.newOfficial = { primary_institution_id: '' };
+                this.addModal = true;
+            },
+
+            editOfficial: {
+                id: '',
+                name: '',
+                email: '',
+                title: '',
+                phone: '',
+                is_phone_public: true,
+                primary_institution_id: '',
+                role_ids: [],
+                affiliations: []
+            },
+
+            openEdit(data) {
+                this.editOfficial = {
+                    id: data.id,
+                    name: data.name,
+                    email: data.email,
+                    title: data.title || '',
+                    phone: data.phone || '',
+                    is_phone_public: data.is_phone_public !== false,
+                    primary_institution_id: data.primary_institution_id || '',
+                    role_ids: [...(data.role_ids || [])],
+                    affiliations: (data.affiliations || []).map((a, idx) => ({
+                        _uid: 'aff_' + (a.id || (idx + '_' + Math.random().toString(36).substr(2, 9))),
+                        institution_id: a.institution_id || '',
+                        tie_type: a.tie_type || 'alumnus'
+                    }))
+                };
+                this.editModal = true;
+            },
+
+            addAffiliationRow() {
+                this.editOfficial.affiliations.push({
+                    _uid: 'aff_new_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    institution_id: '',
+                    tie_type: 'alumnus'
+                });
+            },
+
+            removeAffiliationRow(idx) {
+                this.editOfficial.affiliations.splice(idx, 1);
+            },
+
+            async saveOfficialEdit() {
+                if (!this.editOfficial.id || !this.editOfficial.name.trim()) return;
+                this.editSaving = true;
+                try {
+                    const res = await fetch('/admin/officials/' + this.editOfficial.id + '/update', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            name: this.editOfficial.name.trim(),
+                            email: this.editOfficial.email.trim(),
+                            title: this.editOfficial.title.trim(),
+                            phone: this.editOfficial.phone.trim(),
+                            is_phone_public: this.editOfficial.is_phone_public,
+                            primary_institution_id: this.editOfficial.primary_institution_id || null,
+                            role_ids: this.editOfficial.role_ids,
+                            secondary_affiliations: this.editOfficial.affiliations.filter(a => a.institution_id)
+                        })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        this.editModal = false;
+                        if (window.showToast) window.showToast(data.message, 'success');
+                        setTimeout(() => { window.location.reload(); }, 500);
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Failed to update official.', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Network error updating official.', 'error');
+                } finally {
+                    this.editSaving = false;
+                }
+            },
+
+            toggleSelectAll(event, allIds) {
+                if (event.target.checked) {
+                    this.selectedIds = [...allIds];
+                } else {
+                    this.selectedIds = [];
+                }
+            },
+
+            isAllSelected(allIds) {
+                return allIds.length > 0 && this.selectedIds.length === allIds.length;
+            },
+
+            matchesFilter(name, email, roles, institution) {
+                const q = this.searchQuery.toLowerCase().trim();
+                if (!q) return true;
+                return (
+                    name.toLowerCase().includes(q) ||
+                    email.toLowerCase().includes(q) ||
+                    (roles && roles.toLowerCase().includes(q)) ||
+                    (institution && institution.toLowerCase().includes(q))
+                );
+            },
+
+            async resendInvite(officialId, email) {
+                this.resendingId = officialId;
+                try {
+                    const res = await fetch('/admin/officials/' + officialId + '/send-invite', {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        if (window.showToast) {
+                            window.showToast(data.message || 'Setup link sent to ' + email, 'success');
+                        }
+                    } else {
+                        if (window.showToast) {
+                            window.showToast(data.message || 'Failed to dispatch setup link.', 'error');
+                        }
+                    }
+                } catch (e) {
+                    if (window.showToast) {
+                        window.showToast('Network error dispatching invite.', 'error');
+                    }
+                } finally {
+                    this.resendingId = null;
+                }
+            },
+
+            async bulkSendInvites() {
+                if (this.selectedIds.length === 0) return;
+                this.bulkSending = true;
+                try {
+                    const res = await fetch('/admin/officials/bulk-send-invite', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            official_ids: this.selectedIds
+                        })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        if (window.showToast) window.showToast(data.message, 'success');
+                        this.selectedIds = [];
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Failed to dispatch bulk invites.', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Network error dispatching bulk invites.', 'error');
+                } finally {
+                    this.bulkSending = false;
+                }
+            },
+
+            confirmDelete(id, name) {
+                this.deleteTargetId = id;
+                this.deleteTargetName = name;
+                this.deleteModal = true;
+            },
+
+            openBulkDelete() {
+                if (this.selectedIds.length === 0) {
+                    if (window.showToast) window.showToast('Select at least one official.', 'warning');
+                    return;
+                }
+                this.actionsOpen = false;
+                this.deleteTargetId = 'bulk';
+                this.deleteTargetName = this.selectedIds.length + ' selected official(s)';
+                this.deleteModal = true;
+            },
+
+            async deleteOfficial() {
+                if (this.deleteTargetId === 'bulk') {
+                    try {
+                        const res = await fetch('/admin/officials/bulk-delete', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ official_ids: this.selectedIds })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.status === 'ok') {
+                            this.deleteModal = false;
+                            if (window.showToast) window.showToast(data.message || 'Officials removed.', 'success');
+                            setTimeout(() => { window.location.reload(); }, 500);
+                        } else {
+                            if (window.showToast) window.showToast(data.message || 'Failed to remove officials.', 'error');
+                        }
+                    } catch (e) {
+                        if (window.showToast) window.showToast('Network error during bulk delete.', 'error');
+                    }
+                    return;
+                }
+
+                const id = this.deleteTargetId;
+                try {
+                    const res = await fetch('/admin/officials/' + id + '/delete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'ok') {
+                        this.deleteModal = false;
+                        if (window.showToast) window.showToast(data.message || 'Official removed.', 'success');
+                        setTimeout(() => { window.location.reload(); }, 500);
+                    } else {
+                        if (window.showToast) window.showToast(data.message || 'Failed to remove official.', 'error');
+                    }
+                } catch (e) {
+                    if (window.showToast) window.showToast('Network error while removing official.', 'error');
+                }
+            }
+        };
+    }
+</script>
+
+{% set all_ids = officials|map(attribute='id')|list %}
+
+<div x-data="officialsManager()" class="max-w-6xl mx-auto space-y-6 font-body">
     <!-- Breadcrumb & Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
             <div class="flex items-center gap-2 text-xs text-theme-body/60 font-semibold mb-1">
-                <a href="/admin" class="hover:text-kwuo-bronze">Tab Room</a>
+                <a href="/admin" class="hover:text-kwuo-bronze transition font-body">Tab Room</a>
                 <span>/</span>
-                <span>Organization</span>
+                <span class="font-body">Organization</span>
                 <span>/</span>
-                <span class="text-kwuo-bronze">Officials</span>
+                <span class="text-kwuo-bronze font-body">Officials</span>
             </div>
             <h1 class="text-2xl font-heading font-extrabold text-theme-heading">
                 Officials &amp; Staff Directory
             </h1>
-            <p class="text-xs text-theme-body/70 mt-0.5">
-                Staff roles, Tab room password credentials, and Chief Adjudication Panel governance.
+            <p class="text-xs text-theme-body/70 mt-0.5 font-body">
+                Tournament directors, Chief Adjudication Panel (CAP), equity officers, and tab staff credentials.
             </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="/admin/authorization"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition font-body">
+                <i class="ph-bold ph-shield-check text-kwuo-bronze text-sm"></i>
+                <span>Roles &amp; RBAC</span>
+            </a>
         </div>
     </div>
 
-    {% if msg %}
-    <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
-        <i class="ph-bold ph-check-circle text-base"></i>
-        <span>{{ msg }}</span>
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="p-4 rounded-xl border border-theme-border bg-theme-surface shadow-xs flex items-center gap-3.5">
+            <div
+                class="flex h-11 w-11 items-center justify-center rounded-xl bg-kwuo-bronze/10 text-kwuo-bronze shrink-0">
+                <i class="ph-bold ph-shield-check text-xl"></i>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold uppercase tracking-wider text-theme-body/60 font-body">Total Officials
+                </div>
+                <div class="text-xl font-heading font-extrabold text-theme-heading leading-tight">{{ officials|length }}
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 rounded-xl border border-theme-border bg-theme-surface shadow-xs flex items-center gap-3.5">
+            <div
+                class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <i class="ph-bold ph-check-circle text-xl"></i>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold uppercase tracking-wider text-theme-body/60 font-body">Active Sign-ins
+                </div>
+                <div class="text-xl font-heading font-extrabold text-theme-heading leading-tight">
+                    {{ officials|selectattr('password_hash')|list|length }}
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 rounded-xl border border-theme-border bg-theme-surface shadow-xs flex items-center gap-3.5">
+            <div
+                class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                <i class="ph-bold ph-envelope-simple text-xl"></i>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold uppercase tracking-wider text-theme-body/60 font-body">Pending Setup
+                </div>
+                <div class="text-xl font-heading font-extrabold text-theme-heading leading-tight">
+                    {{ officials|rejectattr('password_hash')|list|length }}
+                </div>
+            </div>
+        </div>
     </div>
-    {% endif %}
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Add Official Form (1 col) -->
-        <div>
-            <div class="kwuo-torn-docket-wrapper">
-                <article class="kwuo-torn-docket !p-5">
-                    <h3 class="text-sm font-heading font-bold text-theme-heading mb-3 pb-2 border-b border-theme-border flex items-center gap-2">
-                        <i class="ph-bold ph-shield-check text-kwuo-bronze"></i>
+    <!-- Sticky Action & Search Toolbar -->
+    <div
+        class="sticky top-14 lg:top-0 z-30 bg-theme-base py-3 border-b border-theme-border/60 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3" style="background-color: var(--color-bg-base);">
+        <!-- Left: Search, Selection Pill & View Switcher -->
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-1 min-w-0">
+            <!-- Search Bar -->
+            <div class="relative flex-1 min-w-[160px] sm:max-w-sm">
+                <i
+                    class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-theme-body/50 text-xs"></i>
+                <input type="text" x-model="searchQuery" placeholder="Filter officials by name, email, role, school..."
+                    class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading placeholder:text-theme-body/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze font-body">
+            </div>
+
+            <!-- Selection Count Pill -->
+            <span x-show="selectedIds.length > 0" x-cloak
+                class="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-body">
+                <span x-text="selectedIds.length"></span> selected
+            </span>
+
+            <!-- View Switcher Toggle (Table vs Cards) -->
+            <div
+                class="inline-flex items-center rounded-xl border border-theme-border bg-theme-base p-0.5 text-xs font-semibold shadow-xs shrink-0">
+                <button type="button" @click="viewMode = 'table'"
+                    :class="viewMode === 'table' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
+                    class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body" title="Table view">
+                    <i class="ph-bold ph-table text-xs"></i>
+                    <span class="hidden sm:inline">Table</span>
+                </button>
+                <button type="button" @click="viewMode = 'cards'"
+                    :class="viewMode === 'cards' ? 'bg-theme-surface text-kwuo-bronze shadow-xs' : 'text-theme-body/60 hover:text-theme-heading'"
+                    class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-body" title="Cards view">
+                    <i class="ph-bold ph-squares-four text-xs"></i>
+                    <span class="hidden sm:inline">Cards</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right: Actions Dropdown & Primary Add Button -->
+        <div class="flex items-center gap-2 shrink-0" x-data="{ actionsOpen: false }">
+            <!-- Actions Menu Dropdown -->
+            <div class="relative shrink-0" @click.outside="actionsOpen = false">
+                <button type="button" @click="actionsOpen = !actionsOpen"
+                    :class="selectedIds.length > 0 ? 'border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200 ring-1 ring-amber-500/30' : 'border-theme-border bg-theme-base hover:bg-theme-surface text-theme-heading'"
+                    class="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition font-body shadow-sm">
+                    <i class="ph-bold ph-lightning text-sm text-kwuo-bronze"></i>
+                    <span>Actions</span>
+                    <span x-show="selectedIds.length > 0" x-cloak x-text="'(' + selectedIds.length + ')'"
+                        class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+                    </span>
+                    <i class="ph-bold ph-caret-down text-[10px] text-theme-body/60 transition-transform"
+                        :class="actionsOpen ? 'rotate-180' : ''"></i>
+                </button>
+
+                <div x-show="actionsOpen" x-cloak x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                    class="absolute right-0 mt-1.5 w-60 rounded-xl border border-theme-border bg-theme-surface shadow-xl z-50 p-1.5 space-y-1 text-xs font-body">
+
+                    <!-- Section: Batch Selection -->
+                    <div
+                        class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-theme-body/50 flex items-center justify-between">
+                        <span>Batch Operations</span>
+                        <span x-show="selectedIds.length > 0" x-text="selectedIds.length + ' selected'"
+                            class="text-amber-600 dark:text-amber-400 font-semibold"></span>
+                    </div>
+
+                    <!-- Bulk Send Setup Links -->
+                    <button type="button" :disabled="selectedIds.length === 0 || bulkSending"
+                        @click="actionsOpen = false; bulkSendInvites()"
+                        :class="selectedIds.length > 0 ? 'text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 cursor-pointer' : 'text-theme-body/40 cursor-not-allowed'"
+                        class="w-full text-left px-2.5 py-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-paper-plane-tilt text-sm"
+                                :class="selectedIds.length > 0 ? 'text-amber-600' : 'text-theme-body/30'"></i>
+                            <span class="font-semibold">Send Setup Links</span>
+                        </div>
+                        <span x-show="selectedIds.length > 0" x-text="'(' + selectedIds.length + ')'"
+                            class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300"></span>
+                        <span x-show="selectedIds.length === 0" class="text-[10px] text-theme-body/40">Select 1+</span>
+                    </button>
+
+                    <!-- Bulk Delete -->
+                    <button type="button" :disabled="selectedIds.length === 0"
+                        @click="actionsOpen = false; openBulkDelete()"
+                        :class="selectedIds.length > 0 ? 'text-rose-600 hover:bg-rose-500/10 cursor-pointer' : 'text-theme-body/40 cursor-not-allowed'"
+                        class="w-full text-left px-2.5 py-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-trash text-sm"
+                                :class="selectedIds.length > 0 ? 'text-rose-600' : 'text-theme-body/30'"></i>
+                            <span class="font-semibold">Delete Selected</span>
+                        </div>
+                        <span x-show="selectedIds.length > 0" x-text="'(' + selectedIds.length + ')'"
+                            class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-600"></span>
+                        <span x-show="selectedIds.length === 0" class="text-[10px] text-theme-body/40">Select 1+</span>
+                    </button>
+
+                    <div class="border-t border-theme-border my-1"></div>
+
+                    <!-- Spreadsheets & Files -->
+                    <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-theme-body/50">
+                        Spreadsheets &amp; Import
+                    </div>
+
+                    <!-- Download Excel -->
+                    <a href="/admin/officials/export.xlsx" download="{{ tournament.slug }}-officials.xlsx"
+                        hx-boost="false" @click="actionsOpen = false"
+                        class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-theme-base text-theme-heading transition flex items-center justify-between group">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-file-xls text-sm text-emerald-600"></i>
+                            <span class="font-medium">Download Excel</span>
+                        </div>
+                        <span class="text-[10px] text-theme-body/50">.xlsx</span>
+                    </a>
+
+                    <!-- Upload Excel -->
+                    <button type="button" @click="actionsOpen = false; importModal = true"
+                        class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-theme-base text-theme-heading transition flex items-center justify-between group">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-upload-simple text-sm text-kwuo-bronze"></i>
+                            <span class="font-medium">Import Officials</span>
+                        </div>
+                        <span class="text-[10px] text-theme-body/50">Excel/CSV</span>
+                    </button>
+
+                    <div class="border-t border-theme-border my-1"></div>
+
+                    <!-- Quick Add -->
+                    <button type="button" @click="actionsOpen = false; openAddModal()"
+                        class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-kwuo-bronze/10 text-kwuo-bronze transition flex items-center gap-2 font-semibold">
+                        <i class="ph-bold ph-user-plus text-sm text-kwuo-bronze"></i>
                         <span>Add Official</span>
-                    </h3>
+                    </button>
+                </div>
+            </div>
 
-                    <form method="POST" action="/admin/officials" class="space-y-3">
+            <!-- Primary Add Button -->
+            <button type="button" @click="openAddModal()"
+                class="px-3.5 py-1.5 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center gap-1.5 shadow-sm font-body shrink-0">
+                <i class="ph-bold ph-plus text-sm"></i>
+                <span class="hidden sm:inline">Add Official</span>
+                <span class="sm:hidden">Add</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Officials Directory Docket -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-5 sm:!p-7 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-theme-border text-xs">
+                <div class="flex items-center gap-2">
+                    <h2 class="font-heading font-bold text-base text-theme-heading">
+                        Tournament Staff Roster
+                    </h2>
+                    <span
+                        class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20 font-body">
+                        {{ officials|length }}
+                    </span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button type="button" @click="toggleSelectAll($event, {{ all_ids|tojson|forceescape }})"
+                        class="text-xs font-semibold text-kwuo-bronze hover:underline font-body sm:hidden">
+                        <span
+                            x-text="isAllSelected({{ all_ids|tojson|forceescape }}) ? 'Deselect All' : 'Select All'"></span>
+                    </button>
+                    <div class="text-[11px] text-theme-body/60 font-body hidden sm:block">
+                        Showing officials roster
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 1: Officials Table Mode -->
+            <div x-show="viewMode === 'table'"
+                class="overflow-x-auto rounded-xl border border-theme-border bg-theme-surface">
+                <table class="w-full text-left text-xs border-collapse font-body">
+                    <thead>
+                        <tr
+                            class="border-b border-theme-border bg-theme-base/40 text-theme-body/70 text-[11px] font-bold">
+                            <!-- Checkbox -->
+                            <th class="py-2.5 px-3 w-10 text-center">
+                                <input type="checkbox"
+                                    @change="toggleSelectAll($event, {{ all_ids|tojson|forceescape }})"
+                                    :checked="isAllSelected({{ all_ids|tojson|forceescape }})"
+                                    class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5 cursor-pointer">
+                            </th>
+                            <th class="py-2.5 px-3 min-w-[170px] cursor-pointer select-none group" @click="sortBy('name')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Official</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'name' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th class="py-2.5 px-3 min-w-[180px] cursor-pointer select-none group" @click="sortBy('roles')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Assigned Roles</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'roles' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th class="py-2.5 px-3 min-w-[150px] cursor-pointer select-none group" @click="sortBy('institution')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Primary Institution</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'institution' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th class="py-2.5 px-3 min-w-[140px] cursor-pointer select-none group" @click="sortBy('status')">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Account Status</span>
+                                    <i class="ph-bold text-xs" :class="sortCol === 'status' ? (sortAsc ? 'ph-caret-up text-kwuo-bronze' : 'ph-caret-down text-kwuo-bronze') : 'ph-caret-up-down text-theme-body/30 group-hover:text-theme-body/70'"></i>
+                                </div>
+                            </th>
+                            <th class="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="officials-tbody" class="divide-y divide-theme-border">
+                        {% for off in officials %}
+                        {% set role_text = off.role_names|join(', ') if off.role_names else (off.role.value if off.role
+                        else '') %}
+                        {% set inst_text = off.participant.institution.name if off.participant.institution else '' %}
+                        {% set status_text = 'Active' if off.password_hash else 'Pending' %}
+                        {% set sec_affils = off.participant.affiliations|rejectattr('is_primary')|list if
+                        off.participant.affiliations else [] %}
+                        {% set aff_data = [] %}
+                        {% for a in off.participant.affiliations %}
+                        {% if not a.is_primary and a.institution_id %}
+                        {% set _ = aff_data.append({'institution_id': a.institution_id, 'tie_type': a.tie_type}) %}
+                        {% endif %}
+                        {% endfor %}
+
+                        <tr x-show="matchesFilter('{{ off.participant.name|replace('\'', '\\\'') }}', '{{ off.participant.email|replace('\'', '\\\'') }}', '{{ role_text|replace('\'', '\\\'') }}', '{{ inst_text|replace('\'', '\\\'') }}')"
+                            data-name="{{ off.participant.name }}"
+                            data-roles="{{ role_text }}"
+                            data-institution="{{ inst_text }}"
+                            data-status="{{ status_text }}"
+                            :class="selectedIds.includes('{{ off.id }}') ? 'bg-amber-500/5 dark:bg-amber-500/10' : 'hover:bg-theme-base/60'"
+                            class="official-row transition group font-body">
+                            <!-- Checkbox -->
+                            <td class="py-3 px-3 w-10 text-center">
+                                <input type="checkbox" value="{{ off.id }}" x-model="selectedIds"
+                                    class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5 cursor-pointer">
+                            </td>
+
+                            <!-- Official Name, Title, Phone & Email -->
+                            <td class="py-3 px-3">
+                                <div class="font-heading font-bold text-xs sm:text-sm text-theme-heading leading-tight">
+                                    {{ off.participant.name }}
+                                </div>
+                                {% if off.title %}
+                                <div class="text-[11px] font-semibold text-kwuo-bronze font-body mt-0.5">
+                                    {{ off.title }}
+                                </div>
+                                {% endif %}
+                                <div class="text-[11px] text-theme-body/60 mt-0.5">
+                                    {{ off.participant.email }}
+                                </div>
+                                {% if off.phone or off.participant.phone_number %}
+                                {% set p_num = off.phone or off.participant.phone_number %}
+                                <div class="text-[11px] text-theme-body/70 flex items-center gap-1.5 mt-0.5">
+                                    <i class="ph-bold ph-phone text-[10px] text-theme-body/50"></i>
+                                    <span>{{ p_num }}</span>
+                                    {% if off.is_phone_public %}
+                                    <span
+                                        class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
+                                        title="Visible on public homepage">
+                                        <i class="ph-bold ph-eye text-[8px]"></i>
+                                        <span>Public</span>
+                                    </span>
+                                    {% else %}
+                                    <span
+                                        class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-theme-base text-theme-body/50 border border-theme-border"
+                                        title="Hidden from public homepage">
+                                        <i class="ph-bold ph-eye-slash text-[8px]"></i>
+                                        <span>Private</span>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- Assigned Roles -->
+                            <td class="py-3 px-3">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    {% for r in off.roles %}
+                                    <span
+                                        class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                        {{ r.name }}
+                                    </span>
+                                    {% endfor %}
+                                    {% if not off.roles and off.role %}
+                                    <span
+                                        class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-theme-base border border-theme-border text-theme-heading">
+                                        {{ off.role.value|upper }}
+                                    </span>
+                                    {% elif not off.roles and not off.role %}
+                                    <span class="text-xs text-theme-body/40 italic">Unassigned</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- Representing Institution & Secondary Ties -->
+                            <td class="py-3 px-3 text-xs">
+                                {% if off.participant.institution %}
+                                <div class="font-semibold text-theme-heading">
+                                    {{ off.participant.institution.name }}
+                                </div>
+                                {% if off.participant.institution.code %}
+                                <span class="text-[10px] text-kwuo-bronze font-bold font-body">
+                                    {{ off.participant.institution.code }}
+                                </span>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-theme-body/40 italic">Independent / None</span>
+                                {% endif %}
+
+                                {% if sec_affils %}
+                                <div class="mt-1 flex flex-wrap gap-1">
+                                    {% for a in sec_affils %}
+                                    {% if a.institution %}
+                                    <span
+                                        class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] bg-theme-base border border-theme-border text-theme-heading font-medium">
+                                        <span>{{ a.institution.name }}</span>
+                                        <span class="text-[9px] font-bold text-kwuo-bronze">({{ a.tie_type|title
+                                            }})</span>
+                                    </span>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- Account Status & Last Login -->
+                            <td class="py-3 px-3">
+                                {% if off.password_hash %}
+                                <span
+                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                    <i class="ph-bold ph-check text-[10px]"></i>
+                                    <span>Active</span>
+                                </span>
+                                {% if off.last_login_at %}
+                                <div class="text-[10px] text-theme-body/50 mt-0.5">
+                                    Logged in {{ off.last_login_at.strftime('%b %d, %H:%M') }}
+                                </div>
+                                {% endif %}
+                                {% else %}
+                                <span
+                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                                    <i class="ph-bold ph-clock text-[10px]"></i>
+                                    <span>Pending Setup</span>
+                                </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Action: Edit & Send/Resend Invite -->
+                            <td class="py-3 px-3 text-right whitespace-nowrap">
+                                <div class="inline-flex items-center gap-1.5">
+                                    <button type="button" @click='openEdit({
+                                                id: {{ off.id|tojson|forceescape }},
+                                                name: {{ off.participant.name|tojson|forceescape }},
+                                                email: {{ off.participant.email|tojson|forceescape }},
+                                                title: {{ (off.title or "")|tojson|forceescape }},
+                                                phone: {{ (off.phone or off.participant.phone_number or "")|tojson|forceescape }},
+                                                is_phone_public: {{ "true" if off.is_phone_public else "false" }},
+                                                primary_institution_id: {{ (off.participant.institution_id or "")|tojson|forceescape }},
+                                                role_ids: {{ (off.roles|map(attribute="id")|list)|tojson|forceescape }},
+                                                affiliations: {{ aff_data|tojson|forceescape }}
+                                            })'
+                                        class="p-1.5 rounded-lg border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze transition text-xs"
+                                        title="Edit official profile, phone &amp; affiliations">
+                                        <i class="ph-bold ph-pencil-simple"></i>
+                                    </button>
+
+                                    <button type="button"
+                                        @click="resendInvite('{{ off.id }}', '{{ off.participant.email }}')"
+                                        :disabled="resendingId === '{{ off.id }}'"
+                                        class="p-1.5 rounded-lg border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze transition text-xs"
+                                        title="Send setup link">
+                                        <i class="ph-bold"
+                                            :class="resendingId === '{{ off.id }}' ? 'ph-spinner animate-spin' : 'ph-link'"></i>
+                                    </button>
+
+                                    <button type="button"
+                                        @click="confirmDelete('{{ off.id }}', {{ off.participant.name|tojson|forceescape }})"
+                                        class="p-1.5 rounded-lg border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition text-xs"
+                                        title="Remove Official">
+                                        <i class="ph-bold ph-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        {% if not officials %}
+                        <tr>
+                            <td colspan="6" class="py-10 text-center text-xs text-theme-body/60 font-body space-y-1">
+                                <div>No officials registered in this tournament yet.</div>
+                                <button type="button" @click="openAddModal()"
+                                    class="text-xs font-bold text-kwuo-bronze hover:underline inline-flex items-center gap-1">
+                                    <i class="ph-bold ph-plus"></i>
+                                    <span>Register your first tournament official</span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- VIEW 2: Officials Cards Mode (Optimized for Mobile Screens & Touch) -->
+            <div id="officials-cards-container" x-show="viewMode === 'cards'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for off in officials %}
+                {% set role_text = off.role_names|join(', ') if off.role_names else (off.role.value if off.role else '')
+                %}
+                {% set inst_text = off.participant.institution.name if off.participant.institution else '' %}
+                {% set status_text = 'Active' if off.password_hash else 'Pending' %}
+                {% set sec_affils = off.participant.affiliations|rejectattr('is_primary')|list if
+                off.participant.affiliations else [] %}
+                {% set aff_data = [] %}
+                {% for a in off.participant.affiliations %}
+                {% if not a.is_primary and a.institution_id %}
+                {% set _ = aff_data.append({'institution_id': a.institution_id, 'tie_type': a.tie_type}) %}
+                {% endif %}
+                {% endfor %}
+
+                <article
+                    x-show="matchesFilter('{{ off.participant.name|replace('\'', '\\\'') }}', '{{ off.participant.email|replace('\'', '\\\'') }}', '{{ role_text|replace('\'', '\\\'') }}', '{{ inst_text|replace('\'', '\\\'') }}')"
+                    data-name="{{ off.participant.name }}"
+                    data-roles="{{ role_text }}"
+                    data-institution="{{ inst_text }}"
+                    data-status="{{ status_text }}"
+                    :class="selectedIds.includes('{{ off.id }}') ? 'border-amber-500/60 bg-amber-500/5 ring-1 ring-amber-500/30' : 'border-theme-border bg-theme-surface hover:border-kwuo-bronze/30'"
+                    class="official-card p-4 rounded-xl border transition shadow-xs flex flex-col justify-between gap-3 font-body">
+                    <div class="space-y-2.5">
+                        <!-- Top Row: Checkbox, Name, Title, Status -->
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-start gap-2">
+                                <input type="checkbox" value="{{ off.id }}" x-model="selectedIds"
+                                    class="mt-1 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5 cursor-pointer shrink-0">
+                                <div>
+                                    <h3
+                                        class="font-heading font-bold text-sm text-theme-heading leading-tight break-words">
+                                        {{ off.participant.name }}
+                                    </h3>
+                                    {% if off.title %}
+                                    <div class="text-[11px] font-semibold text-kwuo-bronze font-body mt-0.5">
+                                        {{ off.title }}
+                                    </div>
+                                    {% endif %}
+                                    <div class="text-[11px] text-theme-body/60 break-all">
+                                        {{ off.participant.email }}
+                                    </div>
+                                    {% if off.phone or off.participant.phone_number %}
+                                    {% set p_num = off.phone or off.participant.phone_number %}
+                                    <div class="text-[11px] text-theme-body/70 flex items-center gap-1 mt-0.5">
+                                        <i class="ph-bold ph-phone text-[10px]"></i>
+                                        <span>{{ p_num }}</span>
+                                        {% if off.is_phone_public %}
+                                        <span class="text-[9px] text-emerald-600 font-bold">(Public)</span>
+                                        {% else %}
+                                        <span class="text-[9px] text-theme-body/40 font-bold">(Private)</span>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Status Badge -->
+                            <div class="shrink-0">
+                                {% if off.password_hash %}
+                                <span
+                                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                    <i class="ph-bold ph-check text-[9px]"></i>
+                                    <span>Active</span>
+                                </span>
+                                {% else %}
+                                <span
+                                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                                    <i class="ph-bold ph-clock text-[9px]"></i>
+                                    <span>Pending</span>
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Roles Section -->
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase text-theme-body/50">Roles</div>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                {% for r in off.roles %}
+                                <span
+                                    class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                    {{ r.name }}
+                                </span>
+                                {% endfor %}
+                                {% if not off.roles and off.role %}
+                                <span
+                                    class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-theme-base border border-theme-border text-theme-heading">
+                                    {{ off.role.value|upper }}
+                                </span>
+                                {% elif not off.roles and not off.role %}
+                                <span class="text-xs text-theme-body/40 italic">Unassigned</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Institution & Secondary Ties -->
+                        <div class="space-y-1 text-xs text-theme-body/70">
+                            <div class="flex items-center gap-1.5">
+                                <i class="ph-bold ph-buildings text-theme-body/50 text-xs"></i>
+                                {% if off.participant.institution %}
+                                <span class="font-medium text-theme-heading">{{ off.participant.institution.name
+                                    }}</span>
+                                {% if off.participant.institution.code %}
+                                <span class="text-[10px] font-bold text-kwuo-bronze">({{
+                                    off.participant.institution.code }})</span>
+                                {% endif %}
+                                {% else %}
+                                <span class="italic text-theme-body/40">Independent</span>
+                                {% endif %}
+                            </div>
+
+                            {% if sec_affils %}
+                            <div class="flex items-center gap-1 flex-wrap text-[10px] pl-4">
+                                <span class="text-[9px] uppercase font-bold text-theme-body/40">Ties:</span>
+                                {% for a in sec_affils %}
+                                {% if a.institution %}
+                                <span
+                                    class="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-theme-base border border-theme-border">
+                                    <span>{{ a.institution.name }}</span>
+                                    <span class="text-[8px] font-bold text-kwuo-bronze">({{ a.tie_type|title }})</span>
+                                </span>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Card Actions Footer -->
+                    <div class="pt-2 border-t border-theme-border flex items-center justify-between gap-2">
+                        <button type="button" @click='openEdit({
+                                    id: {{ off.id|tojson|forceescape }},
+                                    name: {{ off.participant.name|tojson|forceescape }},
+                                    email: {{ off.participant.email|tojson|forceescape }},
+                                    title: {{ (off.title or "")|tojson|forceescape }},
+                                    phone: {{ (off.phone or off.participant.phone_number or "")|tojson|forceescape }},
+                                    is_phone_public: {{ "true" if off.is_phone_public else "false" }},
+                                    primary_institution_id: {{ (off.participant.institution_id or "")|tojson|forceescape }},
+                                    role_ids: {{ (off.roles|map(attribute="id")|list)|tojson|forceescape }},
+                                    affiliations: {{ aff_data|tojson|forceescape }}
+                                })'
+                            class="py-1.5 px-2.5 rounded-lg border border-theme-border hover:bg-theme-surface text-theme-heading text-xs font-semibold transition inline-flex items-center gap-1 font-body">
+                            <i class="ph-bold ph-pencil-simple text-xs"></i>
+                            <span>Edit</span>
+                        </button>
+
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" @click="resendInvite('{{ off.id }}', '{{ off.participant.email }}')"
+                                :disabled="resendingId === '{{ off.id }}'"
+                                class="p-1.5 rounded-lg border border-theme-border hover:bg-kwuo-bronze/10 text-kwuo-bronze transition text-xs"
+                                title="Send setup link">
+                                <i class="ph-bold"
+                                    :class="resendingId === '{{ off.id }}' ? 'ph-spinner animate-spin' : 'ph-link'"></i>
+                            </button>
+
+                            <button type="button"
+                                @click="confirmDelete('{{ off.id }}', {{ off.participant.name|tojson|forceescape }})"
+                                class="p-1.5 rounded-lg border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 text-rose-600 hover:bg-rose-100 transition text-xs"
+                                title="Remove Official">
+                                <i class="ph-bold ph-trash text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- DOCKET-STYLED FIXED HEIGHT MODALS WITH SCROLLABLE INTERIORS                -->
+    <!-- ========================================================================= -->
+
+    <!-- MODAL 1: Add Official Modal (Docket styling, fixed height, scrollable body) -->
+    <template x-teleport="body">
+        <div x-show="addModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="addModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg z-10" @keydown.escape.window="addModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[88vh] font-body">
+                    <!-- Modal Fixed Header -->
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                        <div class="flex items-center gap-2">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                                <i class="ph-bold ph-user-plus text-base"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">Add Official</h3>
+                                <p class="text-[11px] text-theme-body/60">Accredit tournament staff and issue setup invite</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="addModal = false" class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-base"></i>
+                        </button>
+                    </div>
+
+                    <!-- Modal Scrollable Content Area -->
+                    <form id="add-official-form" method="POST" action="/admin/officials" class="flex-1 overflow-y-auto py-3 space-y-4 pr-1 min-h-0 font-body">
                         <div>
                             <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
                                 Full Name / Mononym *
                             </label>
                             <input type="text" name="name" required placeholder="e.g. Chief Tabulator Kwame"
-                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs">
+                                class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze font-body">
                         </div>
 
                         <div>
@@ -55,93 +1058,555 @@
                                 Email Address *
                             </label>
                             <input type="email" name="email" required placeholder="official@debatesociety.org"
-                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs">
+                                class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze font-body">
                         </div>
 
+                        <!-- Title & Phone -->
                         <div>
                             <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
-                                Staff Role *
+                                Honorary / Operational Title (Optional)
                             </label>
-                            {{ edit.custom_select(
-                                name="role",
-                                value="tab",
-                                required=true,
-                                options=[
-                                    {"value": "tab", "label": "Tabulation Staff (Tab)", "icon": "ph-calculator"},
-                                    {"value": "ca", "label": "Chief Adjudicator (CA)", "icon": "ph-gavel"},
-                                    {"value": "dca", "label": "Deputy Chief Adjudicator (DCA)", "icon": "ph-scales"},
-                                    {"value": "director", "label": "Tournament Director", "icon": "ph-crown"},
-                                    {"value": "equity", "label": "Equity Officer", "icon": "ph-shield-check"},
-                                    {"value": "org_comm", "label": "Organizing Committee", "icon": "ph-users"}
-                                ]
-                            ) }}
+                            <input type="text" name="title" placeholder="e.g. Tournament Director / Co-Chief Adjudicator"
+                                class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze font-body">
                         </div>
 
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                    Contact Phone (Optional)
+                                </label>
+                                <input type="tel" name="phone" placeholder="e.g. +234 801 234 5678"
+                                    class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze font-body">
+                            </div>
+
+                            <label class="flex items-center gap-2 p-2 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface cursor-pointer">
+                                <input type="checkbox" name="is_phone_public" value="true" checked
+                                    class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                <span class="text-xs text-theme-heading font-medium">Show phone publicly on tournament homepage</span>
+                            </label>
+                        </div>
+
+                        <!-- Roles Multi-Select -->
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                                Assigned Tournament Roles
+                            </label>
+                            <div class="space-y-2">
+                                {% for r in roles %}
+                                <label class="flex items-start gap-2.5 p-2 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface cursor-pointer transition">
+                                    <input type="checkbox" name="role_ids" value="{{ r.id }}" {% if r.name=='Tab Director' %}checked{% endif %}
+                                        class="mt-0.5 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="font-heading font-bold text-xs text-theme-heading">{{ r.name }}</span>
+                                            {% if r.is_system %}
+                                            <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze">System</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-[10px] text-theme-body/60 leading-tight mt-0.5">{{ r.description or '' }}</div>
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Primary Representing Institution -->
                         <div>
                             <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
-                                Tab Room Password *
+                                Representing Institution (Optional)
                             </label>
-                            <input type="password" name="password" required placeholder="Set password for /admin sign-in"
-                                   class="w-full px-3 py-2 rounded-lg border border-theme-border bg-theme-base text-theme-heading text-xs font-body">
+                            <div x-data="kwuoDropdown()" class="relative w-full">
+                                <input type="hidden" name="primary_institution_id" :value="newOfficial.primary_institution_id">
+                                <button type="button" x-ref="trigger" @click="toggle()" @keydown.escape="close()"
+                                    class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-semibold shadow-xs hover:border-kwuo-bronze/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze transition text-left font-body">
+                                    <span class="flex items-center gap-2 truncate">
+                                        <i class="ph-bold ph-bank text-kwuo-bronze text-sm shrink-0"></i>
+                                        <span x-text="getInstitutionLabel(newOfficial.primary_institution_id)" class="truncate font-body"></span>
+                                    </span>
+                                    <i class="ph-bold ph-caret-down text-theme-body/60 transition-transform duration-200 shrink-0 text-xs" :class="{ 'rotate-180': open }"></i>
+                                </button>
+
+                                <template x-teleport="body">
+                                    <div x-show="open" x-cloak
+                                        @click.stop
+                                        @click.outside="if (!$refs.trigger || !$refs.trigger.contains($event.target)) close()"
+                                        @keydown.escape.window="close()"
+                                        :style="menuStyle"
+                                        x-transition:enter="transition ease-out duration-120"
+                                        x-transition:enter-start="opacity-0 scale-95"
+                                        x-transition:enter-end="opacity-100 scale-100"
+                                        x-transition:leave="transition ease-in duration-100"
+                                        x-transition:leave-start="opacity-100 scale-100"
+                                        x-transition:leave-end="opacity-0 scale-95"
+                                        class="overflow-y-auto rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md">
+                                        <button type="button" @click.stop="newOfficial.primary_institution_id = ''; close()"
+                                            class="w-full px-3.5 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
+                                            :class="!newOfficial.primary_institution_id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                                            <span class="flex items-center gap-2 truncate">
+                                                <i class="ph-bold ph-user text-xs shrink-0" :class="!newOfficial.primary_institution_id ? 'text-kwuo-bronze' : 'text-theme-body/50'"></i>
+                                                <span class="italic">Independent / No primary representation</span>
+                                            </span>
+                                            <i x-show="!newOfficial.primary_institution_id" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                                        </button>
+                                        <div class="my-1 border-t border-theme-border/60"></div>
+                                        <template x-for="inst in institutions" :key="inst.id">
+                                            <button type="button" @click.stop="newOfficial.primary_institution_id = inst.id; close()"
+                                                class="w-full px-3.5 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
+                                                :class="newOfficial.primary_institution_id === inst.id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                                                <span class="flex items-center gap-2 truncate">
+                                                    <i class="ph-bold ph-bank text-xs shrink-0" :class="newOfficial.primary_institution_id === inst.id ? 'text-kwuo-bronze' : 'text-theme-body/50'"></i>
+                                                    <span x-text="inst.name + (inst.code ? ' (' + inst.code + ')' : '')" class="truncate font-body"></span>
+                                                </span>
+                                                <i x-show="newOfficial.primary_institution_id === inst.id" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                                            </button>
+                                        </template>
+                                        <template x-if="institutions.length === 0">
+                                            <div class="px-3.5 py-2 text-xs text-theme-body/50 italic font-body">
+                                                No institutions registered in tournament.
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
 
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition flex items-center justify-center gap-2 mt-2">
-                            <i class="ph-bold ph-user-plus"></i>
-                            <span>Register Official</span>
-                        </button>
+                        <!-- Invitation Link Notice -->
+                        <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs space-y-1">
+                            <div class="font-bold flex items-center gap-1.5">
+                                <i class="ph-bold ph-envelope-simple text-sm"></i>
+                                <span>Zero Password Setup Requirement</span>
+                            </div>
+                            <p class="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed font-body">
+                                Tab room staff do not configure passwords. A single-use setup link is automatically emailed
+                                to the official so they configure their own credentials.
+                            </p>
+                        </div>
                     </form>
+
+                    <!-- Modal Fixed Footer -->
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
+                        <button type="button" @click="addModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                            Cancel
+                        </button>
+                        <button type="submit" form="add-official-form"
+                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition font-body shadow-sm">
+                            Register &amp; Send Setup Email
+                        </button>
+                    </div>
                 </article>
             </div>
         </div>
+    </template>
 
-        <!-- Officials Directory (2 cols) -->
-        <div class="lg:col-span-2">
-            <div class="kwuo-torn-docket-wrapper">
-                <article class="kwuo-torn-docket !p-6">
-                    <div class="flex items-center justify-between pb-3 border-b border-theme-border mb-4">
-                        <h3 class="text-sm font-heading font-bold text-theme-heading">
-                            Tournament Officials &amp; Staff ({{ tournament.officials|length }})
-                        </h3>
-                        <span class="text-xs text-theme-body/60">Governing Staff</span>
-                    </div>
+    <!-- MODAL 2: Import Officials Modal (Docket styling, fixed height, scrollable body) -->
+    <template x-teleport="body">
+        <div x-show="importModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="importModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
 
-                    {% if tournament.officials %}
-                    <div class="divide-y divide-theme-border">
-                        {% for off in tournament.officials %}
-                        <div class="py-3 flex items-center justify-between gap-4">
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <span class="font-heading font-bold text-sm text-theme-heading">{{ off.name }}</span>
-                                    {% if off.official_profile %}
-                                    <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-kwuo-bronze/10 text-kwuo-bronze">
-                                        {{ off.official_profile.role.value }}
-                                    </span>
-                                    {% endif %}
-                                </div>
-                                <div class="text-[11px] text-theme-body/60 mt-0.5">
-                                    {{ off.email }}
-                                    {% if off.official_profile and off.official_profile.last_login_at %}
-                                    &bull; Last login: {{ off.official_profile.last_login_at.strftime('%b %d, %H:%M') }}
-                                    {% endif %}
-                                </div>
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg z-10" @keydown.escape.window="importModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[85vh] font-body">
+                    <!-- Modal Fixed Header -->
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+                                <i class="ph-bold ph-upload-simple text-base"></i>
                             </div>
-
-                            <div class="text-right text-xs">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                                    Active Password Set
-                                </span>
+                            <div>
+                                <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">Import Officials</h3>
+                                <p class="text-[11px] text-theme-body/60">Upload roster spreadsheet (.xlsx or .csv)</p>
                             </div>
                         </div>
-                        {% endfor %}
+                        <button type="button" @click="importModal = false"
+                            class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-base"></i>
+                        </button>
                     </div>
-                    {% else %}
-                    <div class="py-8 text-center text-xs text-theme-body/60">
-                        No officials registered yet. Add staff members using the registration form.
+
+                    <!-- Modal Scrollable Content Area -->
+                    <form id="import-officials-form" method="POST" action="/admin/officials/import"
+                        enctype="multipart/form-data" class="flex-1 overflow-y-auto py-3 space-y-4 pr-1 min-h-0">
+                        <div
+                            class="p-3.5 rounded-xl border border-dashed border-theme-border bg-theme-base/60 text-center space-y-2">
+                            <i class="ph-bold ph-file-xls text-3xl text-emerald-600"></i>
+                            <div class="text-xs font-semibold text-theme-heading">Select .xlsx or .csv roster</div>
+                            <input type="file" name="file" accept=".xlsx,.csv" required
+                                class="w-full text-xs text-theme-body file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-kwuo-bronze file:text-white hover:file:bg-kwuo-mahogany cursor-pointer">
+                        </div>
+
+                        <div class="space-y-2 text-xs text-theme-body/80">
+                            <div class="font-bold text-theme-heading">Expected Column Headers:</div>
+                            <div
+                                class="p-2.5 rounded-xl bg-theme-base border border-theme-border text-[11px] space-y-1 font-body">
+                                <div><strong class="text-theme-heading">Full Name</strong> (or Name) — mandatory</div>
+                                <div><strong class="text-theme-heading">Email</strong> — mandatory for password invitation
+                                </div>
+                                <div><strong class="text-theme-heading">Roles</strong> — comma-separated (e.g. <em>Tab
+                                        Director, Equity Officer</em>)</div>
+                                <div><strong class="text-theme-heading">Institution</strong> — school or delegation name
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between text-xs pt-1">
+                            <span class="text-theme-body/60">Need a starting template?</span>
+                            <a href="/admin/officials/export.xlsx" download="officials-template.xlsx" hx-boost="false"
+                                class="text-kwuo-bronze font-bold hover:underline inline-flex items-center gap-1">
+                                <i class="ph-bold ph-download-simple"></i>
+                                <span>Download Current Roster (.xlsx)</span>
+                            </a>
+                        </div>
+                    </form>
+
+                    <!-- Modal Fixed Footer -->
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
+                        <button type="button" @click="importModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                            Cancel
+                        </button>
+                        <button type="submit" form="import-officials-form"
+                            class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany transition font-body shadow-sm flex items-center gap-1.5">
+                            <i class="ph-bold ph-upload-simple"></i>
+                            <span>Upload &amp; Import</span>
+                        </button>
                     </div>
-                    {% endif %}
                 </article>
             </div>
+        </div>
+    </template>
+
+    <!-- MODAL 3: Edit Official & Affiliations Modal (Docket styling, fixed height, scrollable body) -->
+    <template x-teleport="body">
+        <div x-show="editModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
+            <!-- Full Viewport Backdrop Starting at Top: 0 -->
+            <div @click="editModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+            <div class="relative kwuo-torn-docket-wrapper w-full max-w-lg z-10" @keydown.escape.window="editModal = false">
+                <article class="kwuo-torn-docket !p-5 sm:!p-6 flex flex-col max-h-[88vh] font-body">
+                    <!-- Modal Fixed Header -->
+                    <div class="flex items-center justify-between pb-3 border-b border-theme-border shrink-0">
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="flex h-8 w-8 items-center justify-center rounded-lg bg-kwuo-bronze/10 text-kwuo-bronze">
+                                <i class="ph-bold ph-pencil-simple text-base"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-heading font-bold text-base text-theme-heading leading-tight">Edit Official Profile</h3>
+                                <p class="text-[11px] text-theme-body/60">Update official credentials, phone privacy &amp; school affiliations</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="editModal = false"
+                            class="text-theme-body/60 hover:text-theme-heading p-1">
+                            <i class="ph-bold ph-x text-base"></i>
+                        </button>
+                    </div>
+
+                <!-- Modal Scrollable Content Area -->
+                <div class="flex-1 overflow-y-auto py-3 space-y-4 pr-1 min-h-0">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                            Full Name / Mononym *
+                        </label>
+                        <input type="text" x-model="editOfficial.name" required
+                            class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze font-body">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                            Email Address *
+                        </label>
+                        <input type="email" x-model="editOfficial.email" required
+                            class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze font-body">
+                    </div>
+
+                    <!-- Custom Title -->
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                            Honorary / Operational Title (Optional)
+                        </label>
+                        <input type="text" x-model="editOfficial.title"
+                            placeholder="e.g. Tournament Director / Co-Chief Adjudicator"
+                            class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze font-body">
+                    </div>
+
+                    <!-- Phone & Privacy Visibility -->
+                    <div class="space-y-2">
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                                Contact Phone Number (Optional)
+                            </label>
+                            <input type="tel" x-model="editOfficial.phone" placeholder="e.g. +234 801 234 5678"
+                                class="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-base text-theme-heading focus:ring-1 focus:ring-kwuo-bronze font-body">
+                        </div>
+
+                        <label
+                            class="flex items-center gap-2 p-2 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface cursor-pointer">
+                            <input type="checkbox" x-model="editOfficial.is_phone_public"
+                                class="rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                            <span class="text-xs text-theme-heading font-medium">Show phone publicly on tournament
+                                homepage</span>
+                        </label>
+                    </div>
+
+                    <!-- Assigned Roles -->
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1.5">
+                            Assigned Tournament Roles
+                        </label>
+                        <div class="space-y-2">
+                            {% for r in roles %}
+                            <label
+                                class="flex items-start gap-2.5 p-2 rounded-xl border border-theme-border bg-theme-base hover:bg-theme-surface cursor-pointer transition">
+                                <input type="checkbox" :value="'{{ r.id }}'" x-model="editOfficial.role_ids"
+                                    class="mt-0.5 rounded text-kwuo-bronze focus:ring-kwuo-bronze h-3.5 w-3.5">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-heading font-bold text-xs text-theme-heading">{{ r.name
+                                            }}</span>
+                                        {% if r.is_system %}
+                                        <span
+                                            class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze">System</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-[10px] text-theme-body/60 leading-tight mt-0.5">{{ r.description or
+                                        '' }}</div>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Primary Representing Institution -->
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading mb-1">
+                            Primary Representing Institution
+                        </label>
+                        <div x-data="kwuoDropdown()" class="relative w-full">
+                            <button type="button" x-ref="trigger" @click="toggle()" @keydown.escape="close()"
+                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-theme-border bg-theme-base text-theme-heading text-xs font-semibold shadow-xs hover:border-kwuo-bronze/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze transition text-left font-body">
+                                <span class="flex items-center gap-2 truncate">
+                                    <i class="ph-bold ph-bank text-kwuo-bronze text-sm shrink-0"></i>
+                                    <span x-text="getInstitutionLabel(editOfficial.primary_institution_id)" class="truncate font-body"></span>
+                                </span>
+                                <i class="ph-bold ph-caret-down text-theme-body/60 transition-transform duration-200 shrink-0 text-xs" :class="{ 'rotate-180': open }"></i>
+                            </button>
+
+                            <template x-teleport="body">
+                                <div x-show="open" x-cloak
+                                    @click.stop
+                                    @click.outside="if (!$refs.trigger || !$refs.trigger.contains($event.target)) close()"
+                                    @keydown.escape.window="close()"
+                                    :style="menuStyle"
+                                    x-transition:enter="transition ease-out duration-120"
+                                    x-transition:enter-start="opacity-0 scale-95"
+                                    x-transition:enter-end="opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-100"
+                                    x-transition:leave-start="opacity-100 scale-100"
+                                    x-transition:leave-end="opacity-0 scale-95"
+                                    class="overflow-y-auto rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md">
+                                    <button type="button" @click.stop="editOfficial.primary_institution_id = ''; close()"
+                                        class="w-full px-3.5 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
+                                        :class="!editOfficial.primary_institution_id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                                        <span class="flex items-center gap-2 truncate">
+                                            <i class="ph-bold ph-user text-xs shrink-0" :class="!editOfficial.primary_institution_id ? 'text-kwuo-bronze' : 'text-theme-body/50'"></i>
+                                            <span class="italic">Independent / No primary representation</span>
+                                        </span>
+                                        <i x-show="!editOfficial.primary_institution_id" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                                    </button>
+                                    <div class="my-1 border-t border-theme-border/60"></div>
+                                    <template x-for="inst in institutions" :key="inst.id">
+                                        <button type="button" @click.stop="editOfficial.primary_institution_id = inst.id; close()"
+                                            class="w-full px-3.5 py-2 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
+                                            :class="editOfficial.primary_institution_id === inst.id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                                            <span class="flex items-center gap-2 truncate">
+                                                <i class="ph-bold ph-bank text-xs shrink-0" :class="editOfficial.primary_institution_id === inst.id ? 'text-kwuo-bronze' : 'text-theme-body/50'"></i>
+                                                <span x-text="inst.name + (inst.code ? ' (' + inst.code + ')' : '')" class="truncate font-body"></span>
+                                            </span>
+                                            <i x-show="editOfficial.primary_institution_id === inst.id" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                                        </button>
+                                    </template>
+                                    <template x-if="institutions.length === 0">
+                                        <div class="px-3.5 py-2 text-xs text-theme-body/50 italic font-body">
+                                            No institutions registered in tournament.
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Secondary School Affiliations (Multi-institution ties) -->
+                    <div class="space-y-2 pt-2 border-t border-theme-border">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-theme-heading">
+                                Additional School Ties &amp; Affiliations
+                            </label>
+                            <button type="button" @click="addAffiliationRow()"
+                                class="text-[11px] font-bold text-kwuo-bronze hover:underline inline-flex items-center gap-1">
+                                <i class="ph-bold ph-plus text-xs"></i>
+                                <span>Add School Tie</span>
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-theme-body/60 leading-relaxed font-body">
+                            Specify other institutions this official coached, graduated from, or holds active ties with.
+                        </p>
+
+                        <div class="space-y-2">
+                            <template x-for="(aff, idx) in editOfficial.affiliations" :key="aff._uid || idx">
+                                <div
+                                    class="flex items-center gap-2 p-2 rounded-xl border border-theme-border bg-theme-base">
+                                    <!-- Custom Institution Select for Affiliation -->
+                                    <div x-data="kwuoDropdown()" class="relative flex-1 min-w-0">
+                                        <button type="button" x-ref="trigger" @click="toggle()" @keydown.escape="close()"
+                                            class="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-theme-heading text-xs font-semibold shadow-xs hover:border-kwuo-bronze/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze transition text-left font-body">
+                                            <span class="flex items-center gap-1.5 truncate">
+                                                <i class="ph-bold ph-bank text-kwuo-bronze text-xs shrink-0"></i>
+                                                <span x-text="getAffiliationInstLabel(aff.institution_id)" class="truncate font-body"></span>
+                                            </span>
+                                            <i class="ph-bold ph-caret-down text-theme-body/60 transition-transform duration-200 shrink-0 text-[10px]" :class="{ 'rotate-180': open }"></i>
+                                        </button>
+
+                                        <template x-teleport="body">
+                                            <div x-show="open" x-cloak
+                                                @click.stop
+                                                @click.outside="if (!$refs.trigger || !$refs.trigger.contains($event.target)) close()"
+                                                @keydown.escape.window="close()"
+                                                :style="menuStyle"
+                                                x-transition:enter="transition ease-out duration-120"
+                                                x-transition:enter-start="opacity-0 scale-95"
+                                                x-transition:enter-end="opacity-100 scale-100"
+                                                x-transition:leave="transition ease-in duration-100"
+                                                x-transition:leave-start="opacity-100 scale-100"
+                                                x-transition:leave-end="opacity-0 scale-95"
+                                                class="overflow-y-auto rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md">
+                                                <button type="button" @click.stop="aff.institution_id = ''; close()"
+                                                    class="w-full px-3 py-1.5 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
+                                                    :class="!aff.institution_id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                                                    <span class="italic text-theme-body/60 font-body">Select institution...</span>
+                                                    <i x-show="!aff.institution_id" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                                                </button>
+                                                <div class="my-1 border-t border-theme-border/60"></div>
+                                                <template x-for="inst in institutions" :key="inst.id">
+                                                    <button type="button" @click.stop="aff.institution_id = inst.id; close()"
+                                                        class="w-full px-3 py-1.5 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
+                                                        :class="aff.institution_id === inst.id ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                                                        <span class="truncate font-body" x-text="inst.name + (inst.code ? ' (' + inst.code + ')' : '')"></span>
+                                                        <i x-show="aff.institution_id === inst.id" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                                                    </button>
+                                                </template>
+                                                <template x-if="institutions.length === 0">
+                                                    <div class="px-3 py-1.5 text-xs text-theme-body/50 italic font-body">
+                                                        No institutions registered.
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <!-- Custom Tie Type Select for Affiliation -->
+                                    <div x-data="kwuoDropdown()" class="relative w-36 shrink-0">
+                                        <button type="button" x-ref="trigger" @click="toggle()" @keydown.escape="close()"
+                                            class="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-theme-heading text-xs font-semibold shadow-xs hover:border-kwuo-bronze/40 focus:outline-none focus:ring-1 focus:ring-kwuo-bronze transition text-left font-body">
+                                            <span class="truncate font-body" x-text="getTieTypeLabel(aff.tie_type)"></span>
+                                            <i class="ph-bold ph-caret-down text-theme-body/60 transition-transform duration-200 shrink-0 text-[10px]" :class="{ 'rotate-180': open }"></i>
+                                        </button>
+
+                                        <template x-teleport="body">
+                                            <div x-show="open" x-cloak
+                                                @click.stop
+                                                @click.outside="if (!$refs.trigger || !$refs.trigger.contains($event.target)) close()"
+                                                @keydown.escape.window="close()"
+                                                :style="menuStyle"
+                                                x-transition:enter="transition ease-out duration-120"
+                                                x-transition:enter-start="opacity-0 scale-95"
+                                                x-transition:enter-end="opacity-100 scale-100"
+                                                x-transition:leave="transition ease-in duration-100"
+                                                x-transition:leave-start="opacity-100 scale-100"
+                                                x-transition:leave-end="opacity-0 scale-95"
+                                                class="overflow-y-auto rounded-xl border border-theme-border bg-theme-surface shadow-2xl py-1 text-xs font-body backdrop-blur-md">
+                                                <template x-for="t in tieTypes" :key="t.value">
+                                                    <button type="button" @click.stop="aff.tie_type = t.value; close()"
+                                                        class="w-full px-3 py-1.5 text-left flex items-center justify-between gap-2 transition hover:bg-kwuo-bronze/10 hover:text-kwuo-bronze font-body"
+                                                        :class="aff.tie_type === t.value ? 'bg-kwuo-bronze/10 text-kwuo-bronze font-bold' : 'text-theme-heading font-medium'">
+                                                        <span x-text="t.label" class="font-body"></span>
+                                                        <i x-show="aff.tie_type === t.value" class="ph-bold ph-check text-kwuo-bronze text-xs shrink-0"></i>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <button type="button" @click="removeAffiliationRow(idx)"
+                                        class="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition"
+                                        title="Remove affiliation">
+                                        <i class="ph-bold ph-trash text-xs"></i>
+                                    </button>
+                                </div>
+                            </template>
+
+                            <template x-if="editOfficial.affiliations.length === 0">
+                                <div
+                                    class="p-3 text-center border border-dashed border-theme-border rounded-xl text-xs text-theme-body/50 italic font-body">
+                                    No secondary affiliations configured.
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Fixed Footer -->
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-theme-border shrink-0">
+                    <button type="button" @click="editModal = false"
+                        class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="button" @click="saveOfficialEdit()" :disabled="editSaving"
+                        class="px-4 py-2 rounded-xl bg-kwuo-bronze text-white text-xs font-semibold hover:bg-kwuo-mahogany disabled:opacity-50 transition font-body shadow-sm flex items-center gap-1.5">
+                        <i class="ph-bold" :class="editSaving ? 'ph-spinner animate-spin' : 'ph-check'"></i>
+                        <span x-text="editSaving ? 'Saving...' : 'Save Changes'"></span>
+                    </button>
+                </div>
+            </article>
         </div>
     </div>
+</template>
+
+<!-- MODAL 4: Delete Official Confirmation (Docket styling, accessible dialog) -->
+<template x-teleport="body">
+    <div x-show="deleteModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 font-body">
+        <!-- Full Viewport Backdrop Starting at Top: 0 -->
+        <div @click="deleteModal = false" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+
+        <div class="relative kwuo-torn-docket-wrapper w-full max-w-sm z-10" @keydown.escape.window="deleteModal = false">
+            <article class="kwuo-torn-docket !p-5 sm:!p-6 space-y-4 font-body">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                        <i class="ph-bold ph-trash text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-bold text-base text-theme-heading">Remove Official</h3>
+                        <p class="text-xs text-theme-body/70 mt-0.5">
+                            Are you sure you want to remove <strong class="text-theme-heading" x-text="deleteTargetName"></strong> from tournament staff?
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-theme-border">
+                    <button type="button" @click="deleteModal = false"
+                            class="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-body hover:bg-theme-base transition font-body">
+                        Cancel
+                    </button>
+                    <button type="button" @click="deleteOfficial()"
+                            class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition font-body shadow-xs flex items-center gap-1.5">
+                        <i class="ph-bold ph-trash text-xs"></i>
+                        <span>Confirm Remove</span>
+                    </button>
+                </div>
+            </article>
+        </div>
+    </div>
+</template>
 </div>
 {% endblock %}

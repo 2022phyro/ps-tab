@@ -1,0 +1,128 @@
+{% extends "tenant/base.html" %}
+
+{% block title %}Registration Confirmed — {{ participant.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8 sm:py-12"
+     x-data="{
+         copied: false,
+         copyLink() {
+             const url = window.location.origin + '{{ magic_url }}';
+             navigator.clipboard.writeText(url).then(() => {
+                 this.copied = true;
+                 if (window.showToast) {
+                     window.showToast('Private link copied to clipboard!', 'success');
+                 }
+                 setTimeout(() => { this.copied = false; }, 3000);
+             });
+         }
+     }">
+
+    <!-- Success Confirmation Docket -->
+    <div class="kwuo-torn-docket-wrapper">
+        <article class="kwuo-torn-docket !p-6 sm:!p-10 space-y-6 font-body text-center">
+            <!-- Icon -->
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                <i class="ph-bold ph-check-circle text-3xl"></i>
+            </div>
+
+            <!-- Title & Subtitle -->
+            <div class="space-y-1">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                    <i class="ph-bold ph-seal-check"></i>
+                    {% if already_registered %}Access Link Retrieved{% else %}Registration Confirmed{% endif %}
+                </span>
+                <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-theme-heading">
+                    Welcome, {{ participant.name }}!
+                </h1>
+                <p class="text-xs text-theme-body/70 max-w-md mx-auto">
+                    You are successfully registered for <strong>{{ tournament.name }}</strong>.
+                </p>
+            </div>
+
+            <!-- Registration Summary Badges -->
+            <div class="p-4 rounded-2xl border border-theme-border bg-theme-base/60 text-left space-y-3">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-theme-body/60">
+                    Registration Summary
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                        <span class="text-theme-body/50 text-[11px] block">
+                            {% if judge %}Adjudicator{% else %}Competitor{% endif %}
+                        </span>
+                        <span class="font-bold text-theme-heading">{{ participant.name }}</span>
+                        {% if speaker and speaker.pronouns %}
+                        <span class="text-theme-body/50 text-[11px]">({{ speaker.pronouns }})</span>
+                        {% endif %}
+                        {% if judge and judge.is_independent %}
+                        <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">Independent (IA)</span>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <span class="text-theme-body/50 text-[11px] block">Institution</span>
+                        <span class="font-bold text-theme-heading">
+                            {{ institution.name if institution else 'Independent' }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <span class="text-theme-body/50 text-[11px] block">Email</span>
+                        <span class="text-theme-heading">{{ participant.email }}</span>
+                    </div>
+
+                    <div>
+                        <span class="text-theme-body/50 text-[11px] block">Eligible Divisions</span>
+                        <div class="flex flex-wrap gap-1 mt-0.5">
+                            {% for div in divisions %}
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-kwuo-bronze/10 text-kwuo-bronze border border-kwuo-bronze/20">
+                                {{ div.name }}
+                            </span>
+                            {% else %}
+                            <span class="text-theme-body/50 text-[11px]">Open Division</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dedicated Highlighted Zero-Auth Private Magic URL Card -->
+            <div class="p-5 sm:p-6 rounded-2xl border-2 border-kwuo-bronze/40 bg-kwuo-bronze/5 text-left space-y-4 shadow-sm">
+                <div class="flex items-center gap-2 text-kwuo-bronze font-bold text-xs uppercase tracking-wider">
+                    <i class="ph-bold ph-key text-base"></i>
+                    Your Private Access Link
+                </div>
+                <p class="text-xs text-theme-body/80 leading-relaxed">
+                    This personal link provides instant zero-auth access to your {% if judge %}adjudicator dashboard to view panel allocations and submit round ballots{% else %}competitor dashboard to access your speaking times, room allocations, and ballots{% endif %}. You do not need a password — bookmark this link during the tournament.
+                </p>
+
+                <!-- Copyable URL Box -->
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 rounded-xl border border-theme-border bg-theme-surface px-3.5 py-2.5 text-xs text-theme-heading truncate select-all">
+                        <span x-text="window.location.origin + '{{ magic_url }}'"></span>
+                    </div>
+                    <button type="button" @click="copyLink()"
+                            class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-theme-surface border border-theme-border text-xs font-bold text-theme-heading hover:bg-theme-base hover:border-kwuo-bronze/50 transition shadow-xs">
+                        <i class="ph-bold" :class="copied ? 'ph-check text-emerald-600' : 'ph-copy text-kwuo-bronze'"></i>
+                        <span x-text="copied ? 'Copied!' : 'Copy Link'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Primary Action Buttons -->
+            <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 font-body">
+                <a href="{{ magic_url }}"
+                   class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-kwuo-bronze hover:bg-kwuo-mahogany text-white text-xs font-bold transition shadow-sm">
+                    <span>{% if judge %}Go to Adjudicator Portal{% else %}Go to Competitor Portal{% endif %}</span>
+                    <i class="ph-bold ph-arrow-right text-sm"></i>
+                </a>
+                <a href="/"
+                   class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl border border-theme-border text-xs font-semibold text-theme-heading hover:bg-theme-base transition">
+                    <i class="ph-bold ph-house text-sm"></i>
+                    <span>Tournament Home</span>
+                </a>
+            </div>
+        </article>
+    </div>
+</div>
+{% endblock %}

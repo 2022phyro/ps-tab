@@ -55,7 +55,7 @@ async def seed_tabroom(db_session: AsyncSession) -> tuple[Tournament, Participan
     div_open = Division(tournament_id=tournament.id, name="Open", description="All collegiate speakers")
     db_session.add(div_open)
 
-    inst = Institution(name="Cambridge Union", code="CAM")
+    inst = Institution(tournament_id=tournament.id, name="Cambridge Union", code="CAM")
     db_session.add(inst)
     await db_session.flush()
 
@@ -196,6 +196,101 @@ async def test_tabroom_settings_get_and_post(client: AsyncClient, db_session: As
     assert "schedule.ics" in ics_res.headers.get("content-disposition", "")
     assert "BEGIN:VCALENDAR" in ics_res.text
     assert "Grand Final Presentation" in ics_res.text
+
+
+@pytest.mark.asyncio
+async def test_tournament_links_crud_and_public_display(client: AsyncClient, db_session: AsyncSession):
+    """Organizers can configure external/communication links with presets and view them on public homepage."""
+    tournament, official, password = await seed_tabroom(db_session)
+    await login_official(client, tournament, official.email, password)
+    host = f"{tournament.slug}.kwuo.com"
+
+    # 1. View settings with tab=links
+    get_res = await client.get("/admin/settings?tab=links", headers={"Host": host})
+    assert get_res.status_code == 200
+    assert "Links" in get_res.text
+
+    # 2. Add WhatsApp link
+    wa_res = await client.post(
+        "/admin/settings/links",
+        headers={"Host": host},
+        data={
+            "label": "Official WhatsApp Group",
+            "url": "https://chat.whatsapp.com/invitation123",
+            "preset": "whatsapp",
+            "description": "Urgent announcements and flight calls",
+            "is_public": "true",
+        },
+        follow_redirects=True,
+    )
+    assert wa_res.status_code == 200
+    assert "Tournament link saved successfully" in wa_res.text
+    assert "Official WhatsApp Group" in wa_res.text
+    assert "ph-whatsapp-logo" in wa_res.text
+
+    # 3. Add Discord server link
+    dc_res = await client.post(
+        "/admin/settings/links",
+        headers={"Host": host},
+        data={
+            "label": "Judges & Debaters Discord",
+            "url": "discord.gg/speechtab",
+            "preset": "discord",
+            "description": "Virtual debater lounge",
+            "is_public": "true",
+        },
+        follow_redirects=True,
+    )
+    assert dc_res.status_code == 200
+    assert "Judges &amp; Debaters Discord" in dc_res.text or "Judges & Debaters Discord" in dc_res.text
+    assert "ph-discord-logo" in dc_res.text
+
+    # Verify links on tournament model in db
+    await db_session.refresh(tournament)
+    assert len(tournament.links) == 2
+    wa_link = next(l for l in tournament.links if l["preset"] == "whatsapp")
+    dc_link = next(l for l in tournament.links if l["preset"] == "discord")
+    assert wa_link["url"] == "https://chat.whatsapp.com/invitation123"
+    assert dc_link["url"] == "https://discord.gg/speechtab"  # auto-prepended https://
+    assert len(tournament.public_links) == 2
+
+    # 4. Edit WhatsApp link
+    edit_res = await client.post(
+        "/admin/settings/links",
+        headers={"Host": host},
+        data={
+            "link_id": wa_link["id"],
+            "label": "Updated Official WhatsApp Announcements",
+            "url": "https://chat.whatsapp.com/updated123",
+            "preset": "whatsapp",
+            "description": "All participants flight calls",
+            "is_public": "true",
+        },
+        follow_redirects=True,
+    )
+    assert edit_res.status_code == 200
+    assert "Updated Official WhatsApp Announcements" in edit_res.text
+
+    # 5. Delete Discord link
+    del_res = await client.post(
+        f"/admin/settings/links/{dc_link['id']}/delete",
+        headers={"Host": host},
+        follow_redirects=True,
+    )
+    assert del_res.status_code == 200
+    assert "Link deleted successfully" in del_res.text
+
+    await db_session.refresh(tournament)
+    assert len(tournament.links) == 1
+    assert tournament.links[0]["id"] == wa_link["id"]
+
+    # 6. Verify public homepage displays the WhatsApp link with icon and badge
+    home_res = await client.get("/", headers={"Host": host})
+    assert home_res.status_code == 200
+    assert "Official Channels &amp; Links" in home_res.text or "Official Channels & Links" in home_res.text
+    assert "Updated Official WhatsApp Announcements" in home_res.text
+    assert "ph-whatsapp-logo" in home_res.text
+
 
 
 @pytest.mark.asyncio
@@ -384,7 +479,7 @@ async def test_tabroom_speakers_management(client: AsyncClient, db_session: Asyn
         follow_redirects=True,
     )
     assert res_checkin.status_code == 200
-    assert "Present" in res_checkin.text
+    assert "Present" in res_checkin.text or "Checked In" in res_checkin.text
 
 
 @pytest.mark.asyncio
@@ -644,3 +739,128 @@ async def test_tabroom_institutions_full_workflow(client: AsyncClient, db_sessio
     bulk_json = bulk_del_res.json()
     assert bulk_json["status"] == "ok"
     assert bulk_json["deleted_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_tournament_divisions_management_and_speaker_creation(client: AsyncClient, db_session: AsyncSession):
+    """Admin creates divisions in settings config, public view displays them, and speakers view allows selecting a division."""
+    tournament, official, password = await seed_tabroom(db_session)
+    await login_official(client, tournament, official.email, password)
+    host = f"{tournament.slug}.kwuo.com"
+
+    # 1. Config option in settings shows existing Open division
+    res_settings = await client.get("/admin/settings?tab=config", headers={"Host": host})
+    assert res_settings.status_code == 200
+    assert "Competitive Divisions" in res_settings.text
+    assert "Open" in res_settings.text
+
+    # 2. Admin creates a new division (e.g. "Novice")
+    create_res = await client.post(
+        "/admin/settings/divisions",
+        headers={"Host": host},
+        data={
+            "name": "Novice",
+            "description": "First-year competitive debaters",
+        },
+        follow_redirects=True,
+    )
+    assert create_res.status_code == 200
+    assert "Novice" in create_res.text
+
+    # 3. Admin creates another division (e.g. "ESL")
+    create_esl_res = await client.post(
+        "/admin/settings/divisions",
+        headers={"Host": host},
+        data={
+            "name": "ESL",
+            "description": "English as a Second Language",
+        },
+        follow_redirects=True,
+    )
+    assert create_esl_res.status_code == 200
+    assert "ESL" in create_esl_res.text
+
+    # 4. Reject duplicate division creation
+    dup_res = await client.post(
+        "/admin/settings/divisions",
+        headers={"Host": host},
+        data={"name": "novice"},
+        follow_redirects=True,
+    )
+    assert dup_res.status_code == 200
+    assert "already exists" in dup_res.text
+
+    # 5. Public view displays the created divisions
+    # 5a. Public homepage (/) shows all active divisions
+    home_res = await client.get("/", headers={"Host": host})
+    assert home_res.status_code == 200
+    assert "Competitor Divisions" in home_res.text
+    assert "Open" in home_res.text
+    assert "Novice" in home_res.text
+    assert "ESL" in home_res.text
+    assert "3 Active" in home_res.text
+
+    # 5b. Public registration (/register) shows divisions to select when in REGISTRATION status
+    tournament.status = TournamentStatus.REGISTRATION
+    await db_session.commit()
+    reg_res = await client.get("/register", headers={"Host": host})
+    assert reg_res.status_code == 200
+    assert "Novice" in reg_res.text
+    assert "ESL" in reg_res.text
+
+    # 5c. Public directory (/participants) shows division filter options
+    parts_res = await client.get("/participants", headers={"Host": host})
+    assert parts_res.status_code == 200
+    assert "Novice" in parts_res.text
+    assert "ESL" in parts_res.text
+
+    # 6. Speaker creation view allows selecting a division
+    # 6a. Load /admin/speakers and verify divisions are present in the form
+    spk_page_res = await client.get("/admin/speakers", headers={"Host": host})
+    assert spk_page_res.status_code == 200
+    assert "Novice" in spk_page_res.text
+    assert "ESL" in spk_page_res.text
+
+    # Find the Novice division ID from DB
+    stmt_novice = select(Division).where(Division.tournament_id == tournament.id, Division.name == "Novice")
+    novice_div = (await db_session.execute(stmt_novice)).scalar_one()
+
+    # 6b. Register a new speaker with Novice division selected
+    spk_create_res = await client.post(
+        "/admin/speakers",
+        headers={"Host": host, "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
+        json={
+            "name": "Jane Rookie",
+            "email": "jane.rookie@oxford.edu",
+            "division_ids": [novice_div.id],
+        },
+    )
+    assert spk_create_res.status_code == 200
+    spk_json = spk_create_res.json()
+    assert spk_json["status"] == "ok"
+    assert "Novice" in spk_json["speaker"]["divisions"]
+    assert novice_div.id in spk_json["speaker"]["division_ids"]
+
+    # 7. Update division
+    update_res = await client.post(
+        f"/admin/settings/divisions/{novice_div.id}",
+        headers={"Host": host},
+        data={
+            "name": "Novice & Junior",
+            "description": "Updated eligibility criteria",
+        },
+        follow_redirects=True,
+    )
+    assert update_res.status_code == 200
+    assert "Novice &amp; Junior" in update_res.text or "Novice & Junior" in update_res.text
+
+    # 8. Delete ESL division
+    stmt_esl = select(Division).where(Division.tournament_id == tournament.id, Division.name == "ESL")
+    esl_div = (await db_session.execute(stmt_esl)).scalar_one()
+    del_res = await client.post(
+        f"/admin/settings/divisions/{esl_div.id}/delete",
+        headers={"Host": host},
+        follow_redirects=True,
+    )
+    assert del_res.status_code == 200
+    assert "deleted successfully" in del_res.text

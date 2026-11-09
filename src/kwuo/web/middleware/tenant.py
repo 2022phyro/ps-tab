@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 import kwuo.core.database as db_core
 from kwuo.core.subdomain import extract_subdomain
-from kwuo.models.tournament import Tournament, Participant, Division
+from kwuo.models.tournament import Tournament, Participant, Division, OfficialProfile, ParticipantInstitution
 from kwuo.web.templates import templates
 
 
@@ -35,6 +35,10 @@ class TenantSubdomainMiddleware(BaseHTTPMiddleware):
         host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
         subdomain = extract_subdomain(host)
 
+        # Bypass tournament lookup for static assets
+        if request.url.path.startswith("/static"):
+            return await call_next(request)
+
         if not subdomain:
             # Request is on the apex platform domain
             request.state.is_tenant_domain = False
@@ -47,16 +51,17 @@ class TenantSubdomainMiddleware(BaseHTTPMiddleware):
             stmt = (
                 select(Tournament)
                 .options(
-                    selectinload(Tournament.divisions).selectinload(Division.participants).selectinload(Participant.speaker_profile),
-                    selectinload(Tournament.divisions).selectinload(Division.participants).selectinload(Participant.judge_profile),
+                    selectinload(Tournament.divisions),
                     selectinload(Tournament.rubric_criteria),
                     selectinload(Tournament.attachments),
                     selectinload(Tournament.schedule_items),
                     selectinload(Tournament.participants).selectinload(Participant.speaker_profile),
                     selectinload(Tournament.participants).selectinload(Participant.judge_profile),
-                    selectinload(Tournament.participants).selectinload(Participant.official_profile),
+                    selectinload(Tournament.participants).selectinload(Participant.official_profile).selectinload(OfficialProfile.roles),
                     selectinload(Tournament.participants).selectinload(Participant.institution),
                     selectinload(Tournament.participants).selectinload(Participant.divisions),
+                    selectinload(Tournament.institutions),
+                    selectinload(Tournament.roles),
                 )
                 .where(Tournament.slug == subdomain)
             )
@@ -95,6 +100,7 @@ class TenantSubdomainMiddleware(BaseHTTPMiddleware):
         TENANT_ADMIN_ALLOWED_PREFIXES = (
             "/admin/login",
             "/admin/logout",
+            "/admin/reset-password",
             "/admin/settings",
             "/admin/documents",
             "/admin/rubric",
@@ -102,6 +108,7 @@ class TenantSubdomainMiddleware(BaseHTTPMiddleware):
             "/admin/judges",
             "/admin/officials",
             "/admin/institutions",
+            "/admin/authorization",
             "/admin/rules",
         )
         if path.startswith("/admin"):
